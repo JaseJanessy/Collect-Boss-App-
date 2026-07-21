@@ -3,7 +3,7 @@
  * Falls back to an in-memory mock store when Supabase is not configured.
  */
 
-import { getBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { type EvidenceFileRow, type EvidenceType } from "@/lib/supabase/types";
 import { ok, fail, type DbResult } from "./result";
 import { mockUploadedEvidence } from "@/lib/mock-legal-data";
@@ -17,7 +17,8 @@ export const ALLOWED_MIME_TYPES = [
   "image/jpeg",
 ];
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-export const STORAGE_BUCKET = "evidence";
+// Must match the private bucket documented in the Supabase deployment schema.
+export const STORAGE_BUCKET = "evidence-files";
 
 // ─── File validation ──────────────────────────────────────────────────────────
 
@@ -59,6 +60,8 @@ function initMockStore(): Record<string, EvidenceFileRow[]> {
       file_size_bytes: null,
       evidence_type:   u.typeId as EvidenceType,
       uploaded_at:     new Date(Date.now() - Math.random() * 1e10).toISOString(),
+      object_path: null, description: null, document_date: null, is_internal: true,
+      archived_at: null, archived_by: null, retention_until: null, content_sha256: null,
     }));
   }
   return store;
@@ -84,17 +87,19 @@ export async function getEvidenceFilesClient(
     return ok([...mockListForCase(caseId)]);
   }
 
-  const client = getBrowserClient();
-  if (!client) return fail("Supabase client unavailable");
+  const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/evidence`, { cache: "no-store" });
+  const payload = await response.json().catch(() => ({})) as { files?: EvidenceFileRow[]; error?: string };
+  if (!response.ok || !payload.files) return fail(payload.error ?? "Unable to load evidence.");
+  return ok(payload.files);
+}
 
-  const { data, error } = await client
-    .from("evidence_files")
-    .select("*")
-    .eq("case_id", caseId)
-    .order("uploaded_at", { ascending: false });
+/** Lists the current owner's evidence files for reporting and document summaries. */
+export async function getAllEvidenceFilesClient(): Promise<DbResult<EvidenceFileRow[]>> {
+  if (!isSupabaseConfigured) {
+    return ok(Object.values(getMockStore()).flatMap((files) => [...files]));
+  }
 
-  if (error) return fail(error.message);
-  return ok((data as EvidenceFileRow[]) ?? []);
+  return fail("Load evidence through its case-scoped route.");
 }
 
 // ─── uploadEvidenceFileClient ─────────────────────────────────────────────────
@@ -102,9 +107,9 @@ export async function getEvidenceFilesClient(
 export async function uploadEvidenceFileClient(
   file: File,
   caseId: string,
-  businessId: string,
   evidenceType: EvidenceType,
-  onProgress?: (pct: number) => void
+  onProgress?: (pct: number) => void,
+  metadata: { description?: string; documentDate?: string; isInternal?: boolean } = {}
 ): Promise<DbResult<EvidenceFileRow>> {
   // Validate
   const validationError = validateEvidenceFile(file);
@@ -128,60 +133,21 @@ export async function uploadEvidenceFileClient(
       file_size_bytes: file.size,
       evidence_type:   evidenceType,
       uploaded_at:     new Date().toISOString(),
+      object_path: null, description: metadata.description?.trim() || null, document_date: metadata.documentDate || null,
+      is_internal: metadata.isInternal !== false, archived_at: null, archived_by: null, retention_until: null, content_sha256: null,
     };
     mockListForCase(caseId).unshift(newRow);
     return ok(newRow);
   }
 
-  const client = getBrowserClient();
-  if (!client) return fail("Supabase client unavailable");
-
-  // Build storage path
-  const ext       = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-  const safeName  = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const storagePath = `${businessId}/${caseId}/${Date.now()}_${safeName}`;
-
-  onProgress?.(20);
-
-  // Upload to Supabase Storage
-  const { error: storageError } = await client.storage
-    .from(STORAGE_BUCKET)
-    .upload(storagePath, file, {
-      cacheControl: "3600",
-      upsert: false,
-      contentType: file.type || `image/${ext}`,
-    });
-
-  if (storageError) {
-    onProgress?.(0);
-    return fail(storageError.message);
-  }
-
-  onProgress?.(80);
-
-  // Insert DB record
-  const { data, error: dbError } = await client
-    .from("evidence_files")
-    .insert({
-      case_id:         caseId,
-      file_name:       file.name,
-      file_type:       getFileTypeLabel(file.name),
-      file_url:        storagePath,
-      file_size_bytes: file.size,
-      evidence_type:   evidenceType,
-    })
-    .select()
-    .single();
-
-  if (dbError) {
-    // Try to clean up storage if DB insert fails
-    await client.storage.from(STORAGE_BUCKET).remove([storagePath]);
-    onProgress?.(0);
-    return fail(dbError.message);
-  }
-
-  onProgress?.(100);
-  return ok(data as EvidenceFileRow);
+  const form = new FormData(); form.set("file", file); form.set("evidenceType", evidenceType);
+  if (metadata.description?.trim()) form.set("description", metadata.description.trim());
+  if (metadata.documentDate) form.set("documentDate", metadata.documentDate);
+  form.set("isInternal", String(metadata.isInternal !== false));
+  const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/evidence`, { method: "POST", body: form });
+  const payload = await response.json().catch(() => ({})) as { file?: EvidenceFileRow; error?: string };
+  if (!response.ok || !payload.file) { onProgress?.(0); return fail(payload.error ?? "Evidence upload failed."); }
+  onProgress?.(100); return ok(payload.file);
 }
 
 // ─── deleteEvidenceFileClient ─────────────────────────────────────────────────
@@ -199,36 +165,21 @@ export async function deleteEvidenceFileClient(
     return ok(undefined);
   }
 
-  const client = getBrowserClient();
-  if (!client) return fail("Supabase client unavailable");
-
-  // Delete storage object first (if we have a path)
-  if (filePath) {
-    const { error: storageError } = await client.storage
-      .from(STORAGE_BUCKET)
-      .remove([filePath]);
-    if (storageError) {
-      console.warn("[evidence] Storage delete failed:", storageError.message);
-    }
-  }
-
-  // Delete DB record
-  const { error } = await client.from("evidence_files").delete().eq("id", id);
-  if (error) return fail(error.message);
-  return ok(undefined);
+  void filePath;
+  return fail("Use the case-scoped evidence archive route.");
 }
 
 // ─── getSignedUrl ─────────────────────────────────────────────────────────────
 
-export async function getSignedUrl(filePath: string): Promise<string | null> {
-  if (!isSupabaseConfigured || !filePath) return null;
+export async function getEvidenceAccessUrl(caseId: string, evidenceId: string, mode: "preview" | "download"): Promise<DbResult<string>> {
+  const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/evidence/${encodeURIComponent(evidenceId)}?mode=${mode}`, { cache: "no-store" });
+  const payload = await response.json().catch(() => ({})) as { url?: string; error?: string };
+  return response.ok && payload.url ? ok(payload.url) : fail(payload.error ?? "Unable to access evidence.");
+}
 
-  const client = getBrowserClient();
-  if (!client) return null;
-
-  const { data } = await client.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUrl(filePath, 3600); // 1 hour
-
-  return data?.signedUrl ?? null;
+export async function archiveEvidenceFileClient(caseId: string, evidenceId: string): Promise<DbResult<void>> {
+  if (!isSupabaseConfigured) return deleteEvidenceFileClient(evidenceId, null);
+  const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/evidence/${encodeURIComponent(evidenceId)}`, { method: "DELETE" });
+  if (!response.ok) { const payload = await response.json().catch(() => ({})) as { error?: string }; return fail(payload.error ?? "Unable to archive evidence."); }
+  return ok(undefined);
 }

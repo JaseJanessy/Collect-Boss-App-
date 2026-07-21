@@ -7,6 +7,7 @@
 import { type CaseRow, type ReceivingAccountRow } from "@/lib/supabase/types";
 import { type ReminderStatus } from "@/lib/supabase/types";
 import { formatRM } from "@/lib/mock-data";
+export { buildEmailLink, buildWhatsAppLink } from "./handoff-links";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -258,22 +259,18 @@ export function generateReminderMessage({
 
 // ─── WhatsApp link builder ────────────────────────────────────────────────────
 
-export function buildWhatsAppLink(phone: string | null, message: string): string {
-  if (!phone) return "";
-  const cleaned = phone.replace(/\D/g, "");
-  const intl    = cleaned.startsWith("60") ? cleaned : `60${cleaned.replace(/^0/, "")}`;
-  return `https://wa.me/${intl}?text=${encodeURIComponent(message)}`;
-}
-
 // ─── Frequency check ──────────────────────────────────────────────────────────
 
-export function checkReminderFrequency(reminders: Array<{ sent_at: string }>): {
+export function checkReminderFrequency(reminders: Array<{ sent_at: string; status?: ReminderStatus }>): {
   tooFrequent: boolean;
   recentCount: number;
   warningMessage: string;
 } {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const recent = reminders.filter((r) => new Date(r.sent_at) > sevenDaysAgo);
+  const recent = reminders.filter((r) =>
+    (r.status === undefined || r.status === "sent" || r.status === "sent_manually") &&
+    new Date(r.sent_at) > sevenDaysAgo
+  );
   const tooFrequent = recent.length >= 3;
   return {
     tooFrequent,

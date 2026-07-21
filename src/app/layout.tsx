@@ -40,11 +40,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0D1B3D",
+  themeColor: "#0B1B3A",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({
@@ -60,7 +58,7 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className="min-h-full bg-[#F2F4F7]">
+      <body className="cb-app-theme min-h-full bg-[#0B1B3A]">
         <AuthProvider>
           <BetaProvider>
             <ProfileGuard>

@@ -32,7 +32,6 @@ export function DebtAcknowledgementPage({ caseId }: Props) {
   const [sigText, setSigText] = useState("");
   const [agreed,  setAgreed]  = useState(false);
   const [saving,  setSaving]  = useState(false);
-  const [copied,  setCopied]  = useState(false);
 
   const canSign = sigText.trim().length >= 3 && agreed;
 
@@ -65,13 +64,6 @@ export function DebtAcknowledgementPage({ caseId }: Props) {
     setState("signed");
   }
 
-  function copyAckLink() {
-    const url = `${window.location.origin}/acknowledge/${c.id}`;
-    navigator.clipboard.writeText(url).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   if (state === "signed") {
     return (
       <div className="flex flex-col items-center px-6 py-12 text-center">
@@ -88,27 +80,14 @@ export function DebtAcknowledgementPage({ caseId }: Props) {
           <p className="text-xs text-gray-400 mt-1">{new Date().toLocaleString("en-MY")}</p>
         </div>
 
-        {/* Share debtor link */}
-        <div className="mt-4 w-full bg-blue-50 border border-blue-100 rounded-xl p-4 text-left">
-          <p className="text-xs font-bold text-blue-800 mb-2">Share with Debtor</p>
-          <div className="flex items-center gap-2 bg-white border border-blue-100 rounded-xl px-3 py-2">
-            <p className="text-xs font-mono text-gray-600 flex-1 truncate">
-              /acknowledge/{c.id}
-            </p>
-            <button onClick={copyAckLink} className="text-blue-600">
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
-          </div>
+        <div className="mt-4 w-full rounded-xl border border-blue-100 bg-blue-50 p-4 text-left">
+          <p className="text-xs font-bold text-blue-800">Public debtor links are tokenized</p>
+          <p className="mt-1 text-[11px] text-blue-700">Create a secure acknowledgement link from the payment-plan screen before sharing it.</p>
         </div>
 
         <div className="mt-6 w-full flex flex-col gap-2">
           <Link href={`/cases/${c.id}`}>
             <PrimaryButton fullWidth>Back to Case</PrimaryButton>
-          </Link>
-          <Link href={`/acknowledge/${c.id}`}>
-            <PrimaryButton fullWidth variant="ghost" icon={<ExternalLink className="w-4 h-4" />}>
-              Preview Debtor Page
-            </PrimaryButton>
           </Link>
         </div>
       </div>

@@ -1,0 +1,54 @@
+name: CollectBoss CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # CI is not staging or production. Mock mode remains explicit and local
+      # to this disposable runner; no service credential is supplied.
+      NEXT_PUBLIC_APP_ENV: development
+      NEXT_PUBLIC_ENABLE_MOCK_DATA: "true"
+      ENABLE_MOCK_DATA: "true"
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Scan source for credentials
+        run: npm run test:secrets
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Contract and unit regression
+        run: npm run test:ci
+
+      - name: Build with explicit CI mock mode
+        run: npm run build
+
+      - name: Install Chromium for browser tests
+        run: node ./node_modules/playwright-core/cli.js install --with-deps chromium
+
+      - name: Browser regression
+        run: npm run test:e2e

@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { mockCases, formatRM } from "@/lib/mock-data";
-import { mockUploadedEvidence, evidenceTypes } from "@/lib/mock-legal-data";
+import { formatRM } from "@/lib/mock-data";
+import { evidenceTypes } from "@/lib/mock-legal-data";
 import { getLegalDocsByCaseClient } from "@/lib/db/legal-documents-client";
 import { getReferralsByCaseClient } from "@/lib/db/lawyer-referrals-client";
+import { useCases } from "@/hooks/use-cases";
+import { useAllEvidence } from "@/hooks/use-all-evidence";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { type LegalDocumentRow, type LawyerReferralRow } from "@/lib/supabase/types";
-import { REFERRAL_STATUS_CONFIG } from "@/components/pages/legal/lawyer-referral-page";
+import { REFERRAL_STATUS_CONFIG } from "@/lib/lawyer-referrals/status";
 import { SMALL_CLAIM_STATUS_CONFIG } from "@/components/pages/legal/small-claim-page";
-import { SMALL_CLAIM_LIMIT } from "@/lib/mock-legal-data";
 import {
   FileText, Upload, ShieldCheck, Gavel, ChevronRight, Download, Send, Info,
 } from "lucide-react";
@@ -25,18 +27,36 @@ const TONE_LABELS: Record<string, string> = {
 export function DocumentsIndexPage() {
   const [docsByCaseId,      setDocsByCaseId]      = useState<Record<string, LegalDocumentRow[]>>({});
   const [referralsByCaseId, setReferralsByCaseId] = useState<Record<string, LawyerReferralRow[]>>({});
+  const [documentsLoading, setDocumentsLoading] = useState(true);
+  const [documentsError, setDocumentsError] = useState<string | null>(null);
+  const { cases, loading: casesLoading, error: casesError } = useCases();
+  const { files, loading: evidenceLoading, error: evidenceError } = useAllEvidence();
+  const activeCases = cases.filter((c) => c.balance > 0);
 
   useEffect(() => {
-    const cases = mockCases.filter((c) => c.amountDue > 0);
-    cases.forEach((c) => {
-      getLegalDocsByCaseClient(c.id).then((result) => {
-        if (result.data) setDocsByCaseId((prev) => ({ ...prev, [c.id]: result.data! }));
-      });
-      getReferralsByCaseClient(c.id).then((result) => {
-        if (result.data) setReferralsByCaseId((prev) => ({ ...prev, [c.id]: result.data! }));
-      });
+    if (casesLoading) return;
+    let cancelled = false;
+    void Promise.all(activeCases.map(async (c) => {
+      const [docsResult, referralsResult] = await Promise.all([
+        getLegalDocsByCaseClient(c.id),
+        getReferralsByCaseClient(c.id),
+      ]);
+      if (docsResult.error || referralsResult.error) {
+        throw new Error(docsResult.error ?? referralsResult.error ?? "Unable to load documents");
+      }
+      return { caseId: c.id, docs: docsResult.data ?? [], referrals: referralsResult.data ?? [] };
+    })).then((results) => {
+      if (cancelled) return;
+      setDocumentsError(null);
+      setDocsByCaseId(Object.fromEntries(results.map((r) => [r.caseId, r.docs])));
+      setReferralsByCaseId(Object.fromEntries(results.map((r) => [r.caseId, r.referrals])));
+    }).catch((error: unknown) => {
+      if (!cancelled) setDocumentsError(error instanceof Error ? error.message : "Unable to load documents");
+    }).finally(() => {
+      if (!cancelled) setDocumentsLoading(false);
     });
-  }, []);
+    return () => { cancelled = true; };
+  }, [cases, casesLoading]);
 
   return (
     <div className="flex flex-col pb-6">
@@ -62,10 +82,21 @@ export function DocumentsIndexPage() {
           </div>
         </div>
 
+        {casesLoading || evidenceLoading || documentsLoading ? (
+          <LoadingSpinner />
+        ) : casesError || evidenceError || documentsError ? (
+          <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-700">
+            {casesError ?? evidenceError ?? documentsError}
+          </div>
+        ) : activeCases.length === 0 ? (
+          <div className="rounded-xl border border-gray-100 bg-white px-4 py-8 text-center text-sm text-gray-400">
+            No active cases yet. Add a case to prepare documents.
+          </div>
+        ) : (
         <div className="flex flex-col gap-3">
-          {mockCases.filter((c) => c.amountDue > 0).map((c) => {
-            const uploads    = mockUploadedEvidence[c.id] ?? [];
-            const uploadedIds = new Set(uploads.map((u) => u.typeId));
+          {activeCases.map((c) => {
+            const uploads = files.filter((file) => file.case_id === c.id);
+            const uploadedIds = new Set(uploads.map((u) => u.evidence_type));
             const pct        = Math.round((uploadedIds.size / evidenceTypes.length) * 100);
             const allDocs      = docsByCaseId[c.id] ?? [];
             const packs        = allDocs.filter((d) => d.document_type === "evidence_pack");
@@ -74,7 +105,6 @@ export function DocumentsIndexPage() {
             const latestSC     = scPacks[0] ?? null;
             const referrals    = referralsByCaseId[c.id] ?? [];
             const latestRef    = referrals[0] ?? null;
-            const isEligibleSC = c.amountDue <= SMALL_CLAIM_LIMIT;
 
             let scMeta: { readiness_pct?: number; readiness_status?: string } = {};
             if (latestSC) { try { scMeta = JSON.parse(latestSC.content); } catch { /* ignore */ } }
@@ -85,11 +115,11 @@ export function DocumentsIndexPage() {
                 <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-8 h-8 rounded-xl bg-[#0D1B3D] flex items-center justify-center text-white text-xs font-bold shrink-0">
-                      {c.debtorName.slice(0, 2).toUpperCase()}
+                      {c.debtor_name.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900 truncate">{c.debtorName}</p>
-                      <p className="text-[11px] text-gray-400">{c.id} · {formatRM(c.amountDue)}</p>
+                      <p className="text-sm font-bold text-gray-900 truncate">{c.debtor_name}</p>
+                      <p className="text-[11px] text-gray-400">{c.id} · {formatRM(c.balance)}</p>
                     </div>
                   </div>
                   <span className={cn(
@@ -134,10 +164,10 @@ export function DocumentsIndexPage() {
                     {
                       href:   `/legal/${c.id}/smallclaim`,
                       icon:   <FileText className="w-3.5 h-3.5" />,
-                      label:  "Small Claim Pack",
+                       label:  "Case-Record Pack",
                       sub:    latestSC
                         ? `${scMeta.readiness_pct ?? "?"}% ready · ${SMALL_CLAIM_STATUS_CONFIG[scMeta.readiness_status as keyof typeof SMALL_CLAIM_STATUS_CONFIG]?.label ?? ""}`
-                        : isEligibleSC ? "Eligible — prepare claim pack" : "Exceeds RM 5,000 limit",
+                         : "Prepare factual pack for external legal review",
                       accent: !!latestSC,
                     },
                     {
@@ -215,7 +245,7 @@ export function DocumentsIndexPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <FileText className="w-3.5 h-3.5 text-blue-600" />
-                        <p className="text-[11px] font-bold text-gray-700">Small Claim Pack</p>
+                         <p className="text-[11px] font-bold text-gray-700">Case-Record Pack</p>
                       </div>
                       {(() => {
                         const cfg = scMeta.readiness_status
@@ -289,6 +319,7 @@ export function DocumentsIndexPage() {
             );
           })}
         </div>
+        )}
 
         {/* Referral status section — shown inline per case, handled above */}
 

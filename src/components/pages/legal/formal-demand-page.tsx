@@ -12,11 +12,9 @@ import { usePayments } from "@/hooks/use-payments";
 import { useReminders } from "@/hooks/use-reminders";
 import { useReceivingAccounts } from "@/hooks/use-receiving-accounts";
 import { useLegalDocuments } from "@/hooks/use-legal-documents";
-import { useBusinessId } from "@/hooks/use-business-id";
+import { useBusinessProfile } from "@/hooks/use-business-profile";
+import { getDocumentCreditorName } from "@/lib/business-profile/identity";
 import { PAYMENT_METHOD_LABELS } from "@/lib/db/payments-client";
-import { saveEvidencePackClient } from "@/lib/db/legal-documents-client";
-import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
-import { generateDemandPdf } from "@/lib/pdf/demand-generator";
 import {
   ChevronLeft, FileText, Download, Send, Info, CheckCircle2,
   AlertCircle, Copy, Check, Save, ClipboardList,
@@ -225,8 +223,8 @@ export function FormalDemandPage({ caseId }: Props) {
   const { payments }                            = usePayments(caseId);
   const { reminders }                           = useReminders(caseId);
   const { accounts }                            = useReceivingAccounts();
-  const { docs, addDoc }                        = useLegalDocuments(caseId);
-  const businessId                              = useBusinessId();
+  const { docs, addDoc, refresh: refreshDocuments } = useLegalDocuments(caseId);
+  const { profile }                             = useBusinessProfile();
   const { entitlement, loading: entLoading }    = useEntitlements();
 
   const [tone,               setTone]               = useState<ToneId>("standard");
@@ -243,6 +241,7 @@ export function FormalDemandPage({ caseId }: Props) {
   const deadlineDate = addDeadlineDays(deadlineDays);
 
   const primaryAccount = accounts.find((a) => a.is_primary) ?? accounts[0] ?? null;
+  const creditorName = getDocumentCreditorName(profile);
 
   const approvedPayments = payments.filter((p) => p.review_status === "approved");
 
@@ -274,10 +273,10 @@ export function FormalDemandPage({ caseId }: Props) {
       accountNo:      primaryAccount?.account_number ?? "—",
       duitnowId:      primaryAccount?.duitnow_id ?? null,
       includeEvidenceRef,
-      businessName:   "Your Company Name",
+      businessName:   creditorName,
     });
   }, [caseData, tone, deadlineDays, deadlineDate, today, reminders.length,
-      approvedPayments, includePayment, includeEvidenceRef, primaryAccount]);
+      approvedPayments, includePayment, includeEvidenceRef, primaryAccount, creditorName]);
 
   const savedDemands = docs.filter((d) =>
     ["demand_standard", "demand_firm", "demand_final"].includes(d.document_type)
@@ -289,6 +288,25 @@ export function FormalDemandPage({ caseId }: Props) {
     if (!caseData) return;
     setSaving(true);
     setSaveError(null);
+
+    try {
+      const response = await fetch(`/api/cases/${encodeURIComponent(caseData.id)}/formal-demands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "draft", tone, deadlineDays, includePayment, includeEvidenceRef }),
+      });
+      const payload = await response.json().catch(() => ({})) as { document?: Parameters<typeof addDoc>[0]; error?: string };
+      if (!response.ok || !payload.document) throw new Error(payload.error ?? "Unable to save the formal-demand draft.");
+      addDoc(payload.document);
+      setSaved(true);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Unable to save the formal-demand draft.");
+    } finally {
+      setSaving(false);
+    }
+    /* Legacy browser-only persistence is deliberately disabled. Issuance is
+       performed by the authorized server route above.
+
     const bId = businessId ?? "mock-business-id";
 
     const toneObj = TONES.find((t) => t.id === tone)!;
@@ -321,6 +339,7 @@ export function FormalDemandPage({ caseId }: Props) {
       });
     }
     setSaving(false);
+    */
   }
 
   // ── Download PDF ──────────────────────────────────────────────────────────
@@ -329,9 +348,36 @@ export function FormalDemandPage({ caseId }: Props) {
     if (!caseData) return;
     setDownloading(true);
     try {
+      const response = await fetch(`/api/cases/${encodeURIComponent(caseData.id)}/formal-demands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "issue", tone, deadlineDays, includePayment, includeEvidenceRef }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(payload.error ?? "Unable to issue the formal demand.");
+      }
+      const blob = await response.blob();
+      const documentId = response.headers.get("X-Formal-Demand-Id");
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "formal-demand.pdf";
+      anchor.click();
+      URL.revokeObjectURL(url);
+      if (documentId) refreshDocuments();
+      setSaved(true);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Unable to issue the formal demand.");
+    } finally {
+      setDownloading(false);
+    }
+    /* Legacy browser-only PDF generation is deliberately disabled.
+
+    try {
       const blob = await generateDemandPdf({
         caseId:       caseData.id,
-        businessName: "Your Company Name",
+        businessName: creditorName,
         tone,
         deadlineDays,
         deadlineDate,
@@ -345,9 +391,10 @@ export function FormalDemandPage({ caseId }: Props) {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      /* ignore */
+      // Legacy failure ignored.
     }
     setDownloading(false);
+    */
   }
 
   // ── Copy to clipboard ─────────────────────────────────────────────────────

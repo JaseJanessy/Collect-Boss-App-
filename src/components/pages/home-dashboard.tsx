@@ -6,27 +6,40 @@ import { SectionCard } from "@/components/ui/section-card";
 import { ActionCard } from "@/components/ui/action-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { formatRM, mockStats } from "@/lib/mock-data";
-import { mockPaymentRecords } from "@/lib/mock-payment-data";
+import { formatRM } from "@/lib/mock-data";
 import { useCases } from "@/hooks/use-cases";
+import { usePayments } from "@/hooks/use-payments";
 import { computeCaseStats } from "@/lib/analytics/case-stats";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
-  DollarSign, TrendingUp, Calendar, Clock, Plus, Send,
+  DollarSign, TrendingUp, Clock, Plus, Send,
   Upload, FileText, ArrowRight, AlertCircle, CheckCircle2,
-  ShieldCheck, BarChart2, ChevronRight,
+  BarChart2, ChevronRight,
 } from "lucide-react";
 import { OnboardingChecklist } from "@/components/beta/onboarding-checklist";
 import { PlanBadge } from "@/components/ui/plan-badge";
 import { useEntitlements } from "@/hooks/use-entitlements";
 import { UsageMeter } from "@/components/billing/usage-meter";
+import { useReportSummary } from "@/hooks/use-report-summary";
 
 export function HomeDashboard() {
   const { cases, loading } = useCases();
+  const { payments, loading: paymentsLoading } = usePayments();
   const stats = useMemo(() => computeCaseStats(cases), [cases]);
-  const pendingProofs = mockPaymentRecords.filter((p) => p.proofStatus === "pending_review").length;
+  const pendingProofs = payments.filter((p) => p.review_status === "pending_review").length;
   const { entitlement } = useEntitlements();
+  const { metrics, loading: reportLoading } = useReportSummary();
+  const allowLocalMockSummary =
+    process.env.NEXT_PUBLIC_APP_ENV === "development" &&
+    process.env.NEXT_PUBLIC_ENABLE_MOCK_DATA === "true";
+  const reportMoney = (minor: number) => formatRM(minor / 100);
+  const overdueAtRiskMinor = metrics?.ageing
+    .filter((item) => item.label !== "Current")
+    .reduce((sum, item) => sum + item.amountMinor, 0) ?? 0;
+  const ledgerUnavailableLabel = reportLoading
+    ? "Loading ledger balance"
+    : "Ledger summary unavailable";
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto">
@@ -43,8 +56,8 @@ export function HomeDashboard() {
             )}
           </div>
           <p className="text-sm text-gray-500 mt-0.5">
-            {stats.overdue > 0
-              ? `${stats.overdue} overdue case${stats.overdue !== 1 ? "s" : ""} need attention.`
+            {(metrics?.overdueCases ?? stats.overdue) > 0
+              ? `${metrics?.overdueCases ?? stats.overdue} overdue case${(metrics?.overdueCases ?? stats.overdue) !== 1 ? "s" : ""} need attention.`
               : "Here’s your collection overview."}
           </p>
         </div>
@@ -58,26 +71,26 @@ export function HomeDashboard() {
       </div>
 
       {/* ── KPI cards row ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Money to Collect"
-          value={formatRM(stats.totalToCollect)}
-          sub={`Across ${stats.active} active cases`}
+          value={metrics ? reportMoney(metrics.totalOutstandingMinor) : allowLocalMockSummary ? formatRM(stats.totalToCollect) : "—"}
+          sub={metrics ? `Across ${metrics.activeCases} active cases` : allowLocalMockSummary ? `Across ${stats.active} active cases` : ledgerUnavailableLabel}
           icon={<DollarSign className="w-4 h-4" />}
           accent
         />
         <StatCard
           label="Total Recovered"
-          value={formatRM(stats.totalRecovered)}
-          sub={`${stats.recoveryRate}% recovery rate`}
-          trend={`${stats.recoveryRate}% recovered`}
-          trendUp={stats.recoveryRate >= 50}
+          value={metrics ? reportMoney(metrics.totalCollectedMinor) : allowLocalMockSummary ? formatRM(stats.totalRecovered) : "—"}
+          sub={metrics ? `${metrics.collectionRate}% collection rate` : allowLocalMockSummary ? `${stats.recoveryRate}% recovery rate` : ledgerUnavailableLabel}
+          trend={metrics ? `${metrics.collectionRate}% collected` : allowLocalMockSummary ? `${stats.recoveryRate}% recovered` : undefined}
+          trendUp={(metrics?.collectionRate ?? stats.recoveryRate) >= 50}
           icon={<TrendingUp className="w-4 h-4" />}
         />
         <StatCard
           label="Overdue Cases"
-          value={String(stats.overdue)}
-          sub={stats.overdue > 0 ? formatRM(stats.overdueAmount) + " at risk" : "All on track"}
+          value={metrics ? String(metrics.overdueCases) : allowLocalMockSummary ? String(stats.overdue) : "—"}
+          sub={metrics ? (metrics.overdueCases > 0 ? `${reportMoney(overdueAtRiskMinor)} at risk` : "All on track") : allowLocalMockSummary ? `${formatRM(stats.overdueAmount)} at risk` : ledgerUnavailableLabel}
           icon={<AlertCircle className="w-4 h-4" />}
         />
         <StatCard
@@ -112,9 +125,9 @@ export function HomeDashboard() {
       )}
 
       {/* ── Middle row: Pipeline + Quick actions ──────────────────────── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Collection pipeline */}
-        <div className="col-span-2">
+        <div className="lg:col-span-2">
           <SectionCard title="Collection Pipeline">
             <div className="grid grid-cols-3 gap-3 mt-3">
               {[
@@ -138,15 +151,15 @@ export function HomeDashboard() {
             {/* Recovery bar */}
             <div className="mt-4">
               <div className="flex justify-between text-[11px] text-gray-400 mb-1.5">
-                <span>Recovered: {formatRM(stats.totalRecovered)}</span>
-                <span>{stats.recoveryRate}%</span>
+                <span>Recovered: {metrics ? reportMoney(metrics.totalCollectedMinor) : allowLocalMockSummary ? formatRM(stats.totalRecovered) : "—"}</span>
+                <span>{metrics ? `${metrics.collectionRate}%` : allowLocalMockSummary ? `${stats.recoveryRate}%` : "—"}</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                <div className="h-2.5 bg-[#009966]" style={{ width: `${stats.recoveryRate}%` }} />
+                <div className="h-2.5 bg-[#009966]" style={{ width: `${metrics?.collectionRate ?? (allowLocalMockSummary ? stats.recoveryRate : 0)}%` }} />
               </div>
               <div className="flex justify-between text-[10px] text-gray-400 mt-1">
                 <span>0</span>
-                <span>{formatRM(stats.totalAmountOwed)}</span>
+                <span>{metrics ? reportMoney(metrics.totalContractualDueMinor) : allowLocalMockSummary ? formatRM(stats.totalAmountOwed) : "—"}</span>
               </div>
             </div>
           </SectionCard>
@@ -204,7 +217,7 @@ export function HomeDashboard() {
       )}
 
       {/* ── Top overdue + Recent cases (2 col) ───────────────────────── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top overdue */}
         <SectionCard
           title="Top Overdue Cases"
@@ -250,7 +263,7 @@ export function HomeDashboard() {
             </Link>
           }
         >
-          {loading ? (
+          {loading || paymentsLoading ? (
             <LoadingSpinner />
           ) : stats.recentCases.length === 0 ? (
             <div className="mt-3 py-4 text-center">
@@ -295,7 +308,7 @@ export function HomeDashboard() {
         }
         noPadding
       >
-        {loading ? (
+        {loading || paymentsLoading ? (
           <LoadingSpinner />
         ) : (
           <div className="overflow-x-auto">
@@ -351,4 +364,3 @@ export function HomeDashboard() {
     </div>
   );
 }
-

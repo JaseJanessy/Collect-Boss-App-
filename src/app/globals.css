@@ -12,11 +12,11 @@
   --font-heading: var(--font-geist-sans);
 
   /* CollectBoss brand tokens */
-  --color-navy: #0D1B3D;
-  --color-emerald: #009966;
-  --color-emerald-light: #00B377;
-  --color-slate: #6B7280;
-  --color-light-gray: #F2F4F7;
+  --color-navy: #0B1B3A;
+  --color-emerald: #55DDB4;
+  --color-emerald-light: #8BE4CA;
+  --color-slate: #AFC0DE;
+  --color-light-gray: #10284E;
   --color-white: #ffffff;
 
   /* Status colors */
@@ -66,41 +66,50 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #009966;
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: #0D1B3D;
-  --muted: #F2F4F7;
-  --muted-foreground: #6B7280;
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: #0B1B3A;
+  --foreground: #F8FAFC;
+  --card: #10284E;
+  --card-foreground: #F8FAFC;
+  --popover: #10284E;
+  --popover-foreground: #F8FAFC;
+  --primary: #55DDB4;
+  --primary-foreground: #0B1B3A;
+  --secondary: #173361;
+  --secondary-foreground: #F8FAFC;
+  --muted: #10284E;
+  --muted-foreground: #AFC0DE;
+  --accent: #173361;
+  --accent-foreground: #F8FAFC;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: #009966;
-  --chart-1: #009966;
-  --chart-2: #0D1B3D;
-  --chart-3: #6B7280;
+  --border: #244777;
+  --input: #173361;
+  --ring: #22C99A;
+  --chart-1: #22C99A;
+  --chart-2: #4D7CFF;
+  --chart-3: #AFC0DE;
   --chart-4: #F59E0B;
   --chart-5: #EF4444;
   --radius: 0.75rem;
-  --sidebar: #0D1B3D;
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: #009966;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: rgba(255,255,255,0.08);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: rgba(255,255,255,0.1);
-  --sidebar-ring: #009966;
+  --sidebar: #0B1B3A;
+  --sidebar-foreground: #F8FAFC;
+  --sidebar-primary: #22C99A;
+  --sidebar-primary-foreground: #0B1B3A;
+  --sidebar-accent: #173361;
+  --sidebar-accent-foreground: #F8FAFC;
+  --sidebar-border: #244777;
+  --sidebar-ring: #22C99A;
 }
 
 @layer base {
+  html,
+  body {
+    min-width: 0;
+    min-height: 100%;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
@@ -110,6 +119,45 @@
   html {
     @apply font-sans;
   }
+
+  button,
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
+  img,
+  video,
+  canvas {
+    height: auto;
+  }
+
+  /* Prevent unbroken identifiers, email addresses, and URLs from widening a card. */
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  td,
+  th,
+  label {
+    overflow-wrap: anywhere;
+  }
+
+  :focus-visible {
+    outline: 2px solid #22C99A;
+    outline-offset: 2px;
+  }
+
 }
 
 /* CollectBoss utility classes */
@@ -118,7 +166,7 @@
     @apply flex flex-col items-center gap-0.5 text-xs font-medium transition-colors;
   }
   .cb-card {
-    @apply bg-white rounded-xl border border-gray-100 shadow-sm;
+    @apply bg-card rounded-xl border border-border shadow-sm;
   }
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -126,5 +174,140 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Shared safe-area padding for mobile headers and navigation. */
+  .cb-safe-x {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .cb-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* iOS Safari zooms controls below 16px, which shifts the viewport while typing. */
+  @media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 1rem;
+    }
+  }
+}
+
+/*
+ * App-wide navy treatment, based on the approved mobile reference. These
+ * rules intentionally target shared Tailwind utilities so legacy page markup
+ * inherits the palette without changing financial or workflow behaviour.
+ */
+.cb-app-theme {
+  background: #0B1B3A;
+  color: #F8FAFC;
+}
+
+.cb-app-theme :is(.cb-mobile-shell, .cb-dashboard-shell) {
+  background: #0B1B3A !important;
+}
+
+.cb-app-theme [class~="bg-white"] {
+  background-color: #10284E;
+}
+
+.cb-app-theme :is(
+  [class~="bg-gray-50"],
+  [class~="bg-gray-100"],
+  [class~="bg-[#F2F4F7]"],
+  [class~="bg-emerald-50"]
+) {
+  background-color: #173361;
+}
+
+.cb-app-theme :is(
+  [class~="border-gray-50"],
+  [class~="border-gray-100"],
+  [class~="border-gray-200"],
+  [class~="border-gray-300"],
+  [class~="border-emerald-200"]
+) {
+  border-color: #244777;
+}
+
+.cb-app-theme :is(
+  [class~="text-gray-400"],
+  [class~="text-gray-500"],
+  [class~="text-gray-600"],
+  [class~="text-gray-700"],
+  [class~="text-gray-800"],
+  [class~="text-gray-900"],
+  [class*="text-[#0D1B3D]"],
+  [class*="text-[#007A52]"]
+) {
+  color: #E7EEF9;
+}
+
+.cb-app-theme :is(input, select, textarea) {
+  background-color: #0D2143 !important;
+  border-color: #244777 !important;
+  color: #F8FAFC !important;
+}
+
+.cb-app-theme :is(input, textarea)::placeholder {
+  color: #8FA6CC !important;
+}
+
+.cb-app-theme [class*="bg-[#009966]"] {
+  background-color: #55DDB4;
+}
+
+.cb-app-theme [class*="text-[#009966]"] {
+  color: #8BE4CA;
+}
+
+/* Lighter mint fills keep primary actions easy to read with navy labels. */
+.cb-app-theme :is(button, a)[class*="bg-[#009966]"] {
+  background-color: #55DDB4;
+  color: #0B1B3A;
+}
+
+.cb-app-theme :is(button, a)[class*="bg-[#009966]"] :is(.text-white, [class*="text-white"]) {
+  color: #0B1B3A !important;
+}
+
+/*
+ * An iPhone in landscape can be wider than Tailwind's `md` breakpoint, but
+ * still has handset-height constraints. Keep the phone shell active until
+ * there is enough height for the tablet/desktop dashboard layout.
+ */
+@media (min-width: 768px) and (max-height: 599px) {
+  .cb-mobile-shell {
+    display: flex !important;
+  }
+
+  .cb-dashboard-shell {
+    display: none !important;
+  }
+
+  .cb-phone-landscape-mobile {
+    display: flex !important;
+  }
+
+  .cb-phone-landscape-mobile-block {
+    display: block !important;
+  }
+
+  .cb-phone-landscape-desktop {
+    display: none !important;
+  }
+
+  .cb-feedback-trigger {
+    bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+    right: max(1rem, env(safe-area-inset-right)) !important;
+  }
+
+  .cb-feedback-sheet {
+    bottom: 0 !important;
+    right: 0 !important;
+    max-width: 24rem !important;
   }
 }

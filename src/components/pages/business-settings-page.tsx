@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { SectionCard } from "@/components/ui/section-card";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useAuth } from "@/hooks/use-auth";
+import { useBusinessProfile } from "@/hooks/use-business-profile";
 import { useReceivingAccounts } from "@/hooks/use-receiving-accounts";
 import { type ReceivingAccountRow } from "@/lib/supabase/types";
 import {
   Building2, CreditCard, Lock, Bell, Shield, ChevronRight,
-  Star, QrCode, Eye, ShieldCheck, Settings, Zap, ArrowRight,
+  Star, QrCode, Eye, ShieldCheck, Zap, ArrowRight,
 } from "lucide-react";
 import { PlanBadge } from "@/components/ui/plan-badge";
 import { useEntitlements } from "@/hooks/use-entitlements";
@@ -42,6 +42,7 @@ interface Props {
 
 export function BusinessSettingsPage({ dashboard }: Props) {
   const { user } = useAuth();
+  const { profile, loading: profileLoading } = useBusinessProfile();
   const { accounts, loading: acctLoading } = useReceivingAccounts();
   const { entitlement, loading: entLoading } = useEntitlements();
 
@@ -70,19 +71,21 @@ export function BusinessSettingsPage({ dashboard }: Props) {
         <SectionCard title="Business Profile">
           <div className="flex items-center gap-3 mt-2">
             <div className="w-12 h-12 rounded-2xl bg-[#0D1B3D] flex items-center justify-center text-white text-base font-bold shrink-0">
-              {(user?.name ?? user?.email ?? "?").slice(0, 2).toUpperCase()}
+              {(profile?.displayName ?? user?.name ?? user?.email ?? "?").slice(0, 2).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900 truncate">
-                {user?.name ?? "Business Owner"}
+                {profileLoading ? "Loading profile…" : profile?.displayName ?? "Profile incomplete"}
               </p>
-              <p className="text-[11px] text-gray-400 truncate">{user?.email}</p>
+              <p className="text-[11px] text-gray-400 truncate">
+                {profile?.accountType === "individual" ? "Individual account" : profile?.accountType === "business" ? "Business account" : user?.email}
+              </p>
             </div>
             <Link
               href="/onboarding/profile"
               className="shrink-0 text-xs font-semibold text-[#009966] hover:text-emerald-700"
             >
-              Edit →
+              {profile ? "Edit →" : "Complete →"}
             </Link>
           </div>
         </SectionCard>

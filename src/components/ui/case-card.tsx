@@ -38,7 +38,7 @@ export function CaseCard({ case: c, className, showAction = true }: CaseCardProp
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="font-bold text-gray-900 text-sm leading-tight truncate">
+              <p className="font-bold text-gray-900 text-sm leading-tight break-words">
                 {c.debtor_name}
               </p>
               <p className="text-[11px] text-gray-400 mt-0.5">Case ID: {c.id}</p>
@@ -65,7 +65,7 @@ export function CaseCard({ case: c, className, showAction = true }: CaseCardProp
           {c.debtor_location && (
             <div className="flex items-center gap-1 mt-1 text-[11px] text-gray-400">
               <MapPin className="w-3 h-3 shrink-0" />
-              <span className="truncate">{c.debtor_location}</span>
+              <span className="break-words">{c.debtor_location}</span>
             </div>
           )}
         </div>

@@ -4,33 +4,25 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { SectionCard } from "@/components/ui/section-card";
 import { CaseCard } from "@/components/ui/case-card";
-import { formatRM, mockActivities, type ActivityType } from "@/lib/mock-data";
-import { mockPaymentRecords } from "@/lib/mock-payment-data";
+import { formatRM } from "@/lib/mock-data";
 import { useCases } from "@/hooks/use-cases";
+import { usePayments } from "@/hooks/use-payments";
 import { computeCaseStats } from "@/lib/analytics/case-stats";
 import { cn } from "@/lib/utils";
 import {
-  DollarSign, TrendingUp, Calendar, AlertCircle, Plus,
-  Send, FileText, CheckCircle2, MessageCircle, Clock,
-  Phone, ArrowRight, Upload, BarChart2,
+  DollarSign, AlertCircle, Plus, Send, FileText, CheckCircle2,
+  Clock, ArrowRight, Upload, BarChart2,
 } from "lucide-react";
 import { OnboardingChecklist } from "@/components/beta/onboarding-checklist";
 
-const activityIconMap: Record<ActivityType, { icon: React.ReactNode; bg: string }> = {
-  whatsapp:  { icon: <MessageCircle className="w-4 h-4 text-green-600" />,  bg: "bg-green-50"   },
-  duitnow:   { icon: <DollarSign className="w-4 h-4 text-blue-600" />,     bg: "bg-blue-50"    },
-  payment:   { icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, bg: "bg-emerald-50" },
-  promise:   { icon: <Clock className="w-4 h-4 text-amber-600" />,         bg: "bg-amber-50"   },
-  call:      { icon: <Phone className="w-4 h-4 text-purple-600" />,        bg: "bg-purple-50"  },
-  email:     { icon: <Send className="w-4 h-4 text-sky-600" />,            bg: "bg-sky-50"     },
-  document:  { icon: <FileText className="w-4 h-4 text-gray-600" />,       bg: "bg-gray-100"   },
-  demand:    { icon: <FileText className="w-4 h-4 text-orange-600" />,     bg: "bg-orange-50"  },
-};
-
 export function HomeMobile() {
   const { cases } = useCases();
+  const { payments } = usePayments();
   const stats = useMemo(() => computeCaseStats(cases), [cases]);
-  const pendingProofs = mockPaymentRecords.filter((p) => p.proofStatus === "pending_review").length;
+  const pendingProofs = payments.filter((p) => p.review_status === "pending_review").length;
+  const recentCases = [...cases]
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .slice(0, 4);
 
   const urgentCases = cases.filter(
     (c) => c.status === "overdue" || c.status === "action_needed" || c.status === "formal_demand_ready"
@@ -64,12 +56,12 @@ export function HomeMobile() {
               {stats.active} active case{stats.active !== 1 ? "s" : ""}
             </p>
           </div>
-          <div className="bg-[#009966]/80 rounded-2xl p-3.5">
-            <p className="text-emerald-100 text-[11px] font-medium">Recovered</p>
-            <p className="text-white text-xl font-black mt-0.5 leading-tight">
+          <div className="bg-[#009966]/80 rounded-2xl p-3.5 text-[#0B1B3A]">
+            <p className="text-[#173361] text-[11px] font-semibold">Recovered</p>
+            <p className="text-[#0B1B3A] text-xl font-black mt-0.5 leading-tight">
               {formatRM(stats.totalRecovered)}
             </p>
-            <p className="text-emerald-200 text-[10px] mt-1">
+            <p className="text-[#173361] text-[10px] font-medium mt-1">
               {stats.recoveryRate}% recovery rate
             </p>
           </div>
@@ -83,19 +75,19 @@ export function HomeMobile() {
             label="Overdue"
             value={String(stats.overdue)}
             color={stats.overdue > 0 ? "text-red-600" : "text-gray-400"}
-            bg={stats.overdue > 0 ? "bg-red-50 border-red-100" : "bg-white border-gray-100"}
+            bg="bg-[#2A1724] border-red-900/60"
           />
           <MiniStat
             label="Pending Proofs"
             value={String(pendingProofs)}
             color={pendingProofs > 0 ? "text-amber-600" : "text-gray-400"}
-            bg={pendingProofs > 0 ? "bg-amber-50 border-amber-100" : "bg-white border-gray-100"}
+            bg="bg-[#2B2413] border-amber-800/60"
           />
           <MiniStat
             label="Paid"
             value={String(stats.paid)}
             color="text-emerald-600"
-            bg="bg-emerald-50 border-emerald-100"
+            bg="bg-[#102E2B] border-emerald-800/60"
           />
         </div>
 
@@ -138,7 +130,7 @@ export function HomeMobile() {
           <div className="grid grid-cols-2 gap-2">
             {[
               { icon: <Plus className="w-4 h-4" />,     label: "Add Case",       sub: "New recovery case",       href: "/add",             accent: true },
-              { icon: <Send className="w-4 h-4" />,     label: "Send Reminder",  sub: "WhatsApp / Email",        href: "/actions",         accent: false },
+              { icon: <Send className="w-4 h-4" />,     label: "Send Reminder",  sub: "Generate a reminder",      href: "/actions",         accent: false },
               { icon: <CheckCircle2 className="w-4 h-4" />, label: "Review Payments", sub: `${pendingProofs} pending`, href: "/payments/requests", accent: false },
               { icon: <FileText className="w-4 h-4" />, label: "Evidence Pack",  sub: "Export PDF pack",         href: "/documents",       accent: false },
             ].map((btn) => (
@@ -204,7 +196,7 @@ export function HomeMobile() {
         >
           <div className="flex flex-col gap-2 mt-2">
             {[
-              { icon: <Send className="w-4 h-4 text-emerald-600" />,  bg: "bg-emerald-50", label: "Send Reminder",      sub: "68% success rate",           href: "/actions" },
+              { icon: <Send className="w-4 h-4 text-emerald-600" />,  bg: "bg-emerald-50", label: "Send Reminder",      sub: "Generate a reminder",        href: "/actions" },
               { icon: <Upload className="w-4 h-4 text-blue-600" />,  bg: "bg-blue-50",    label: "Upload Evidence",     sub: "Strengthen your case",       href: "/cases" },
               { icon: <FileText className="w-4 h-4 text-orange-600" />, bg: "bg-orange-50", label: "Formal Demand Draft", sub: `${stats.formalDemandReady} cases ready`, href: "/documents" },
             ].map((item) => (
@@ -236,33 +228,33 @@ export function HomeMobile() {
           }
         >
           <div className="flex flex-col mt-1">
-            {mockActivities.slice(0, 4).map((act, i) => {
-              const { icon, bg } = activityIconMap[act.type] ?? { icon: <Clock className="w-4 h-4 text-gray-400" />, bg: "bg-gray-100" };
+            {recentCases.map((c, i) => {
               return (
                 <Link
-                  key={act.id}
-                  href={`/cases/${act.caseId}`}
+                  key={c.id}
+                  href={`/cases/${c.id}`}
                   className={cn(
                     "flex items-center gap-3 py-3 hover:bg-gray-50 -mx-4 px-4 transition-colors",
-                    i < Math.min(mockActivities.length, 4) - 1 && "border-b border-gray-50"
+                    i < recentCases.length - 1 && "border-b border-gray-50"
                   )}
                 >
-                  <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0", bg)}>
-                    {icon}
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-gray-100">
+                    <Clock className="w-4 h-4 text-gray-500" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800 truncate leading-tight">{act.description}</p>
-                    <p className="text-[11px] text-gray-400 truncate mt-0.5">{act.debtorName}</p>
+                    <p className="text-xs font-semibold text-gray-800 truncate leading-tight">Case updated</p>
+                    <p className="text-[11px] text-gray-400 truncate mt-0.5">{c.debtor_name}</p>
                   </div>
                   <div className="text-right shrink-0 ml-2">
-                    {act.amount !== undefined && (
-                      <p className="text-xs font-bold text-emerald-600">{formatRM(act.amount)}</p>
-                    )}
-                    <p className="text-[10px] text-gray-400 mt-0.5">{act.time}</p>
+                    <p className="text-xs font-bold text-emerald-600">{formatRM(c.balance)}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{new Date(c.updated_at).toLocaleDateString("en-MY")}</p>
                   </div>
                 </Link>
               );
             })}
+            {recentCases.length === 0 && (
+              <p className="py-4 text-center text-xs text-gray-400">No case activity yet.</p>
+            )}
           </div>
         </SectionCard>
       </div>
@@ -278,7 +270,7 @@ function MiniStat({ label, value, color, bg }: {
   return (
     <div className={cn("rounded-xl border px-3 py-2.5 shadow-sm text-center", bg)}>
       <p className={cn("text-lg font-black leading-tight", color)}>{value}</p>
-      <p className="text-[10px] text-gray-500 mt-0.5">{label}</p>
+      <p className="text-[10px] text-[#AFC0DE] mt-0.5">{label}</p>
     </div>
   );
 }

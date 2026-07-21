@@ -17,6 +17,8 @@ export interface DemandPdfData {
   deadlineDate:  string;
   today:         string;
   draftText:     string; // full pre-built draft text
+  documentNumber?: string | null;
+  templateVersion?: number;
 }
 
 // ─── Main generator ────────────────────────────────────────────────────────────
@@ -85,7 +87,7 @@ export async function generateDemandPdf(data: DemandPdfData): Promise<Blob> {
   doc.setFontSize(9);
   doc.setTextColor(107, 114, 128);
   doc.text(`Date: ${data.today}`, ML, y);
-  doc.text(`Reference: ${data.caseId}`, ML + CW, y, { align: "right" });
+  doc.text(`Reference: ${data.documentNumber ?? data.caseId}`, ML + CW, y, { align: "right" });
   y += 5;
 
   doc.setDrawColor(229, 231, 235);

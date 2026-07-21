@@ -78,8 +78,9 @@ Supabase Dashboard → your project → Settings → API → "Project URL" and "
 |---|---|
 | `src/app/api/billing/create-checkout-session/route.ts` | Builds Stripe Checkout `success_url` and `cancel_url` |
 | `src/app/api/billing/create-customer-portal-session/route.ts` | Builds Stripe Customer Portal `return_url` |
+| `src/app/api/cases/[caseId]/public-links/route.ts` | Builds public payment and acknowledgement links |
 
-If `NEXT_PUBLIC_APP_URL` is wrong or missing, Stripe will redirect users to the wrong URL after payment. Always set this to the exact URL of the deployment (no trailing slash).
+If `NEXT_PUBLIC_APP_URL` is wrong or missing, redirects and public links can point to the wrong host. Production blocks these routes unless it is set to the exact HTTPS deployment URL (no trailing slash).
 
 ### How `NEXT_PUBLIC_APP_ENV` is used in the codebase
 

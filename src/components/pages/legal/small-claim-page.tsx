@@ -7,20 +7,16 @@ import { PrimaryButton } from "@/components/ui/primary-button";
 import { SectionCard } from "@/components/ui/section-card";
 import { LoadingSpinner, InlineSpinner } from "@/components/ui/loading-spinner";
 import { formatRM } from "@/lib/mock-data";
-import { mockCaseTimelines, SMALL_CLAIM_LIMIT } from "@/lib/mock-legal-data";
 import { useCase } from "@/hooks/use-case";
 import { useEvidence } from "@/hooks/use-evidence";
 import { usePayments } from "@/hooks/use-payments";
 import { useReminders } from "@/hooks/use-reminders";
 import { useLegalDocuments } from "@/hooks/use-legal-documents";
 import { usePaymentPlans } from "@/hooks/use-payment-plans";
-import { useBusinessId } from "@/hooks/use-business-id";
-import { saveEvidencePackClient } from "@/lib/db/legal-documents-client";
-import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
-import { generateSmallClaimPdf, type SmallClaimCheckItem } from "@/lib/pdf/small-claim-generator";
+import { type SmallClaimCheckItem } from "@/lib/pdf/small-claim-generator";
 import {
   ChevronLeft, CheckCircle2, XCircle, AlertCircle, Info,
-  ArrowRight, Gavel, FileText, Download, Clock,
+  Gavel, FileText, Download, Clock,
 } from "lucide-react";
 
 const DISCLAIMER =
@@ -53,15 +49,12 @@ export function SmallClaimPage({ caseId }: Props) {
   const { reminders }                        = useReminders(caseId);
   const { docs, addDoc }                     = useLegalDocuments(caseId);
   const { activePlan }                       = usePaymentPlans(caseId);
-  const businessId                           = useBusinessId();
 
   const [saving,      setSaving]      = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [saved,       setSaved]       = useState(false);
   const [saveError,   setSaveError]   = useState<string | null>(null);
 
-  const today    = new Date().toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric" });
-  const timeline = caseData ? (mockCaseTimelines[caseId] ?? []) : [];
 
   // ── Computed values ───────────────────────────────────────────────────────
 
@@ -74,16 +67,14 @@ export function SmallClaimPage({ caseId }: Props) {
   const formalDemands  = useMemo(() => docs.filter((d) => ["demand_standard","demand_firm","demand_final"].includes(d.document_type)), [docs]);
   const savedSCPacks   = useMemo(() => docs.filter((d) => d.document_type === "small_claim_pack"),                        [docs]);
 
-  const isEligible = caseData ? caseData.balance <= SMALL_CLAIM_LIMIT : null;
-
-  // 9-item checklist
+  // This checks record completeness, not court eligibility.
   const checklist = useMemo<SmallClaimCheckItem[]>(() => {
     if (!caseData) return [];
     return [
       {
         id:    "amount",
-        label: "Amount is RM 5,000 or below",
-        done:  caseData.balance <= SMALL_CLAIM_LIMIT,
+        label: "Positive outstanding balance recorded",
+        done:  caseData.balance > 0,
       },
       {
         id:    "contact",
@@ -151,43 +142,17 @@ export function SmallClaimPage({ caseId }: Props) {
     if (!caseData) return;
     setSaving(true);
     setSaveError(null);
-    const bId = businessId ?? "mock-business-id";
-
-    const result = await saveEvidencePackClient({
-      case_id:       caseData.id,
-      document_type: "small_claim_pack",
-      title:         `Small Claim Pack — ${caseData.debtor_name} — ${today}`,
-      content:       JSON.stringify({
-        generated_at:     new Date().toISOString(),
-        readiness_status: readinessStatus,
-        readiness_pct:    readinessPct,
-        done_count:       doneCount,
-        total_count:      checklist.length,
-        is_eligible:      isEligible,
-        balance:          caseData.balance,
-        missing_items:    missingItems,
-      }),
-    });
-
-    if (result.error) {
-      setSaveError(result.error);
-    } else {
-      addDoc(result.data!);
+    try {
+      const response = await fetch(`/api/cases/${encodeURIComponent(caseData.id)}/small-claim-packs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "save" }) });
+      const payload = await response.json().catch(() => ({})) as { document?: Parameters<typeof addDoc>[0]; error?: string };
+      if (!response.ok || !payload.document) throw new Error(payload.error ?? "Unable to save the case-record pack.");
+      addDoc(payload.document);
       setSaved(true);
-      await appendAuditLogClient({
-        business_id: bId,
-        case_id:     caseData.id,
-        action:      "small_claim_pack.generated",
-        actor_type:  "owner",
-        metadata:    {
-          readiness_pct:    readinessPct,
-          readiness_status: readinessStatus,
-          is_eligible:      isEligible,
-          missing_count:    missingItems.length,
-        },
-      });
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Unable to save the case-record pack.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   // ── Download PDF ──────────────────────────────────────────────────────────
@@ -196,46 +161,23 @@ export function SmallClaimPage({ caseId }: Props) {
     if (!caseData) return;
     setDownloading(true);
     try {
-      const blob = await generateSmallClaimPdf({
-        caseId,
-        businessName:   "Your Company Name",
-        today,
-        debtorName:     caseData.debtor_name,
-        debtorCompany:  caseData.debtor_company,
-        debtorRegNo:    caseData.debtor_reg_no,
-        debtorPhone:    caseData.debtor_phone,
-        debtorEmail:    caseData.debtor_email,
-        debtorLocation: caseData.debtor_location,
-        amountOwed:     caseData.amount_owed,
-        amountPaid:     caseData.amount_paid,
-        balance:        caseData.balance,
-        dueDate:        caseData.due_date,
-        invoiceNo:      caseData.invoice_no,
-        daysOverdue:    caseData.days_overdue,
-        isEligible:     !!isEligible,
-        checklist,
-        readinessStatus,
-        readinessPct,
-        reminderCount:  reminders.length,
-        paymentCount:   payments.length,
-        hasEvidencePack:    evidencePacks.length > 0,
-        hasFormalDemand:    formalDemands.length > 0,
-        hasPaymentPlan:     !!activePlan,
-        hasAcknowledgement: false,
-        timeline,
-        evidenceFiles: files.map((f) => ({ name: f.file_name, type: f.file_type })),
-        missingItems,
-      });
+      const response = await fetch(`/api/cases/${encodeURIComponent(caseData.id)}/small-claim-packs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "issue" }) });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(payload.error ?? "Unable to issue the case-record pack.");
+      }
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a   = document.createElement("a");
       a.href     = url;
-      a.download = `small-claim-pack-${caseData.id}.pdf`;
+      a.download = `case-record-pack-${caseData.id}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      /* ignore */
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Unable to issue the case-record pack.");
+    } finally {
+      setDownloading(false);
     }
-    setDownloading(false);
   }
 
   // ── Loading / error ───────────────────────────────────────────────────────
@@ -265,49 +207,25 @@ export function SmallClaimPage({ caseId }: Props) {
           <Link href={`/cases/${caseId}`} className="text-gray-400 hover:text-gray-600">
             <ChevronLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-lg font-bold text-[#0D1B3D]">Small Claim Pack</h1>
+          <h1 className="text-lg font-bold text-[#0D1B3D]">Case-Record Pack</h1>
         </div>
         <p className="text-xs text-gray-400 ml-7">
-          For debts up to RM 5,000. Prepare your own claim documents.
+          Prepare a factual record pack for external legal review.
         </p>
       </div>
 
       <div className="px-4 pt-5 flex flex-col gap-5">
 
-        {/* Eligibility banner */}
-        {isEligible ? (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-1.5">
-              <CheckCircle2 className="w-5 h-5 text-[#009966]" />
-              <p className="text-sm font-black text-emerald-800">Eligible for Small Claims Court</p>
-            </div>
-            <p className="text-xs text-emerald-700 leading-relaxed">
-              Your balance of <strong>{formatRM(c.balance)}</strong> is within the RM 5,000 Small Claims limit.
-              You can file this yourself at any Magistrate Court without a lawyer.
-            </p>
-          </div>
-        ) : (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-1.5">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
-              <p className="text-sm font-black text-amber-800">Amount Exceeds Small Claims Limit</p>
-            </div>
-            <p className="text-xs text-amber-700 leading-relaxed">
-              Your balance of <strong>{formatRM(c.balance)}</strong> exceeds the RM 5,000 limit.
-              This case may not be suitable for small claim preparation.{" "}
-              <strong>Consider legal review.</strong>
-            </p>
-            <Link href={`/legal/${caseId}/lawyer`} className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 mt-2 hover:underline">
-              Refer to Lawyer <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-        )}
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-1.5"><AlertCircle className="w-5 h-5 text-amber-600" /><p className="text-sm font-black text-amber-800">Legal review required</p></div>
+          <p className="text-xs text-amber-700 leading-relaxed">This pack is configured for Malaysia, but CollectBoss does not determine court eligibility, forms, fees, procedure, or deadlines. Verify these with a qualified legal professional and the relevant official authority.</p>
+        </div>
 
         {/* Readiness score */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="text-sm font-bold text-gray-900">Claim Readiness</p>
+              <p className="text-sm font-bold text-gray-900">Record Completeness</p>
               <p className="text-xs text-gray-400 mt-0.5">{doneCount} of {checklist.length} items complete</p>
             </div>
             <div className="text-right">
@@ -459,54 +377,12 @@ export function SmallClaimPage({ caseId }: Props) {
           </SectionCard>
         )}
 
-        {/* Case timeline */}
-        {timeline.length > 0 && (
-          <SectionCard title="Case Timeline">
-            <p className="text-[11px] text-gray-400 mt-1 mb-2">
-              Bring this timeline to court to explain the sequence of events.
-            </p>
-            <div className="flex flex-col gap-2">
-              {timeline.map((entry, i) => (
-                <div key={i} className="flex gap-3 items-start">
-                  <div className="w-2 h-2 rounded-full bg-[#009966] shrink-0 mt-1.5" />
-                  <div className="flex-1">
-                    <p className="text-[10px] text-gray-400 font-medium">{entry.date}</p>
-                    <p className="text-xs font-semibold text-gray-700">{entry.event}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        )}
-
-        {/* About Small Claims Court */}
-        <SectionCard title="About Small Claims Court">
+        <SectionCard title="External Legal-Review Gate">
           <div className="flex flex-col gap-3 mt-2">
             {[
-              { e: "⚖️", t: "For debts up to RM 5,000 in Malaysia." },
-              { e: "👤", t: "You represent yourself — no lawyer needed." },
-              { e: "💰", t: `Filing fee: approximately RM ${c.balance <= 2000 ? "50" : "100"}.` },
-              { e: "📍", t: "File at your nearest Magistrate Court." },
-              { e: "📋", t: "Use Form 198 (Tuntutan Kecil / Small Claims)." },
-              { e: "⏱️", t: "Hearing usually within 1–3 months." },
-            ].map(({ e, t }) => (
-              <div key={t} className="flex items-start gap-2.5">
-                <span className="text-base shrink-0">{e}</span>
-                <p className="text-xs text-gray-600 leading-relaxed">{t}</p>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-
-        {/* Next steps guide */}
-        <SectionCard title="Next Steps Guide">
-          <div className="flex flex-col gap-3 mt-2">
-            {[
-              { step: "1", title: "Complete all required documents",             sub: "Ensure invoice, chat proof, and reminders are ready." },
-              { step: "2", title: "Go to your nearest Magistrate Court",         sub: "Bring all documents in physical copies." },
-              { step: "3", title: "Fill in Form 198 at the counter",            sub: "Court staff can assist you with the form." },
-              { step: "4", title: "Pay the filing fee",                         sub: "Pay at the court cashier. Keep your receipt." },
-              { step: "5", title: "Attend your hearing date",                   sub: "Present your case calmly with your documents and timeline." },
+              { step: "1", title: "Complete factual records", sub: "Check every entry against your source documents." },
+              { step: "2", title: "Obtain qualified legal review", sub: "Ask counsel to assess the correct forum, legal rights, and limitation periods." },
+              { step: "3", title: "Verify current official requirements", sub: "Confirm the applicable forms, fees, procedure, and deadlines externally." },
             ].map((s) => (
               <div key={s.step} className="flex gap-3">
                 <div className="w-6 h-6 rounded-full bg-[#0D1B3D] text-white text-[11px] font-black flex items-center justify-center shrink-0 mt-0.5">
@@ -526,10 +402,13 @@ export function SmallClaimPage({ caseId }: Props) {
           <SectionCard title={`Saved Packs (${savedSCPacks.length})`}>
             <div className="flex flex-col gap-2 mt-2">
               {savedSCPacks.map((d) => {
-                let meta: { generated_at?: string; readiness_pct?: number; readiness_status?: string } = {};
+                let meta: { generated_at?: string; readiness_pct?: number; readiness_status?: string; snapshot?: { generatedAt?: string; pdf?: { readinessPct?: number; readinessStatus?: string } } } = {};
                 try { meta = JSON.parse(d.content); } catch { /* ignore */ }
-                const s = meta.readiness_status
-                  ? SMALL_CLAIM_STATUS_CONFIG[meta.readiness_status as ReadinessStatus]
+                const generatedAt = meta.snapshot?.generatedAt ?? meta.generated_at;
+                const readinessPct = meta.snapshot?.pdf?.readinessPct ?? meta.readiness_pct;
+                const readinessStatus = meta.snapshot?.pdf?.readinessStatus ?? meta.readiness_status;
+                const s = readinessStatus
+                  ? SMALL_CLAIM_STATUS_CONFIG[readinessStatus as ReadinessStatus]
                   : null;
                 return (
                   <div key={d.id} className="flex items-center gap-3 bg-[#F2F4F7] rounded-xl px-3 py-2.5">
@@ -537,12 +416,13 @@ export function SmallClaimPage({ caseId }: Props) {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-gray-800 truncate">{d.title}</p>
                       <p className="text-[10px] text-gray-400">
-                        {meta.generated_at
-                          ? new Date(meta.generated_at).toLocaleString("en-MY", { day: "numeric", month: "short", year: "numeric" })
+                        {generatedAt
+                          ? new Date(generatedAt).toLocaleString("en-MY", { day: "numeric", month: "short", year: "numeric" })
                           : new Date(d.created_at).toLocaleString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
-                        {meta.readiness_pct != null ? ` · ${meta.readiness_pct}% ready` : ""}
+                        {readinessPct != null ? ` · ${readinessPct}% complete` : ""}
                       </p>
                     </div>
+                    {d.issued_at && <a href={`/api/cases/${encodeURIComponent(caseId)}/small-claim-packs/${encodeURIComponent(d.id)}`} className="text-[10px] font-bold text-[#009966] hover:underline">Download</a>}
                     {s && (
                       <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0", s.color, s.bg, s.border)}>
                         {s.label}
@@ -567,7 +447,7 @@ export function SmallClaimPage({ caseId }: Props) {
         {saved && (
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-            <p className="text-xs text-emerald-700 font-semibold">Pack saved · Audit log created</p>
+            <p className="text-xs text-emerald-700 font-semibold">Immutable snapshot saved · audit log created</p>
           </div>
         )}
 
@@ -576,7 +456,7 @@ export function SmallClaimPage({ caseId }: Props) {
           <Info className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
           <p className="text-[11px] text-gray-500 leading-relaxed">
             <strong>{DISCLAIMER}</strong>{" "}
-            Visit the official Malaysian Judiciary website for the latest information.
+            A qualified legal professional must review court-specific requirements before any action.
           </p>
         </div>
 
@@ -588,7 +468,7 @@ export function SmallClaimPage({ caseId }: Props) {
             disabled={saving}
             icon={saving ? <InlineSpinner className="text-white" /> : <FileText className="w-4 h-4" />}
           >
-            {saving ? "Saving…" : saved ? "Save Again" : "Save Small Claim Pack"}
+            {saving ? "Saving…" : saved ? "Save Again" : "Save Case-Record Pack"}
           </PrimaryButton>
 
           <PrimaryButton
@@ -597,22 +477,14 @@ export function SmallClaimPage({ caseId }: Props) {
             disabled={downloading}
             icon={downloading ? <InlineSpinner className="text-gray-600" /> : <Download className="w-4 h-4" />}
           >
-            {downloading ? "Generating PDF…" : "Download as PDF"}
+            {downloading ? "Generating PDF…" : "Issue & Download PDF"}
           </PrimaryButton>
 
-          {isEligible ? (
-            <Link href={`/evidence/${caseId}/pack`}>
-              <PrimaryButton fullWidth variant="ghost" size="lg" icon={<ArrowRight className="w-4 h-4" />}>
-                Prepare Evidence Pack
-              </PrimaryButton>
-            </Link>
-          ) : (
-            <Link href={`/legal/${caseId}/lawyer`}>
-              <PrimaryButton fullWidth variant="ghost" size="lg" icon={<Gavel className="w-4 h-4" />}>
-                Refer to Lawyer Instead
-              </PrimaryButton>
-            </Link>
-          )}
+          <Link href={`/legal/${caseId}/lawyer`}>
+            <PrimaryButton fullWidth variant="ghost" size="lg" icon={<Gavel className="w-4 h-4" />}>
+              Request Legal Review
+            </PrimaryButton>
+          </Link>
         </div>
       </div>
     </div>

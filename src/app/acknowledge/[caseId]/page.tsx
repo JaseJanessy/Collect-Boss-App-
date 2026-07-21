@@ -1,35 +1,17 @@
-import { notFound } from "next/navigation";
-import { getCaseById } from "@/lib/db/cases";
-import {
-  DebtorAcknowledgementPage,
-  type AckCaseInfo,
-} from "@/components/pages/legal/debtor-acknowledgement-page";
+import { DebtorAcknowledgementPage } from "@/components/pages/legal/debtor-acknowledgement-page";
+import { PublicAccessStatusPage } from "@/components/pages/public/public-access-status-page";
+import { resolvePublicAcknowledgement } from "@/lib/public-access/service";
 
-interface Props {
-  params: Promise<{ caseId: string }>;
-}
+interface Props { params: Promise<{ caseId: string }>; }
 
 export const dynamic = "force-dynamic";
 
 export default async function AcknowledgePage({ params }: Props) {
-  const { caseId } = await params;
+  const { caseId: token } = await params;
+  const result = await resolvePublicAcknowledgement(token);
+  if (result.state !== "valid") {
+    return <PublicAccessStatusPage state={result.state} action="acknowledgement" />;
+  }
 
-  const result = await getCaseById(caseId);
-  if (result.error || !result.data) notFound();
-
-  const c = result.data;
-
-  // Only expose safe public fields — never bank details or internal notes
-  const caseInfo: AckCaseInfo = {
-    id:                c.id,
-    debtor_name:       c.debtor_name,
-    debtor_company:    c.debtor_company,
-    balance:           c.balance,
-    amount_owed:       c.amount_owed,
-    due_date:          c.due_date,
-    invoice_no:        c.invoice_no,
-    payment_lock_mode: c.payment_lock_mode,
-  };
-
-  return <DebtorAcknowledgementPage caseInfo={caseInfo} />;
+  return <DebtorAcknowledgementPage token={token} plan={result.data} />;
 }

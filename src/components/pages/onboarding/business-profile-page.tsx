@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import { AuthShell } from "@/components/pages/auth/auth-shell";
-import { createBusiness } from "@/lib/db/businesses";
 import { setMockBusinessComplete } from "@/lib/auth/mock-session";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { track } from "@/lib/analytics/tracker";
-import { type PaymentLockMode } from "@/lib/supabase/types";
+import { type AccountType, type PaymentLockMode } from "@/lib/supabase/types";
+import { useBusinessProfile } from "@/hooks/use-business-profile";
+import type { BusinessProfileDto } from "@/lib/business-profile/types";
+import { businessProfileSchema, type BusinessProfileInput } from "@/lib/business-profile/validation";
 import {
   Building2,
   Hash,
@@ -29,7 +31,9 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ProfileForm {
+  accountType:     AccountType | "";
   businessName:    string;
+  legalName:       string;
   registrationNo:  string;
   ownerName:       string;
   phone:           string;
@@ -37,6 +41,34 @@ interface ProfileForm {
   address:         string;
   language:        "ms" | "en";
   paymentLockMode: PaymentLockMode;
+}
+
+function createProfileForm(profile: BusinessProfileDto | null): ProfileForm {
+  return {
+    accountType: profile?.accountType ?? "",
+    businessName: profile?.displayName ?? "",
+    legalName: profile?.legalName ?? "",
+    registrationNo: profile?.registrationNo ?? "",
+    ownerName: profile?.contactName ?? "",
+    phone: profile?.phone ?? "",
+    email: profile?.email ?? "",
+    address: profile?.address ?? "",
+    language: "en",
+    paymentLockMode: "approval",
+  };
+}
+
+function toProfileInput(form: ProfileForm): BusinessProfileInput | Record<string, unknown> {
+  return {
+    accountType: form.accountType,
+    displayName: form.businessName,
+    legalName: form.legalName,
+    contactName: form.ownerName,
+    registrationNo: form.registrationNo.trim() || null,
+    phone: form.phone,
+    email: form.email,
+    address: form.address.trim() || null,
+  };
 }
 
 // ─── Lock mode options ────────────────────────────────────────────────────────
@@ -72,23 +104,46 @@ const lockModes: Array<{
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function BusinessProfilePage() {
+  const { profile, loading, error, refresh } = useBusinessProfile();
+
+  if (isSupabaseConfigured && loading) {
+    return (
+      <AuthShell maxWidth="md">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex flex-col items-center gap-3">
+          <Loader2 className="w-5 h-5 text-[#009966] animate-spin" />
+          <p className="text-sm text-gray-500">Loading your profile…</p>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  return (
+    <BusinessProfileForm
+      key={profile?.id ?? "new-profile"}
+      initialProfile={profile}
+      loadError={error}
+      onRetry={refresh}
+    />
+  );
+}
+
+function BusinessProfileForm({
+  initialProfile,
+  loadError,
+  onRetry,
+}: {
+  initialProfile: BusinessProfileDto | null;
+  loadError: string | null;
+  onRetry: () => Promise<void>;
+}) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState("");
 
-  const [form, setForm] = useState<ProfileForm>({
-    businessName:    "",
-    registrationNo:  "",
-    ownerName:       "",
-    phone:           "",
-    email:           "",
-    address:         "",
-    language:        "en",
-    paymentLockMode: "approval",
-  });
+  const [form, setForm] = useState<ProfileForm>(() => createProfileForm(initialProfile));
 
-  const [errors, setErrors] = useState<Partial<ProfileForm>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof ProfileForm, string>>>({});
 
   function update<K extends keyof ProfileForm>(key: K, val: ProfileForm[K]) {
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -96,20 +151,40 @@ export function BusinessProfilePage() {
   }
 
   function validateStep1(): boolean {
-    const errs: Partial<ProfileForm> = {};
-    if (!form.businessName.trim()) errs.businessName = "Business name is required.";
-    if (!form.ownerName.trim())    errs.ownerName    = "Owner name is required.";
-    if (!form.phone.trim())        errs.phone        = "Phone number is required.";
-    if (!form.email.trim())        errs.email        = "Email is required.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-                                   errs.email        = "Please enter a valid email.";
+    const parsed = businessProfileSchema.safeParse(toProfileInput(form));
+    if (parsed.success) {
+      setErrors({});
+      return true;
+    }
+
+    const fields = parsed.error.flatten().fieldErrors;
+    const errs: Partial<Record<keyof ProfileForm, string>> = {
+      accountType: fields.accountType?.[0] ?? (!form.accountType ? "Choose individual or business." : undefined),
+      businessName: fields.displayName?.[0],
+      legalName: fields.legalName?.[0],
+      ownerName: fields.contactName?.[0],
+      registrationNo: fields.registrationNo?.[0],
+      phone: fields.phone?.[0],
+      email: fields.email?.[0],
+      address: fields.address?.[0],
+    };
     setErrors(errs);
-    return Object.keys(errs).length === 0;
+    return false;
   }
 
   function handleStep1Next(e: React.FormEvent) {
     e.preventDefault();
-    if (validateStep1()) setStep(2);
+    if (!validateStep1()) return;
+
+    if (
+      initialProfile?.accountType === "business" &&
+      form.accountType === "individual" &&
+      !window.confirm("Changing to an individual account will remove the saved business registration number when you save. Continue?")
+    ) {
+      return;
+    }
+
+    setStep(2);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -126,17 +201,19 @@ export function BusinessProfilePage() {
       return;
     }
 
-    const result = await createBusiness({
-      owner_id:        "pending", // replaced by Supabase auth.uid() in real flow
-      business_name:   form.businessName,
-      registration_no: form.registrationNo || null,
-      phone:           form.phone,
-      email:           form.email,
-      address:         form.address || null,
+    const response = await fetch("/api/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(toProfileInput(form)),
     });
+    const result = await response.json().catch(() => ({ error: "Unable to save profile." })) as { error?: string };
 
-    if (result.error) {
-      setGlobalError(result.error);
+    if (!response.ok) {
+      setGlobalError(
+        response.status === 401
+          ? "Your session has expired. Sign in again, then retry your saved details."
+          : result.error ?? "Unable to save profile."
+      );
       setLoading(false);
       return;
     }
@@ -181,17 +258,68 @@ export function BusinessProfilePage() {
       {step === 1 ? (
         <>
           <div className="mb-5">
-            <h1 className="text-2xl font-black text-[#0D1B3D]">Set Up Your Business</h1>
+            <h1 className="text-2xl font-black text-[#0D1B3D]">
+              {initialProfile ? "Edit Your Profile" : "Set Up Your Account"}
+            </h1>
             <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-              Tell us about your business so we can set up your account correctly.
+              Choose the account type that matches how you collect debt. Your legal identity appears on generated documents.
             </p>
           </div>
 
+          {loadError && (
+            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
+              {loadError === "You must be signed in." ? (
+                <>
+                  <p>Your session has expired. Sign in again to resume your profile.</p>
+                  <button type="button" onClick={() => router.push("/login")} className="mt-2 font-bold text-[#009966] hover:underline">
+                    Sign in again
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p>{loadError}</p>
+                  <button type="button" onClick={() => void onRetry()} className="mt-2 font-bold text-[#009966] hover:underline">
+                    Retry profile load
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           <form onSubmit={handleStep1Next}>
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-bold text-gray-700">Account Type</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" role="group" aria-label="Account type">
+                  {([
+                    { value: "individual" as const, label: "Individual", detail: "Collect in your own legal name", icon: <User className="w-4 h-4" /> },
+                    { value: "business" as const, label: "Business", detail: "Collect for a registered organisation", icon: <Building2 className="w-4 h-4" /> },
+                  ]).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => update("accountType", option.value)}
+                      className={cn(
+                        "flex items-start gap-3 rounded-xl border-2 p-3 text-left transition-colors",
+                        form.accountType === option.value
+                          ? "border-[#009966] bg-emerald-50 text-[#007A52]"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                      )}
+                    >
+                      <span className="mt-0.5">{option.icon}</span>
+                      <span>
+                        <span className="block text-sm font-bold">{option.label}</span>
+                        <span className="block mt-0.5 text-[11px] leading-relaxed text-gray-500">{option.detail}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {errors.accountType && <p className="text-xs text-red-500 ml-1">{errors.accountType}</p>}
+                <p className="text-[11px] text-gray-400 ml-1">A logo is optional. Your legal name remains the document identity until one is added.</p>
+              </div>
               <FormField
-                label="Business Name"
-                placeholder="e.g. Syarikat Maju Jaya Sdn Bhd"
+                label={form.accountType === "individual" ? "Display Name" : "Business Name"}
+                placeholder={form.accountType === "individual" ? "e.g. Ahmad bin Hassan" : "e.g. Syarikat Maju Jaya Sdn Bhd"}
                 value={form.businessName}
                 onChange={(v) => update("businessName", v)}
                 error={errors.businessName}
@@ -199,14 +327,26 @@ export function BusinessProfilePage() {
                 required
               />
               <FormField
+                label={form.accountType === "individual" ? "Legal Name" : "Registered Legal Name"}
+                placeholder={form.accountType === "individual" ? "e.g. Ahmad bin Hassan" : "e.g. Syarikat Maju Jaya Sdn Bhd"}
+                value={form.legalName}
+                onChange={(v) => update("legalName", v)}
+                error={errors.legalName}
+                icon={<User className="w-4 h-4" />}
+                required
+              />
+              {form.accountType !== "individual" && (
+              <FormField
                 label="Company Registration Number"
                 placeholder="e.g. 202401012345"
                 value={form.registrationNo}
                 onChange={(v) => update("registrationNo", v)}
                 icon={<Hash className="w-4 h-4" />}
-                optional
+                error={errors.registrationNo}
+                required={form.accountType === "business"}
                 hint="SSM registration number"
               />
+              )}
               <FormField
                 label="Owner / Contact Name"
                 placeholder="e.g. Ahmad bin Hassan"
@@ -228,8 +368,8 @@ export function BusinessProfilePage() {
                 hint="Used for WhatsApp reminders"
               />
               <FormField
-                label="Business Email"
-                placeholder="e.g. accounts@mybusiness.com.my"
+                label={form.accountType === "individual" ? "Email Address" : "Business Email"}
+                placeholder={form.accountType === "individual" ? "e.g. ahmad@example.com" : "e.g. accounts@mybusiness.com.my"}
                 value={form.email}
                 onChange={(v) => update("email", v)}
                 error={errors.email}
@@ -238,10 +378,11 @@ export function BusinessProfilePage() {
                 required
               />
               <FormField
-                label="Business Address"
+                label={form.accountType === "individual" ? "Postal Address" : "Business Address"}
                 placeholder="e.g. No. 1, Jalan Maju, 50480 Kuala Lumpur"
                 value={form.address}
                 onChange={(v) => update("address", v)}
+                error={errors.address}
                 icon={<MapPin className="w-4 h-4" />}
                 optional
               />
@@ -291,9 +432,20 @@ export function BusinessProfilePage() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4">
               {globalError && (
                 <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-700 font-medium">
-                  ⚠️ {globalError}
+                  <p>⚠️ {globalError}</p>
+                  {globalError.startsWith("Your session has expired") && (
+                    <button type="button" onClick={() => router.push("/login")} className="mt-2 font-bold underline">
+                      Sign in again
+                    </button>
+                  )}
                 </div>
               )}
+
+              <div className="bg-[#F2F4F7] border border-gray-200 rounded-xl p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Document identity preview</p>
+                <p className="mt-1 text-sm font-bold text-[#0D1B3D]">{form.legalName.trim() || "Your legal name"}</p>
+                <p className="mt-1 text-[11px] text-gray-500">This name will appear as the creditor on generated documents.</p>
+              </div>
 
               {/* Lock mode cards */}
               <div className="flex flex-col gap-2">

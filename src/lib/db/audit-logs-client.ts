@@ -3,7 +3,6 @@ import { type AuditLogInsert } from "@/lib/supabase/types";
 
 export async function appendAuditLogClient(input: AuditLogInsert): Promise<void> {
   if (!isSupabaseConfigured) {
-    console.log("[AUDIT]", input.action, input.metadata);
     return;
   }
 

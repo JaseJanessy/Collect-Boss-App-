@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * CollectBoss Billing Service — server-side only.
  *
@@ -5,15 +7,15 @@
  * This file must NEVER be imported in "use client" components.
  *
  * Responsibilities:
- *  • Idempotency check (billing_events deduplication)
- *  • Save billing events
+ *  • Atomic event claiming (billing_events deduplication)
+ *  • Complete billing events with a redacted processing outcome
  *  • Upsert subscriptions
  *  • Upsert entitlements based on plan + subscription status
  *  • Helper: resolve business_id from Stripe customer ID
  *  • Helper: resolve plan slug from Stripe price ID (env var lookup)
  */
 
-import { getServiceClient } from "@/lib/supabase/client";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { PLANS } from "./plans";
 import type { PlanSlug, SubscriptionStatus } from "./types";
 
@@ -94,52 +96,94 @@ export function planSlugFromPriceId(
   return "free";
 }
 
+/** True only when a price ID is explicitly configured on this server. */
+export function isConfiguredPlanPriceId(priceId: string | null | undefined): boolean {
+  if (!priceId) return false;
+  return [
+    process.env.STRIPE_PRICE_STARTER,
+    process.env.STRIPE_PRICE_BOSS,
+    process.env.STRIPE_PRICE_PRO,
+  ].some((configuredPriceId) => Boolean(configuredPriceId) && configuredPriceId === priceId);
+}
+
 // ─── Idempotency ──────────────────────────────────────────────────────────────
 
 /**
  * Returns true if a billing event with this Stripe event ID has already
  * been fully processed. Safe to call with a missing service client.
  */
-export async function isBillingEventProcessed(
-  stripeEventId: string,
-): Promise<boolean> {
-  const client = await getServiceClient();
-  if (!client) return false;
+export type BillingEventClaim = "new" | "retry" | "done";
 
-  const { data } = await client
+/**
+ * Atomically claims a Stripe event by inserting its unique event ID.
+ *
+ * A unique-constraint conflict is an expected duplicate delivery, not a
+ * failed webhook. When an earlier delivery did not complete, returning
+ * "retry" lets the handler replay only idempotent, source-of-truth writes.
+ */
+export async function claimBillingEvent(params: {
+  stripeEventId: string;
+  eventType: string;
+  stripeEventCreatedAt: number | null;
+}): Promise<BillingEventClaim> {
+  const client = await getServiceClient();
+  if (!client) throw new Error("Billing event store unavailable");
+
+  const { error: insertError } = await client.from("billing_events").insert({
+    stripe_event_id: params.stripeEventId,
+    event_type: params.eventType,
+    processed: false,
+    // Keep only operational metadata; never persist a webhook payload.
+    metadata: {
+      received_at: new Date().toISOString(),
+      stripe_event_created_at: params.stripeEventCreatedAt,
+    },
+  });
+
+  if (!insertError) return "new";
+  if (insertError.code !== "23505") {
+    throw new Error("Unable to claim billing event");
+  }
+
+  const { data, error: readError } = await client
     .from("billing_events")
     .select("processed")
-    .eq("stripe_event_id", stripeEventId)
+    .eq("stripe_event_id", params.stripeEventId)
     .maybeSingle();
 
-  return (data as { processed: boolean } | null)?.processed === true;
+  if (readError || !data) {
+    throw new Error("Unable to read claimed billing event");
+  }
+
+  return (data as { processed: boolean }).processed ? "done" : "retry";
 }
 
 // ─── Billing event persistence ────────────────────────────────────────────────
 
-export async function saveBillingEvent(params: {
+export async function completeBillingEvent(params: {
   businessId:     string | null;
   stripeEventId:  string;
   eventType:      string;
-  metadata:       Record<string, unknown>;
-  processed:      boolean;
+  outcome:        string;
 }): Promise<void> {
   const client = await getServiceClient();
   if (!client) {
-    console.error("[billing] saveBillingEvent: service client unavailable");
-    return;
+    throw new Error("Billing event store unavailable");
   }
 
-  await client.from("billing_events").upsert(
+  const { data, error } = await client.from("billing_events").update(
     {
       business_id:     params.businessId,
-      stripe_event_id: params.stripeEventId,
       event_type:      params.eventType,
-      processed:       params.processed,
-      metadata:        params.metadata,
+      processed:       true,
+      metadata: {
+        outcome: params.outcome,
+        processed_at: new Date().toISOString(),
+      },
     },
-    { onConflict: "stripe_event_id" },
-  );
+  ).eq("stripe_event_id", params.stripeEventId).select("stripe_event_id").maybeSingle();
+
+  if (error || !data) throw new Error("Unable to complete billing event");
 }
 
 // ─── Subscription upsert ──────────────────────────────────────────────────────
@@ -224,11 +268,33 @@ export async function getBusinessIdByCustomer(
   const client = await getServiceClient();
   if (!client) return null;
 
-  const { data } = await client
+  const { data, error } = await client
     .from("subscriptions")
     .select("business_id")
     .eq("stripe_customer_id", stripeCustomerId)
     .maybeSingle();
 
+  if (error) throw new Error("Unable to resolve Stripe customer mapping");
+
   return (data as { business_id: string } | null)?.business_id ?? null;
+}
+
+/** Returns the canonical business/owner mapping used to validate Stripe metadata. */
+export async function getBillingBusinessOwner(
+  businessId: string,
+): Promise<{ id: string; ownerId: string } | null> {
+  const client = await getServiceClient();
+  if (!client) throw new Error("Billing business store unavailable");
+
+  const { data, error } = await client
+    .from("businesses")
+    .select("id, owner_id")
+    .eq("id", businessId)
+    .maybeSingle();
+
+  if (error) throw new Error("Unable to resolve billing business");
+  if (!data) return null;
+
+  const business = data as { id: string; owner_id: string };
+  return { id: business.id, ownerId: business.owner_id };
 }

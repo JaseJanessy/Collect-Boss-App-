@@ -1,4 +1,5 @@
-import { getServerClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getServerClient } from "@/lib/supabase/server-client";
 import { type AuditLogRow, type AuditLogInsert, type Json } from "@/lib/supabase/types";
 import { ok, fail, type DbResult } from "./result";
 
@@ -31,8 +32,7 @@ export async function appendAuditLog(
   input: AuditLogInsert
 ): Promise<DbResult<AuditLogRow>> {
   if (!isSupabaseConfigured) {
-    // In mock mode, just log to console for observability
-    console.log("[AUDIT]", input.action, input.metadata);
+    // Mock mode deliberately avoids emitting audit metadata to application logs.
     return ok({
       ...input,
       id:         "mock-audit-" + Date.now(),

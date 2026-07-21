@@ -1,4 +1,5 @@
-import { getServerClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getServerClient } from "@/lib/supabase/server-client";
 import { type EvidenceFileRow, type EvidenceFileInsert } from "@/lib/supabase/types";
 import { ok, fail, type DbResult } from "./result";
 import { mockUploadedEvidence } from "@/lib/mock-legal-data";
@@ -13,6 +14,8 @@ function mockToRow(caseId: string, u: { typeId: string; fileName: string; fileSi
     file_size_bytes: null,
     evidence_type:   u.typeId as EvidenceFileRow["evidence_type"],
     uploaded_at:     new Date().toISOString(),
+    object_path: null, description: null, document_date: null, is_internal: true,
+    archived_at: null, archived_by: null, retention_until: null, content_sha256: null,
   };
 }
 

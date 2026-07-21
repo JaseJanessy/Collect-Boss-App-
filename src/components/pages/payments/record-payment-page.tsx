@@ -8,7 +8,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { LoadingSpinner, InlineSpinner } from "@/components/ui/loading-spinner";
 import { useCase } from "@/hooks/use-case";
 import { useBusinessId } from "@/hooks/use-business-id";
-import { createPaymentClient, uploadProofFile, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS } from "@/lib/db/payments-client";
+import { createPaymentClient, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS } from "@/lib/db/payments-client";
 import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
 import { type PaymentMethod, type PaymentReviewStatus } from "@/lib/supabase/types";
 import { formatRM } from "@/lib/mock-data";
@@ -77,16 +77,27 @@ export function RecordPaymentPage({ caseId }: Props) {
 
     if (proofFile) {
       setUploading(true);
-      proofUrl = await uploadProofFile(proofFile, c.id, setProofProgress);
+      setProofProgress(20);
+      const form = new FormData();
+      form.set("file", proofFile);
+      form.set("evidenceType", "payment_proof");
+      form.set("description", "Payment receipt uploaded while recording payment.");
+      const upload = await fetch(`/api/cases/${encodeURIComponent(c.id)}/evidence`, {
+        method: "POST",
+        body: form,
+      });
+      const uploadBody = await upload.json().catch(() => null) as { error?: string; file?: { object_path?: string } } | null;
+      proofUrl = upload.ok ? uploadBody?.file?.object_path ?? null : null;
+      setProofProgress(proofUrl ? 100 : 0);
       setUploading(false);
-      if (!proofUrl) { setError("Proof upload failed. Try again."); setSubmitting(false); return; }
+      if (!proofUrl) { setError(uploadBody?.error ?? "Proof upload failed. Try again."); setSubmitting(false); return; }
     }
 
     const status: PaymentReviewStatus = saveApproved ? "approved" : "pending_review";
 
     const result = await createPaymentClient({
       case_id:        c.id,
-      amount:         amountNum,
+      amount,
       payment_method: method,
       reference_no:   reference.trim() || null,
       proof_url:      proofUrl,
@@ -173,7 +184,7 @@ export function RecordPaymentPage({ caseId }: Props) {
         {/* Method */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-bold text-gray-700">Payment Method</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {METHODS.map((m) => (
               <button
                 key={m}

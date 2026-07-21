@@ -27,7 +27,7 @@ export function calculateDueDates(startDate: string, count: number): string[] {
 }
 
 export function calculateInstallment(total: number, count: number): number {
-  return Math.ceil((total / count) * 100) / 100; // round up to 2dp
+  return Math.floor((total * 100) / count) / 100;
 }
 
 export function getNextDueDate(plan: PaymentPlanRow): string | null {
@@ -116,6 +116,15 @@ export async function createPaymentPlanClient(
       signature_url:      input.signature_url ?? null,
       confirmed_at:       input.confirmed_at ?? null,
       notes:              input.notes ?? null,
+      frequency:          input.frequency ?? "monthly",
+      timezone:           input.timezone ?? "Asia/Kuala_Lumpur",
+      terms_version:      input.terms_version ?? 1,
+      terms_snapshot:     input.terms_snapshot ?? {},
+      accepted_at:        input.accepted_at ?? null,
+      rejected_at:        input.rejected_at ?? null,
+      rejection_reason:   input.rejection_reason ?? null,
+      grace_days:         input.grace_days ?? 0,
+      acceptance_token_id: input.acceptance_token_id ?? null,
       created_at:         new Date().toISOString(),
     };
     _mockStore.unshift(newRow);
@@ -133,6 +142,25 @@ export async function createPaymentPlanClient(
 
   if (error) return fail(error.message);
   return ok(data as PaymentPlanRow);
+}
+
+/** Creates a server-calculated proposal. Browser inputs never contain the plan total or status. */
+export async function createPaymentPlanProposalClient(input: {
+  caseId: string;
+  frequency: "weekly" | "monthly" | "custom";
+  firstDueDate: string;
+  installmentCount: number;
+  customDueDates: string[];
+  notes: string;
+}): Promise<DbResult<PaymentPlanRow>> {
+  const response = await fetch(`/api/cases/${encodeURIComponent(input.caseId)}/payment-plans`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const payload = await response.json().catch(() => ({})) as { plan?: PaymentPlanRow; error?: string };
+  if (!response.ok || !payload.plan) return fail(payload.error ?? "Unable to create payment-plan proposal.");
+  return ok(payload.plan);
 }
 
 // ─── confirmPlanClient ────────────────────────────────────────────────────────

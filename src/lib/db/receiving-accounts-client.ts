@@ -30,6 +30,8 @@ function mockToRow(
     include_in_reminders: a.includeInReminder,
     is_primary:           a.isPrimary,
     created_at:           new Date().toISOString(),
+    updated_at:           new Date().toISOString(),
+    version:              1,
   };
 }
 
@@ -99,6 +101,8 @@ export async function saveReceivingAccountClient(
       include_in_reminders: input.include_in_reminders ?? true,
       is_primary:           input.is_primary ?? false,
       created_at:           new Date().toISOString(),
+      updated_at:           new Date().toISOString(),
+      version:              1,
     };
     store.push(newRow);
     return ok(newRow);

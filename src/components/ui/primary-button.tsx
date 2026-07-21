@@ -21,13 +21,13 @@ export function PrimaryButton({
   ...props
 }: PrimaryButtonProps) {
   const base =
-    "inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex min-h-11 max-w-full items-center justify-center gap-2 text-center leading-snug whitespace-normal font-semibold rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed";
 
   const variants = {
-    primary: "bg-[#009966] text-white hover:bg-[#00B377] shadow-sm",
+    primary: "bg-[#55DDB4] text-[#0B1B3A] hover:bg-[#8BE4CA] shadow-sm shadow-[#55DDB4]/20",
     secondary:
-      "bg-white text-[#0D1B3D] border border-gray-200 hover:bg-gray-50 shadow-sm",
-    ghost: "bg-transparent text-[#009966] hover:bg-emerald-50",
+      "bg-[#173361] text-white border border-[#244777] hover:bg-[#244777] shadow-sm",
+    ghost: "bg-transparent text-[#8BE4CA] hover:bg-[#173361]",
     danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm",
   };
 

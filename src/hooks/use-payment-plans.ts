@@ -30,7 +30,7 @@ export function usePaymentPlans(caseId: string): UsePaymentPlansState {
 
   useEffect(() => { void load(); }, [load]);
 
-  const activePlan = plans.find((p) => p.status === "active") ?? null;
+  const activePlan = plans.find((p) => p.status === "pending_acceptance" || p.status === "active" || p.status === "defaulted") ?? null;
 
   const addPlan = useCallback((plan: PaymentPlanRow) => {
     setPlans((prev) => [plan, ...prev]);

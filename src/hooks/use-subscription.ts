@@ -6,7 +6,7 @@
  * This hook loads the billing metadata (status, period, Stripe IDs).
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { SubscriptionRow } from "@/lib/billing/types";
 import { getMySubscriptionClient } from "@/lib/billing/client";
 
@@ -28,7 +28,7 @@ export function useSubscription(): UseSubscriptionResult {
   });
   const [tick, setTick] = useState(0);
 
-  const refresh = () => setTick((t) => t + 1);
+  const refresh = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,7 +50,6 @@ export function useSubscription(): UseSubscriptionResult {
       });
 
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
 
   return { ...state, refresh };

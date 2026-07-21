@@ -8,13 +8,12 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { SectionCard } from "@/components/ui/section-card";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import { LoadingSpinner, InlineSpinner } from "@/components/ui/loading-spinner";
-import { type CaseRow, type CaseStatus, type PaymentPlanRow, type LegalDocumentRow, type LawyerReferralRow } from "@/lib/supabase/types";
+import { type CaseRow, type PaymentPlanRow, type LegalDocumentRow, type LawyerReferralRow } from "@/lib/supabase/types";
 import {
   STATUS_LABELS,
   caseStatusSchema,
   type CaseStatusValue,
   recordPaymentAmountSchema,
-  parseAmount,
 } from "@/lib/validations/case";
 import { formatRM, getInitials, getAvatarColor } from "@/lib/mock-data";
 import { useCase } from "@/hooks/use-case";
@@ -40,9 +39,8 @@ import { usePaymentPlans } from "@/hooks/use-payment-plans";
 import { formatDate, getNextDueDate } from "@/lib/db/payment-plans-client";
 import { useLegalDocuments } from "@/hooks/use-legal-documents";
 import { useLawyerReferrals } from "@/hooks/use-lawyer-referrals";
-import { REFERRAL_STATUS_CONFIG } from "@/components/pages/legal/lawyer-referral-page";
+import { REFERRAL_STATUS_CONFIG } from "@/lib/lawyer-referrals/status";
 import { SMALL_CLAIM_STATUS_CONFIG } from "@/components/pages/legal/small-claim-page";
-import { SMALL_CLAIM_LIMIT } from "@/lib/mock-legal-data";
 import { evidenceTypes } from "@/lib/mock-legal-data";
 import { type EvidenceType as DbEvidenceType } from "@/lib/supabase/types";
 import {
@@ -150,8 +148,7 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
         </Link>
         <StatusSelector
           caseId={c.id}
-          currentStatus={c.status}
-          businessId={businessId ?? "mock-business-id"}
+          caseData={c}
           onUpdate={(updated) => update(updated)}
         />
       </div>
@@ -205,7 +202,7 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
         </div>
 
         {/* Key chips */}
-        <div className="grid grid-cols-3 gap-2 mt-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
           <AmountChip
             label="Due Date"
             value={c.due_date}
@@ -316,7 +313,6 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
         {/* Small claim */}
         <CaseSmallClaimSection
           caseId={c.id}
-          balance={c.balance}
           legalDocs={legalDocs}
         />
 
@@ -376,7 +372,7 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
       </div>
 
       {/* Sticky bottom action bar */}
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-2 lg:hidden">
+      <div className="cb-phone-landscape-mobile fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-2 md:hidden">
         <Link href={`/reminders/${c.id}`} className="flex-1">
           <PrimaryButton variant="secondary" size="md" fullWidth icon={<Send className="w-4 h-4" />}>
             Send Reminder
@@ -394,34 +390,42 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
 
 function StatusSelector({
   caseId,
-  currentStatus,
-  businessId,
+  caseData,
   onUpdate,
 }: {
   caseId:      string;
-  currentStatus: CaseStatus;
-  businessId:  string;
+  caseData: CaseRow;
   onUpdate:    (c: CaseRow) => void;
 }) {
   const [open,   setOpen]   = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const statuses = caseStatusSchema.options;
+  const currentStatus = caseData.status;
+  const statuses = caseStatusSchema.options.filter((status) => {
+    if (caseData.archived_at || currentStatus === "closed") return false;
+    if (status === currentStatus) return true;
+    if (currentStatus === "paid") return status === "closed";
+    if (status === "paid") return caseData.balance === 0;
+    if (status === "partial_paid") return caseData.amount_paid > 0 && caseData.balance > 0;
+    if (status === "formal_demand_ready") return caseData.balance > 0;
+    if (status === "closed") return false;
+    return true;
+  });
 
   async function handleSelect(status: CaseStatusValue) {
     if (status === currentStatus) { setOpen(false); return; }
     setSaving(true);
     setOpen(false);
-    const result = await updateCaseStatusClient(caseId, status);
+    const promiseDueDate = status === "payment_promise"
+      ? window.prompt("Promised payment due date (YYYY-MM-DD):")?.trim()
+      : undefined;
+    if (status === "payment_promise" && !promiseDueDate) { setSaving(false); return; }
+    const result = await updateCaseStatusClient(caseId, status, {
+      promiseDueDate,
+      expectedVersion: caseData.status_version,
+    });
     if (result.data) {
       onUpdate(result.data);
-      await appendAuditLogClient({
-        business_id: businessId,
-        case_id:     caseId,
-        action:      "case.status_updated",
-        actor_type:  "owner",
-        metadata:    { from: currentStatus, to: status },
-      });
     }
     setSaving(false);
   }
@@ -585,14 +589,8 @@ function RecordPaymentSection({
       return;
     }
 
-    const additional = parseAmount(amount);
-    if (additional > balance) {
-      setError(`Amount cannot exceed remaining balance of ${formatRM(balance)}`);
-      return;
-    }
-
     setSaving(true);
-    const result = await recordPaymentClient(caseId, additional);
+    const result = await recordPaymentClient(caseId, amount);
     if (result.error) {
       setError(result.error);
     } else if (result.data) {
@@ -602,7 +600,7 @@ function RecordPaymentSection({
         case_id:     caseId,
         action:      "payment.recorded",
         actor_type:  "owner",
-        metadata:    { amount: additional, notes: notes || null },
+        metadata:    { amount, notes: notes || null },
       });
       setSuccess(true);
       setAmount("");
@@ -1020,16 +1018,13 @@ function EvidenceCompletenessSection({
 
 function CaseSmallClaimSection({
   caseId,
-  balance,
   legalDocs,
 }: {
   caseId:    string;
-  balance:   number;
   legalDocs: LegalDocumentRow[];
 }) {
   const savedPacks    = legalDocs.filter((d) => d.document_type === "small_claim_pack");
   const latestPack    = savedPacks[0] ?? null;
-  const isEligible    = balance <= SMALL_CLAIM_LIMIT;
 
   let latestMeta: { readiness_pct?: number; readiness_status?: string } = {};
   if (latestPack) {
@@ -1042,35 +1037,27 @@ function CaseSmallClaimSection({
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-bold text-gray-800">Small Claim Pack</p>
+        <p className="text-sm font-bold text-gray-800">Case-Record Pack</p>
         <Link
           href={`/legal/${caseId}/smallclaim`}
           className={cn(
             "text-xs font-semibold hover:text-emerald-700",
-            isEligible ? "text-[#009966]" : "text-amber-600"
+            "text-[#009966]"
           )}
         >
-          {savedPacks.length > 0 ? "View Pack" : isEligible ? "+ Prepare Pack" : "View Guidance"}
+          {savedPacks.length > 0 ? "View Pack" : "+ Prepare Pack"}
         </Link>
       </div>
 
-      {!isEligible ? (
-        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-800">Exceeds RM 5,000 limit</p>
-            <p className="text-xs text-amber-600 mt-0.5">Consider legal review for this case</p>
-          </div>
-        </div>
-      ) : savedPacks.length === 0 ? (
+      {savedPacks.length === 0 ? (
         <Link href={`/legal/${caseId}/smallclaim`}>
           <div className="flex items-center gap-3 bg-[#F2F4F7] border border-dashed border-gray-200 rounded-2xl px-4 py-3.5 hover:border-[#009966] hover:bg-emerald-50 transition-all">
             <div className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center shrink-0">
               <FileText className="w-4 h-4 text-gray-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-700">No small claim pack yet</p>
-              <p className="text-xs text-gray-400">Tap to check readiness and prepare pack</p>
+              <p className="text-sm font-semibold text-gray-700">No case-record pack yet</p>
+              <p className="text-xs text-gray-400">Tap to check record completeness and prepare a review pack</p>
             </div>
           </div>
         </Link>
@@ -1079,7 +1066,7 @@ function CaseSmallClaimSection({
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-[#009966]" />
-              <p className="text-sm font-bold text-gray-900">Small Claim Pack</p>
+              <p className="text-sm font-bold text-gray-900">Case-Record Pack</p>
             </div>
             {statusCfg && (
               <span className={cn(

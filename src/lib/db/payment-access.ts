@@ -1,4 +1,5 @@
-import { getServerClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getServerClient } from "@/lib/supabase/server-client";
 import {
   type PaymentAccessRequestRow,
   type PaymentAccessRequestInsert,

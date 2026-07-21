@@ -3,7 +3,8 @@
  * Falls back to mock data when Supabase env vars are missing.
  */
 
-import { getServerClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getServerClient } from "@/lib/supabase/server-client";
 import { type CaseRow, type CaseInsert, type CaseUpdate } from "@/lib/supabase/types";
 import { ok, fail, type DbResult } from "./result";
 import {
@@ -20,6 +21,8 @@ function mockToRow(m: DebtorCase): CaseRow {
   return {
     id:                m.id,
     business_id:       "mock-business-id",
+    debtor_id:         null,
+    debtor_type:       m.companyRegNo ? "business" : "individual",
     debtor_name:       m.debtorName,
     debtor_phone:      m.phone,
     debtor_email:      null,
@@ -29,11 +32,26 @@ function mockToRow(m: DebtorCase): CaseRow {
     amount_owed:       m.originalAmount,
     amount_paid:       m.amountPaid,
     balance:           m.amountDue,
+    original_principal_minor: Math.round(m.originalAmount * 100),
+    contractual_due_minor:    Math.round(m.originalAmount * 100),
+    approved_payment_minor:   Math.round(m.amountPaid * 100),
+    outstanding_minor:        Math.round(m.amountDue * 100),
+    overpayment_minor:        0,
+    financial_version:        1,
     due_date:          m.dueDate,
     invoice_no:        m.invoiceNo,
     status:            mockStatusToDb(m.status),
+    promise_due_date:  null,
+    closed_at:         null,
+    closed_by:         null,
+    close_reason:      null,
+    archived_at:       null,
+    archived_by:       null,
+    archive_reason:    null,
+    status_version:    1,
     next_best_action:  mockNextBestActions[m.id]?.ctaLabel ?? null,
     payment_lock_mode: "approval",
+    receiving_account_id: null,
     days_overdue:      m.daysOverdue,
     notes:             m.notes ?? null,
     bank:              m.bank,

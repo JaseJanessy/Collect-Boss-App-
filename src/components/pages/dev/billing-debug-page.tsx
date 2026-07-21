@@ -307,7 +307,7 @@ export function BillingDebugPage() {
             </div>
             <div>
               <p className="text-[11px] font-bold text-gray-600 mb-1">Check secret key status (server-side)</p>
-              <CodeBlock>{`curl -X POST ${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/billing/validate-action \\
+              <CodeBlock>{`curl -X POST ${process.env.NEXT_PUBLIC_APP_URL ?? (process.env.NODE_ENV !== "production" ? "http://localhost:3000" : "[missing NEXT_PUBLIC_APP_URL]")}/api/billing/validate-action \\
   -H "Content-Type: application/json" \\
   -d '{"action": "create_case"}' \\
   -b "[paste session cookie here]"`}</CodeBlock>

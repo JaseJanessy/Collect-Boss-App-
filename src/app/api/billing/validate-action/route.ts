@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/supabase/client";
+import { getServerClient } from "@/lib/supabase/server-client";
 import type { EntitlementRow } from "@/lib/billing/types";
 import { FREE_ENTITLEMENT_MOCK } from "@/lib/billing/plans";
 
@@ -98,7 +98,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
 // ─── Per-action evaluation ────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function evaluateAction(
   action:     ValidateAction,
   ent:        EntitlementRow,

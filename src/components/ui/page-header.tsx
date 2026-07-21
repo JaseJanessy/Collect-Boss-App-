@@ -28,7 +28,7 @@ export function PageHeader({
         className
       )}
     >
-      <div className="flex items-center gap-2">
+        <div className="flex items-start gap-2">
         {back && (
           <button
             onClick={onBack}
@@ -38,9 +38,9 @@ export function PageHeader({
           </button>
         )}
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-bold text-gray-900 truncate">{title}</h1>
+          <h1 className="text-base font-bold text-gray-900 break-words">{title}</h1>
           {subtitle && (
-            <p className="text-xs text-gray-400 truncate">{subtitle}</p>
+            <p className="text-xs text-gray-400 break-words">{subtitle}</p>
           )}
         </div>
         {right && <div className="shrink-0">{right}</div>}

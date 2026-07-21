@@ -1,4 +1,5 @@
-import { getServerClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getServerClient } from "@/lib/supabase/server-client";
 import {
   type ReceivingAccountRow,
   type ReceivingAccountInsert,
@@ -19,6 +20,8 @@ function mockToRow(a: (typeof mockReceivingAccounts)[0]): ReceivingAccountRow {
     include_in_reminders: a.includeInReminder,
     is_primary:           a.isPrimary,
     created_at:           new Date().toISOString(),
+    updated_at:           new Date().toISOString(),
+    version:              1,
   };
 }
 

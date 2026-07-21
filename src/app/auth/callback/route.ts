@@ -1,6 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isSupabaseConfigured, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase/client";
 
+/** Only permit an absolute internal path after an auth redirect. */
+function safeNextPath(value: string | null): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
+    return "/";
+  }
+  return value;
+}
+
 /**
  * Supabase Auth callback handler.
  * Called after email confirmation, password reset, and magic link clicks.
@@ -9,7 +17,7 @@ import { isSupabaseConfigured, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/sup
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code  = searchParams.get("code");
-  const next  = searchParams.get("next") ?? "/";
+  const next = safeNextPath(searchParams.get("next"));
 
   if (!isSupabaseConfigured || !code) {
     return NextResponse.redirect(`${origin}${next}`);

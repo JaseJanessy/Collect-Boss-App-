@@ -101,6 +101,12 @@ export async function saveEvidencePackClient(input: {
       title:         input.title,
       content:       input.content,
       status:        "finalised",
+      generation_key: null,
+      document_number: null,
+      template_version: 1,
+      issued_at: null,
+      issued_by: null,
+      snapshot: null,
       sent_at:       null,
       created_at:    new Date().toISOString(),
     };

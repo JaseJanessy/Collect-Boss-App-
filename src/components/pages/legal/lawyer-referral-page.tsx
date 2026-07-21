@@ -52,9 +52,14 @@ export const REFERRAL_STATUS_CONFIG: Record<
 > = {
   draft:             { label: "Draft",            color: "text-gray-600",    bg: "bg-gray-50",    border: "border-gray-200"   },
   ready_for_review:  { label: "Ready for Review", color: "text-blue-700",   bg: "bg-blue-50",    border: "border-blue-200"   },
+  handoff_pending:   { label: "Handoff Pending",  color: "text-amber-700",  bg: "bg-amber-50",   border: "border-amber-200"  },
+  handoff_failed:    { label: "Handoff Failed",   color: "text-red-700",    bg: "bg-red-50",     border: "border-red-200"    },
   submitted:         { label: "Submitted",         color: "text-amber-700",  bg: "bg-amber-50",   border: "border-amber-200"  },
   under_review:      { label: "Under Review",      color: "text-purple-700", bg: "bg-purple-50",  border: "border-purple-200" },
   lawyer_contacted:  { label: "Lawyer Contacted",  color: "text-emerald-700",bg: "bg-emerald-50", border: "border-emerald-200"},
+  accepted:          { label: "Accepted",          color: "text-emerald-700",bg: "bg-emerald-50", border: "border-emerald-200"},
+  declined:          { label: "Declined",          color: "text-red-700",    bg: "bg-red-50",     border: "border-red-200"    },
+  withdrawn:         { label: "Withdrawn",         color: "text-gray-600",   bg: "bg-gray-50",    border: "border-gray-200"   },
   closed:            { label: "Closed",            color: "text-gray-500",   bg: "bg-gray-50",    border: "border-gray-200"   },
 };
 
@@ -596,7 +601,7 @@ function SummaryStep({
 
       {/* Contact method */}
       <SectionCard title="Preferred Contact Method">
-        <div className="grid grid-cols-3 gap-2 mt-2">
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {([
             { id: "whatsapp", label: "WhatsApp",   icon: <MessageSquare className="w-4 h-4" /> },
             { id: "email",    label: "Email",       icon: <Mail className="w-4 h-4" /> },
@@ -606,7 +611,7 @@ function SummaryStep({
               key={m.id}
               onClick={() => onContactMethod(m.id)}
               className={cn(
-                "flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 text-xs font-bold transition-all",
+                "flex min-h-11 flex-col items-center justify-center gap-1.5 rounded-xl border-2 py-3 text-xs font-bold transition-all",
                 contactMethod === m.id
                   ? "border-[#009966] bg-emerald-50 text-[#009966]"
                   : "border-gray-100 bg-white text-gray-500 hover:border-gray-200"

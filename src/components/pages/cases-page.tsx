@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useDeferredValue, useState } from "react";
 import Link from "next/link";
 import { CaseCard } from "@/components/ui/case-card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -23,21 +23,16 @@ interface CasesPageProps {
 }
 
 export function CasesPage({ dashboard }: CasesPageProps) {
-  const { cases, loading, error, refresh } = useCases();
   const [search, setSearch]             = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
-
-  const filtered = cases.filter((c) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      search === "" ||
-      c.debtor_name.toLowerCase().includes(q) ||
-      c.id.toLowerCase().includes(q) ||
-      (c.debtor_company ?? "").toLowerCase().includes(q);
-    const matchFilter =
-      activeFilter === "all" || c.status === activeFilter;
-    return matchSearch && matchFilter;
+  const deferredSearch = useDeferredValue(search);
+  const caseStatus = activeFilter === "all" ? undefined : activeFilter as "action_needed" | "payment_promise" | "paid";
+  const { cases, loading, loadingMore, error, total, hasMore, refresh, loadMore } = useCases({
+    query: deferredSearch,
+    status: caseStatus,
   });
+
+  const filtered = cases;
 
   /* ── Dashboard (table) ─────────────────────────────────────── */
   if (dashboard) {
@@ -72,7 +67,8 @@ export function CasesPage({ dashboard }: CasesPageProps) {
           <ErrorBanner message={error} onRetry={refresh} />
         ) : (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">
                   {["Case ID", "Company", "Amount Due", "Due Date", "Status", "Action"].map((h, i) => (
@@ -122,6 +118,7 @@ export function CasesPage({ dashboard }: CasesPageProps) {
                 ))}
               </tbody>
             </table>
+            </div>
             {filtered.length === 0 && (
               <EmptyState
                 icon={<FolderOpen className="w-6 h-6" />}
@@ -143,6 +140,17 @@ export function CasesPage({ dashboard }: CasesPageProps) {
                   ) : undefined
                 }
               />
+            )}
+            {hasMore && (
+              <div className="flex justify-center border-t border-gray-100 p-3">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loadingMore ? "Loading…" : `Load more (${cases.length} of ${total})`}
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -231,6 +239,15 @@ export function CasesPage({ dashboard }: CasesPageProps) {
                   ) : undefined
                 }
               />
+            )}
+            {hasMore && (
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="mt-1 w-full rounded-xl border border-emerald-200 py-2.5 text-xs font-semibold text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loadingMore ? "Loading…" : `Load more (${cases.length} of ${total})`}
+              </button>
             )}
           </div>
         </>

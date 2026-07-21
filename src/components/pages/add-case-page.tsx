@@ -26,9 +26,8 @@ import {
 import {
   createCaseSchema,
   type CreateCaseInput,
-  type CaseStatusValue,
 } from "@/lib/validations/case";
-import { type PaymentLockMode } from "@/lib/supabase/types";
+import { type DebtorType, type PaymentLockMode } from "@/lib/supabase/types";
 import { createCaseClient } from "@/lib/db/cases-client";
 import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
 import { useBusinessId } from "@/hooks/use-business-id";
@@ -42,10 +41,13 @@ import { formatLimit } from "@/lib/billing/plans";
 // ─── Form state type ───────────────────────────────────────────────────────────
 
 type FormValues = {
+  debtor_type:       DebtorType;
   debtor_name:       string;
   debtor_phone:      string;
   debtor_email:      string;
   debtor_company:    string;
+  debtor_reg_no:     string;
+  debtor_contact_name: string;
   debtor_location:   string;
   amount_owed:       string;
   due_date:          string;
@@ -55,10 +57,13 @@ type FormValues = {
 };
 
 const defaultValues: FormValues = {
+  debtor_type:       "individual",
   debtor_name:       "",
   debtor_phone:      "",
   debtor_email:      "",
   debtor_company:    "",
+  debtor_reg_no:     "",
+  debtor_contact_name: "",
   debtor_location:   "",
   amount_owed:       "",
   due_date:          "",
@@ -166,10 +171,14 @@ export function AddCasePage() {
 
     const bId = businessId ?? "mock-business-id";
     const input: CreateCaseInput = {
+      debtor_type:       values.debtor_type,
       debtor_name:       values.debtor_name,
       debtor_phone:      values.debtor_phone || undefined,
       debtor_email:      values.debtor_email || undefined,
       debtor_company:    values.debtor_company || undefined,
+      debtor_reg_no:     values.debtor_reg_no || undefined,
+      debtor_contact_name: values.debtor_contact_name || undefined,
+      duplicate_acknowledged: false,
       debtor_location:   values.debtor_location || undefined,
       amount_owed:       values.amount_owed,
       due_date:          values.due_date,
@@ -189,7 +198,7 @@ export function AddCasePage() {
     const newCase = result.data!;
 
     await appendAuditLogClient({
-      business_id:  bId,
+      business_id:  newCase.business_id,
       case_id:      newCase.id,
       action:       "case.created",
       actor_type:   "owner",
@@ -266,7 +275,7 @@ export function AddCasePage() {
         <p className="text-xs text-gray-400 mt-0.5">Enter the key details to get started.</p>
       </div>
 
-      <div className="px-4 flex flex-col gap-4 pt-5">
+      <div className="px-4 flex flex-col gap-4 pt-5 md:pt-8 md:max-w-2xl md:mx-auto md:w-full">
         {/* Beta help banner */}
         <div className="bg-[#0D1B3D]/5 border border-[#0D1B3D]/10 rounded-xl px-4 py-3 flex gap-3">
           <Info className="w-4 h-4 text-[#0D1B3D]/50 shrink-0 mt-0.5" />
@@ -282,10 +291,28 @@ export function AddCasePage() {
         {/* Debtor info section */}
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Debtor Details</p>
 
+        <div className="grid grid-cols-2 gap-2">
+          {(["individual", "business"] as const).map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setValues((previous) => ({ ...previous, debtor_type: type }))}
+              className={cn(
+                "rounded-xl border-2 px-3 py-2.5 text-sm font-bold transition-colors",
+                values.debtor_type === type
+                  ? "border-[#009966] bg-emerald-50 text-[#007A52]"
+                  : "border-gray-200 text-gray-600"
+              )}
+            >
+              {type === "individual" ? "Individual" : "Business"}
+            </button>
+          ))}
+        </div>
+
         <FormField
           id="debtor_name"
-          label="Customer / Debtor Name"
-          placeholder="e.g. Syarikat Maju Sdn Bhd"
+          label={values.debtor_type === "individual" ? "Individual's Full Name" : "Primary Contact Name"}
+          placeholder={values.debtor_type === "individual" ? "e.g. Ahmad bin Hassan" : "e.g. Accounts contact"}
           icon={<User className="w-4 h-4" />}
           value={values.debtor_name}
           onChange={(v) => setValue("debtor_name", v)}
@@ -315,20 +342,44 @@ export function AddCasePage() {
           error={errors.debtor_email}
           optional
         />
-        <FormField
-          id="debtor_company"
-          label="Company Name"
-          placeholder="e.g. Maju Enterprise Sdn Bhd"
-          icon={<Building2 className="w-4 h-4" />}
-          value={values.debtor_company}
-          onChange={(v) => setValue("debtor_company", v)}
-          error={errors.debtor_company}
-          optional
-        />
+        {values.debtor_type === "business" && (
+          <>
+            <FormField
+              id="debtor_company"
+              label="Registered Business Name"
+              placeholder="e.g. Maju Enterprise Sdn Bhd"
+              icon={<Building2 className="w-4 h-4" />}
+              value={values.debtor_company}
+              onChange={(v) => setValue("debtor_company", v)}
+              error={errors.debtor_company}
+              required
+            />
+            <FormField
+              id="debtor_reg_no"
+              label="Registration Number"
+              placeholder="e.g. 202401012345"
+              icon={<Building2 className="w-4 h-4" />}
+              value={values.debtor_reg_no}
+              onChange={(v) => setValue("debtor_reg_no", v)}
+              error={errors.debtor_reg_no}
+              optional
+            />
+            <FormField
+              id="debtor_contact_name"
+              label="Contact Name"
+              placeholder="e.g. Accounts contact"
+              icon={<User className="w-4 h-4" />}
+              value={values.debtor_contact_name}
+              onChange={(v) => setValue("debtor_contact_name", v)}
+              error={errors.debtor_contact_name}
+              optional
+            />
+          </>
+        )}
         <FormField
           id="debtor_location"
-          label="Location"
-          placeholder="e.g. Kuala Lumpur, Selangor"
+          label="Correspondence Address"
+          placeholder="e.g. No. 1, Jalan Maju, Kuala Lumpur"
           icon={<MapPin className="w-4 h-4" />}
           value={values.debtor_location}
           onChange={(v) => setValue("debtor_location", v)}
@@ -469,7 +520,7 @@ function StepTwo({
         <p className="text-xs text-gray-400 mt-0.5">Check the details before creating this case.</p>
       </div>
 
-      <div className="px-4 flex flex-col gap-4 pt-5">
+      <div className="px-4 flex flex-col gap-4 pt-5 md:pt-8 md:max-w-2xl md:mx-auto md:w-full">
         {/* Summary card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
           {[

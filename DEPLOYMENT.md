@@ -2,7 +2,7 @@
 
 ## Quick Start
 
-1. Run `supabase/schema.sql` in Supabase SQL Editor
+1. Run `supabase/schema.sql`, then reviewed files in `supabase/migrations/`, in Supabase SQL Editor
 2. Add env vars to Vercel
 3. Push to GitHub → auto-deploy on Vercel
 
@@ -17,8 +17,10 @@
 
 ### Run Schema
 1. Dashboard → SQL Editor → New Query
-2. Paste entire contents of `supabase/schema.sql`
-3. Run → verify all tables created
+2. Paste and run `supabase/schema.sql` (the canonical base schema)
+3. Paste and run each reviewed migration in `supabase/migrations/` in filename order
+4. Run `supabase/billing.sql` after the base schema
+5. Verify all tables and RLS policies were created; do not use `src/lib/supabase/schema.sql`
 
 ### Storage Buckets
 1. Dashboard → Storage → Create Bucket
@@ -126,4 +128,3 @@ If deploy fails:
 1. Vercel Dashboard → Deployments → Previous deployment → Redeploy
 2. Check Vercel Function logs for errors
 3. Check Supabase logs for RLS or auth errors
-

@@ -32,7 +32,6 @@ export interface SmallClaimPdfData {
   dueDate:          string;
   invoiceNo:        string | null;
   daysOverdue:      number;
-  isEligible:       boolean;
   // Readiness
   checklist:        SmallClaimCheckItem[];
   readinessStatus:  "not_ready" | "almost_ready" | "ready";
@@ -50,16 +49,13 @@ export interface SmallClaimPdfData {
   evidenceFiles:    Array<{ name: string; type: string }>;
   // Missing items
   missingItems:     string[];
+  jurisdictionLabel: string;
+  disclaimer: string;
 }
 
 function fmtRM(n: number): string {
   return `RM ${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
 }
-
-const DISCLAIMER =
-  "CollectBoss helps organize documents for your own record keeping and review. " +
-  "This is not legal advice and does not submit any claim to court. " +
-  "Consult a qualified lawyer or visit the official Malaysian Judiciary website before filing.";
 
 export async function generateSmallClaimPdf(data: SmallClaimPdfData): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
@@ -127,25 +123,13 @@ export async function generateSmallClaimPdf(data: SmallClaimPdfData): Promise<Bl
   y += 7;
 
   // ── Eligibility notice ───────────────────────────────────────────────────────
-  const eligColor: [number, number, number] = data.isEligible
-    ? [236, 253, 245] : [255, 251, 235];
-  const eligBorder: [number, number, number] = data.isEligible
-    ? [167, 243, 208] : [253, 230, 138];
-  const eligText: [number, number, number] = data.isEligible
-    ? [6, 95, 70] : [120, 53, 15];
-
-  doc.setFillColor(...eligColor);
-  doc.setDrawColor(...eligBorder);
+  doc.setFillColor(255, 251, 235);
+  doc.setDrawColor(253, 230, 138);
   doc.roundedRect(ML, y, CW, 10, 1.5, 1.5, "FD");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
-  doc.setTextColor(...eligText);
-  doc.text(
-    data.isEligible
-      ? `✓ Eligible for Small Claims Court — ${fmtRM(data.balance)} (≤ RM 5,000)`
-      : `⚠  Amount ${fmtRM(data.balance)} exceeds RM 5,000 small claims limit.`,
-    ML + 3, y + 6.5
-  );
+  doc.setTextColor(120, 53, 15);
+  doc.text(`Jurisdiction: ${data.jurisdictionLabel}. Court eligibility has not been assessed.`, ML + 3, y + 6.5);
   y += 14;
 
   // ── Section helper ────────────────────────────────────────────────────────────
@@ -289,13 +273,12 @@ export async function generateSmallClaimPdf(data: SmallClaimPdfData): Promise<Bl
   }
 
   // ── Next steps guide ──────────────────────────────────────────────────────────
-  section("Next Steps Guide");
+  section("External Legal-Review Gate");
   const steps = [
-    "Ensure all required documents are complete before proceeding.",
-    "Visit your nearest Magistrate Court to file using Form 198 (Tuntutan Kecil).",
-    "Pay the filing fee at the court cashier and keep your receipt.",
-    "Attend your hearing date and present your case calmly with all documents.",
-    "Consider consulting a lawyer if the amount exceeds RM 5,000.",
+    "Confirm every factual entry and supporting record before relying on this pack.",
+    "Ask a qualified legal professional to assess the correct forum, eligibility, limitation periods, and filing requirements.",
+    "Verify current forms, fees, procedures, and deadlines directly with the relevant official authority.",
+    "Do not represent this pack as a filed claim, legal advice, or a determination of legal rights.",
   ];
   for (const [i, step] of steps.entries()) {
     guard(8);
@@ -323,7 +306,7 @@ export async function generateSmallClaimPdf(data: SmallClaimPdfData): Promise<Bl
   doc.setTextColor(107, 114, 128);
   doc.text("DISCLAIMER", ML + 3, y + 5);
   doc.setFont("helvetica", "normal");
-  const dLines = doc.splitTextToSize(DISCLAIMER, CW - 6);
+  const dLines = doc.splitTextToSize(data.disclaimer, CW - 6);
   doc.text(dLines, ML + 3, y + 10);
   y += 16 + dLines.length * 4.5;
 

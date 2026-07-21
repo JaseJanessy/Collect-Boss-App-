@@ -8,17 +8,15 @@ import { SectionCard } from "@/components/ui/section-card";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import { LoadingSpinner, InlineSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { type CaseRow, type ReceivingAccountRow } from "@/lib/supabase/types";
+import { type ReceivingAccountRow } from "@/lib/supabase/types";
 import { useCase } from "@/hooks/use-case";
 import { useReminders } from "@/hooks/use-reminders";
-import { useBusinessId } from "@/hooks/use-business-id";
 import { formatRM } from "@/lib/mock-data";
 import { getPrimaryAccountClient } from "@/lib/db/receiving-accounts-client";
-import { saveReminderClient } from "@/lib/db/reminders-client";
-import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
-import { track } from "@/lib/analytics/tracker";
+import { confirmReminderSentClient, generateReminderClient, recordReminderHandoffClient } from "@/lib/db/reminders-client";
 import {
   generateReminderMessage,
+  buildEmailLink,
   buildWhatsAppLink,
   checkReminderFrequency,
   REMINDER_TYPES,
@@ -28,18 +26,16 @@ import {
 } from "@/lib/reminders/generator";
 import {
   ChevronLeft,
-  Send,
   Copy,
   Check,
   AlertCircle,
   MessageCircle,
   RefreshCw,
-  Clock,
   Save,
-  Loader2,
   Phone,
   Info,
   Shield,
+  Mail,
 } from "lucide-react";
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
@@ -50,29 +46,22 @@ interface Props {
 
 // ─── Status options users can choose ─────────────────────────────────────────
 
-const USER_STATUSES = [
-  { value: "draft",            label: "Draft",           color: "border-gray-300 text-gray-600" },
-  { value: "copied",           label: "Copied",          color: "border-blue-300 text-blue-700" },
-  { value: "sent_manually",    label: "Sent Manually",   color: "border-emerald-300 text-emerald-700" },
-  { value: "follow_up_needed", label: "Follow Up Needed",color: "border-amber-300 text-amber-700" },
-] as const;
-
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function ReminderGeneratorPage({ caseId }: Props) {
   const { caseData, loading: caseLoading } = useCase(caseId);
-  const { reminders, loading: remLoading, addReminder, updateStatus } = useReminders(caseId);
-  const businessId = useBusinessId();
+  const { reminders, loading: remLoading, refresh: refreshReminders } = useReminders(caseId);
 
   const [account,         setAccount]         = useState<ReceivingAccountRow | null>(null);
   const [reminderType,    setReminderType]     = useState<ReminderType>("friendly");
   const [messageBody,     setMessageBody]      = useState("");
-  const [userStatus,      setUserStatus]       = useState<typeof USER_STATUSES[number]["value"]>("draft");
+  const [channel,         setChannel]          = useState<"whatsapp" | "email">("whatsapp");
   const [copied,          setCopied]           = useState(false);
   const [saving,          setSaving]           = useState(false);
   const [saveError,       setSaveError]        = useState<string | null>(null);
   const [savedId,         setSavedId]          = useState<string | null>(null);
-  const [businessName,    setBusinessName]     = useState("our company");
+  const [businessName]                     = useState("our company");
+  const generationRequestKey = useRef<string | null>(null);
 
   // Load primary receiving account
   useEffect(() => {
@@ -89,7 +78,8 @@ export function ReminderGeneratorPage({ caseId }: Props) {
       businessName,
     });
     setMessageBody(msg);
-    setSavedId(null); // reset saved state on type change
+      setSavedId(null); // a changed draft must be regenerated from current server data
+      generationRequestKey.current = null;
     setCopied(false);
   }, [caseData, reminderType, account, businessName]);
 
@@ -108,12 +98,18 @@ export function ReminderGeneratorPage({ caseId }: Props) {
   const c = caseData;
   const freq = checkReminderFrequency(reminders);
   const waLink = buildWhatsAppLink(c.debtor_phone, messageBody);
+  const emailLink = buildEmailLink(c.debtor_email, `Payment reminder${c.invoice_no ? ` — ${c.invoice_no}` : ""}`, messageBody);
 
   async function handleCopy() {
+    if (!savedId) {
+      setSaveError("Generate the current reminder before opening a delivery handoff.");
+      return;
+    }
     try {
       await navigator.clipboard.writeText(messageBody);
+      const result = await recordReminderHandoffClient(c.id, savedId, "copy");
+      if (result.error) setSaveError(result.error);
       setCopied(true);
-      setUserStatus("copied");
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback: select the text
@@ -122,45 +118,43 @@ export function ReminderGeneratorPage({ caseId }: Props) {
     }
   }
 
-  async function handleSave() {
+  async function handleGenerate() {
     if (!messageBody.trim()) return;
     setSaving(true);
     setSaveError(null);
 
-    const bId = businessId ?? "mock-business-id";
-
-    const result = await saveReminderClient({
-      case_id:       c.id,
-      message_type:  reminderType,
-      message_body:  messageBody,
-      sent_channel:  "whatsapp",
-      status:        userStatus,
-      error_message: null,
-    });
+    const requestKey = generationRequestKey.current ?? crypto.randomUUID();
+    generationRequestKey.current = requestKey;
+    const result = await generateReminderClient({ caseId: c.id, messageType: reminderType, channel, requestKey, messageBody });
 
     if (result.error) {
       setSaveError(result.error);
+      generationRequestKey.current = null;
     } else if (result.data) {
-      addReminder(result.data);
+      await refreshReminders();
       setSavedId(result.data.id);
-
-      await appendAuditLogClient({
-        business_id: bId,
-        case_id:     c.id,
-        action:      "reminder.created",
-        actor_type:  "owner",
-        metadata: {
-          reminder_type: reminderType,
-          status:        userStatus,
-          channel:       "whatsapp",
-        },
-      });
-
-      track("reminder_generated", {
-        reminder_type: reminderType,
-        channel:       "whatsapp",
-      });
+      setMessageBody(result.data.message_body);
     }
+    setSaving(false);
+  }
+
+  async function handleComposer(handoff: "whatsapp" | "email", href: string) {
+    if (!savedId || !href) return;
+    setSaving(true);
+    setSaveError(null);
+    const result = await recordReminderHandoffClient(c.id, savedId, handoff);
+    if (result.error) setSaveError(result.error);
+    else window.open(href, "_blank", "noopener,noreferrer");
+    setSaving(false);
+  }
+
+  async function handleConfirmSent() {
+    if (!savedId) return;
+    setSaving(true);
+    setSaveError(null);
+    const result = await confirmReminderSentClient(c.id, savedId);
+    if (result.error) setSaveError(result.error);
+    else await refreshReminders();
     setSaving(false);
   }
 
@@ -285,6 +279,7 @@ export function ReminderGeneratorPage({ caseId }: Props) {
                 const msg = generateReminderMessage({ reminderType, caseData: c, account, businessName });
                 setMessageBody(msg);
                 setSavedId(null);
+                generationRequestKey.current = null;
               }}
               className="flex items-center gap-1 text-xs text-[#009966] font-semibold hover:text-emerald-700"
             >
@@ -294,14 +289,14 @@ export function ReminderGeneratorPage({ caseId }: Props) {
           </div>
           <textarea
             value={messageBody}
-            onChange={(e) => { setMessageBody(e.target.value); setSavedId(null); }}
+            readOnly
             rows={12}
-            className="w-full px-3 py-3 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 font-mono leading-relaxed outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300 transition-all resize-none"
+            className="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-700 font-mono leading-relaxed resize-none"
           />
-          <p className="text-[10px] text-gray-400 mt-1">{messageBody.length} characters</p>
+          <p className="text-[10px] text-gray-400 mt-1">{messageBody.length} characters · regenerated from current case data when recorded</p>
         </div>
 
-        {/* Action buttons */}
+        {/* Delivery handoffs are recorded as composer opens, never as delivery. */}
         <div className="flex gap-2">
           <button
             onClick={handleCopy}
@@ -319,17 +314,15 @@ export function ReminderGeneratorPage({ caseId }: Props) {
             )}
           </button>
 
-          {waLink ? (
-            <a
-              href={waLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setUserStatus("sent_manually")}
+          {waLink && savedId ? (
+            <button
+              onClick={() => void handleComposer("whatsapp", waLink)}
+              disabled={saving}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm border-2 border-[#25D366] bg-[#25D366] text-white hover:bg-[#1EBE5E] transition-all"
             >
               <MessageCircle className="w-4 h-4" />
               Open WhatsApp
-            </a>
+            </button>
           ) : (
             <button
               disabled
@@ -342,40 +335,38 @@ export function ReminderGeneratorPage({ caseId }: Props) {
           )}
         </div>
 
-        {/* Status picker */}
-        <div>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-            Reminder Status
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {USER_STATUSES.map((s) => (
-              <button
-                key={s.value}
-                onClick={() => setUserStatus(s.value)}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all text-left",
-                  userStatus === s.value
-                    ? `${s.color} bg-opacity-10 border-current`
-                    : "border-gray-200 text-gray-500 hover:border-gray-300"
-                )}
-              >
-                <div className={cn(
-                  "w-3 h-3 rounded-full border-2",
-                  userStatus === s.value ? "border-current bg-current" : "border-gray-300"
-                )} />
-                {s.label}
-              </button>
-            ))}
-          </div>
+        {emailLink && savedId && (
+          <button
+            onClick={() => void handleComposer("email", emailLink)}
+            disabled={saving}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm border-2 border-blue-500 bg-blue-500 text-white hover:bg-blue-600 transition-all"
+          >
+            <Mail className="w-4 h-4" /> Open Email Composer
+          </button>
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          {(["whatsapp", "email"] as const).map((option) => (
+            <button
+              key={option}
+              onClick={() => { setChannel(option); setSavedId(null); generationRequestKey.current = null; }}
+              className={cn("rounded-xl border-2 px-3 py-2 text-sm font-semibold", channel === option ? "border-[#009966] bg-emerald-50 text-emerald-700" : "border-gray-200 text-gray-500")}
+            >
+              Generate for {option === "whatsapp" ? "WhatsApp" : "Email"}
+            </button>
+          ))}
         </div>
 
-        {/* Save */}
+        {/* Generation is separate from manual delivery confirmation. */}
         {savedId ? (
-          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-            <Check className="w-4 h-4 text-emerald-600" />
-            <p className="text-xs font-semibold text-emerald-700">
-              Reminder saved successfully!
-            </p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+              <Check className="w-4 h-4 text-emerald-600" />
+              <p className="text-xs font-semibold text-emerald-700">Generated and recorded. A composer open is not delivery.</p>
+            </div>
+            <PrimaryButton fullWidth size="lg" onClick={() => void handleConfirmSent()} disabled={saving} icon={<Check className="w-4 h-4" />}>
+              Confirm sent manually
+            </PrimaryButton>
           </div>
         ) : (
           <>
@@ -388,11 +379,11 @@ export function ReminderGeneratorPage({ caseId }: Props) {
             <PrimaryButton
               fullWidth
               size="lg"
-              onClick={handleSave}
+              onClick={handleGenerate}
               disabled={saving || !messageBody.trim()}
               icon={saving ? <InlineSpinner className="text-white" /> : <Save className="w-4 h-4" />}
             >
-              {saving ? "Saving…" : "Save Reminder"}
+              {saving ? "Generating…" : "Generate and record reminder"}
             </PrimaryButton>
           </>
         )}
@@ -409,7 +400,7 @@ export function ReminderGeneratorPage({ caseId }: Props) {
 
         {/* Reminder history */}
         {!remLoading && reminders.length > 0 && (
-          <ReminderHistory reminders={reminders} onUpdateStatus={updateStatus} />
+          <ReminderHistory reminders={reminders} />
         )}
       </div>
     </div>
@@ -420,17 +411,15 @@ export function ReminderGeneratorPage({ caseId }: Props) {
 
 function ReminderHistory({
   reminders,
-  onUpdateStatus,
 }: {
   reminders: Array<import("@/lib/supabase/types").ReminderRow>;
-  onUpdateStatus: (id: string, status: import("@/lib/supabase/types").ReminderStatus) => void;
 }) {
   return (
     <SectionCard title={`Reminder History (${reminders.length})`}>
       <div className="flex flex-col mt-1">
         {reminders.map((r, i) => {
           const typeDef = REMINDER_TYPES.find((t) => t.id === r.message_type);
-          const sentDate = new Date(r.sent_at).toLocaleDateString("en-MY", {
+          const generatedDate = new Date(r.generated_at).toLocaleDateString("en-MY", {
             day: "numeric", month: "short", year: "numeric",
           });
           return (
@@ -456,27 +445,11 @@ function ReminderHistory({
                     {REMINDER_STATUS_LABELS[r.status] ?? r.status}
                   </span>
                 </div>
-                <p className="text-[10px] text-gray-400 mt-0.5">{sentDate}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Generated {generatedDate} · template v{r.template_version}</p>
                 <p className="text-[11px] text-gray-500 mt-1 leading-snug line-clamp-2">
                   {r.message_body.split("\n").slice(0, 3).join(" ").slice(0, 120)}…
                 </p>
-                {/* Quick status update */}
-                <div className="flex gap-1 mt-2 flex-wrap">
-                  {(["copied", "sent_manually", "follow_up_needed"] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => onUpdateStatus(r.id, s)}
-                      className={cn(
-                        "text-[9px] font-bold px-1.5 py-0.5 rounded border transition-all",
-                        r.status === s
-                          ? `${REMINDER_STATUS_COLORS[s]} font-black`
-                          : "border-gray-200 text-gray-400 hover:border-gray-300"
-                      )}
-                    >
-                      {REMINDER_STATUS_LABELS[s]}
-                    </button>
-                  ))}
-                </div>
+                <p className="text-[10px] text-gray-400 mt-2">{r.manually_confirmed_at ? `Manual send confirmed${r.next_action_at ? ` · next action ${new Date(r.next_action_at).toLocaleDateString("en-MY")}` : ""}` : r.composer_opened_at ? "Composer opened — delivery not confirmed" : "Generated — delivery not confirmed"}</p>
               </div>
             </div>
           );

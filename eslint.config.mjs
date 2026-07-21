@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The Expo project has its own SDK-specific tooling and lint scope.
+    "mobile/**",
   ]),
 ]);
 

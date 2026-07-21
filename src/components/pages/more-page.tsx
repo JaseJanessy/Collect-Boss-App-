@@ -9,6 +9,7 @@ import {
   CreditCard,
   Settings,
   FileText,
+  FileSpreadsheet,
   HelpCircle,
   LogOut,
   ChevronRight,
@@ -48,6 +49,12 @@ export function MorePage() {
           label: "Payment Accounts",
           sub:   "Bank account and DuitNow",
           href:  "/payments/account",
+        },
+        {
+          icon:  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />,
+          label: "Statements",
+          sub:   "Download payment activity PDFs",
+          href:  "/statements",
         },
         {
           icon:  <Shield className="w-4 h-4 text-purple-500" />,

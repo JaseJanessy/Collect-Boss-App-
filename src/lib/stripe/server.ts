@@ -9,16 +9,23 @@
  * would be bundled into the client bundle and exposed to the browser.
  */
 
+import "server-only";
+
 import Stripe from "stripe";
+import { isProduction } from "@/lib/supabase/client";
 
 // ─── Initialisation ───────────────────────────────────────────────────────────
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY ?? "";
 
-/** True when STRIPE_SECRET_KEY is present and looks like a real key. */
+/**
+ * True when STRIPE_SECRET_KEY is present and appropriate for this environment.
+ * A production deployment must never be able to create subscriptions with a
+ * Stripe test key, even when its other configuration is otherwise valid.
+ */
 export const isStripeConfigured =
-  stripeSecretKey.startsWith("sk_live_") ||
-  stripeSecretKey.startsWith("sk_test_");
+  (isProduction && stripeSecretKey.startsWith("sk_live_")) ||
+  (!isProduction && stripeSecretKey.startsWith("sk_test_"));
 
 let _stripe: Stripe | null = null;
 

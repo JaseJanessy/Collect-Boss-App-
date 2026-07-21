@@ -19,6 +19,7 @@ import { formatRM } from "@/lib/mock-data";
 import {
   CreditCard, Clock, CheckCircle2, XCircle,
   Settings, Inbox, ShieldCheck, AlertCircle, AlertTriangle,
+  FileSpreadsheet,
 } from "lucide-react";
 
 export function PaymentHistoryPage() {
@@ -96,10 +97,11 @@ export function PaymentHistoryPage() {
         </div>
 
         {/* Quick links */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <QuickLink href="/payments/requests" icon={<Inbox className="w-4 h-4" />} label="Access Queue"
             badge={pendingReview.length > 0 ? pendingReview.length : undefined} />
           <QuickLink href="/payments/account" icon={<CreditCard className="w-4 h-4" />} label="Accounts" />
+          <QuickLink href="/statements" icon={<FileSpreadsheet className="w-4 h-4" />} label="Statements" />
           <QuickLink href="/cases" icon={<ShieldCheck className="w-4 h-4" />} label="All Cases" />
         </div>
 
@@ -235,11 +237,11 @@ function PendingPaymentCard({
           </div>
         )}
       </div>
-      <div className="px-3 py-2.5 grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-3 gap-1.5 px-3 py-2.5">
         <button
           onClick={() => handle("approve", onApprove)}
           disabled={!!acting}
-          className="flex items-center justify-center gap-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all disabled:opacity-60"
+          className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-emerald-500 py-2 text-xs font-bold text-white transition-all hover:bg-emerald-600 disabled:opacity-60"
         >
           {acting === "approve" ? <InlineSpinner className="text-white" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
           Approve
@@ -247,7 +249,7 @@ function PendingPaymentCard({
         <button
           onClick={() => handle("reject", onReject)}
           disabled={!!acting}
-          className="flex items-center justify-center gap-1 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-all disabled:opacity-60"
+          className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-red-200 py-2 text-xs font-bold text-red-600 transition-all hover:bg-red-50 disabled:opacity-60"
         >
           {acting === "reject" ? <InlineSpinner className="text-red-600" /> : <XCircle className="w-3.5 h-3.5" />}
           Reject
@@ -255,7 +257,7 @@ function PendingPaymentCard({
         <button
           onClick={() => handle("unmatched", onUnmatched)}
           disabled={!!acting}
-          className="flex items-center justify-center gap-1 py-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 text-xs font-bold transition-all disabled:opacity-60"
+          className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-gray-200 py-2 text-xs font-bold text-gray-500 transition-all hover:bg-gray-50 disabled:opacity-60"
         >
           {acting === "unmatched" ? <InlineSpinner className="text-gray-500" /> : <AlertTriangle className="w-3.5 h-3.5" />}
           Unmatch

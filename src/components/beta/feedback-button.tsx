@@ -6,6 +6,7 @@
  */
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   MessageSquarePlus,
@@ -41,6 +42,7 @@ function saveFeedback(s: Submission) {
 
 export function FeedbackButton() {
   const { user } = useAuth();
+  const pathname = usePathname();
   const [open, setOpen]       = useState(false);
   const [tab,  setTab]        = useState<Tab>("feedback");
   const [done, setDone]       = useState(false);
@@ -55,6 +57,9 @@ export function FeedbackButton() {
   const [bugSteps,  setBugSteps]  = useState("");
 
   const email = user?.email ?? "";
+
+  // Capability-token debtor journeys must not include account-owner beta UI.
+  if (pathname.startsWith("/pay/") || pathname.startsWith("/acknowledge/")) return null;
 
   function reset() {
     setFbType("suggestion");
@@ -93,9 +98,9 @@ export function FeedbackButton() {
         onClick={() => setOpen(true)}
         aria-label="Send feedback or report a bug"
         className={cn(
-          "fixed bottom-20 right-4 z-40 lg:bottom-6 lg:right-6",
+          "cb-feedback-trigger fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-40 md:bottom-6 md:right-6",
           "flex items-center gap-2 bg-[#009966] hover:bg-[#00B377] text-white",
-          "text-xs font-bold px-3.5 py-2.5 rounded-full shadow-lg shadow-emerald-900/30",
+          "min-h-11 text-xs font-bold px-3.5 py-2.5 rounded-full shadow-lg shadow-emerald-900/30",
           "transition-all hover:scale-105 active:scale-95",
           open && "opacity-0 pointer-events-none",
         )}
@@ -115,17 +120,17 @@ export function FeedbackButton() {
       {/* ── Modal ───────────────────────────────────────────────────────── */}
       <div
         className={cn(
-          "fixed bottom-0 right-0 z-50 w-full max-w-sm mx-auto",
-          "lg:bottom-6 lg:right-6 lg:mx-0",
+          "cb-feedback-sheet fixed bottom-0 right-0 z-50 w-full max-w-sm md:max-w-md mx-auto",
+          "md:bottom-6 md:right-6 md:mx-0",
           "transition-all duration-300",
           open ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0 pointer-events-none",
         )}
       >
-        <div className="bg-white rounded-t-3xl lg:rounded-3xl shadow-2xl overflow-hidden">
+        <div role="dialog" aria-modal="true" aria-labelledby="feedback-dialog-title" className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] overflow-y-auto rounded-t-3xl bg-white shadow-2xl md:rounded-3xl">
           {/* Header */}
           <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100">
             <div>
-              <p className="text-sm font-black text-[#0D1B3D]">
+              <p id="feedback-dialog-title" className="text-sm font-black text-[#0D1B3D]">
                 {done ? "Thank you! 🙌" : "Share your feedback"}
               </p>
               {!done && (
@@ -136,7 +141,8 @@ export function FeedbackButton() {
             </div>
             <button
               onClick={handleClose}
-              className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+              aria-label="Close feedback dialog"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 transition-colors hover:bg-gray-200"
             >
               <X className="w-3.5 h-3.5 text-gray-600" />
             </button>

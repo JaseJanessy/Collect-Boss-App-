@@ -1,10 +1,8 @@
 "use client";
-/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getMyBusiness } from "@/lib/db/businesses";
 import { isMockBusinessComplete } from "@/lib/auth/mock-session";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import type { ReactNode } from "react";
@@ -21,7 +19,6 @@ export function ProfileGuard({ children }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [profileChecked, setProfileChecked] = useState(false);
-  const [hasProfile, setHasProfile] = useState<boolean | null>(null);
 
   const isExempt = PROFILE_EXEMPT.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
@@ -36,16 +33,18 @@ export function ProfileGuard({ children }: Props) {
 
       if (!isSupabaseConfigured) {
         const complete = isMockBusinessComplete();
-        setHasProfile(complete);
         if (!complete) router.push("/onboarding/profile");
         setProfileChecked(true);
         return;
       }
 
-      const result = await getMyBusiness();
-      const exists = !!(result.data && result.data !== null);
-      setHasProfile(exists);
-      if (!exists) router.push("/onboarding/profile");
+      const response = await fetch("/api/profile", { cache: "no-store" });
+      const payload = await response.json().catch(() => ({ profile: null })) as {
+        profile?: { accountType?: string | null; legalName?: string | null; contactName?: string | null } | null;
+      };
+      const profile = payload.profile;
+      const complete = response.ok && !!profile?.accountType && !!profile.legalName && !!profile.contactName;
+      if (!complete) router.push("/onboarding/profile");
       setProfileChecked(true);
     })();
   }, [user, loading, pathname, isExempt, router]);

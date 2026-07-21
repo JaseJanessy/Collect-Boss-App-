@@ -10,17 +10,16 @@ import { evidenceTypes, type EvidenceType } from "@/lib/mock-legal-data";
 import { type EvidenceFileRow, type EvidenceType as DbEvidenceType } from "@/lib/supabase/types";
 import {
   uploadEvidenceFileClient,
-  deleteEvidenceFileClient,
   validateEvidenceFile,
   formatFileSize,
   getFileTypeLabel,
   ALLOWED_EXTENSIONS,
   MAX_FILE_SIZE,
+  archiveEvidenceFileClient,
+  getEvidenceAccessUrl,
 } from "@/lib/db/evidence-client";
-import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
 import { track, fileSizeBucket } from "@/lib/analytics/tracker";
 import { useEvidence } from "@/hooks/use-evidence";
-import { useBusinessId } from "@/hooks/use-business-id";
 import {
   ChevronLeft,
   Upload,
@@ -34,6 +33,8 @@ import {
   File,
   Image,
   Loader2,
+  Eye,
+  Download,
 } from "lucide-react";
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
@@ -72,7 +73,6 @@ function computeCompleteness(files: EvidenceFileRow[]): {
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function EvidenceUploadPage({ caseId }: Props) {
-  const businessId = useBusinessId();
   const { files, loading, error, addFile, removeFile } = useEvidence(caseId);
 
   const completeness = computeCompleteness(files);
@@ -93,7 +93,7 @@ export function EvidenceUploadPage({ caseId }: Props) {
   const uploadedTypes = new Set(files.map((f) => f.evidence_type));
 
   return (
-    <div className="flex flex-col pb-6">
+    <div className="flex flex-col pb-6 md:max-w-5xl md:mx-auto md:w-full">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-2 mb-1">
@@ -159,14 +159,13 @@ export function EvidenceUploadPage({ caseId }: Props) {
             <p className="text-[11px] text-gray-400 mt-1 mb-3">
               These documents are essential for any debt recovery action.
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="grid gap-2 md:grid-cols-2">
               {evidenceTypes.filter((e) => e.category === "must_have").map((type) => (
                 <EvidenceTypeRow
                   key={type.id}
                   type={type}
                   uploadedFiles={filesByType[type.id] ?? []}
                   caseId={caseId}
-                  businessId={businessId ?? "mock-business-id"}
                   onFileAdded={addFile}
                   onFileRemoved={removeFile}
                 />
@@ -179,14 +178,13 @@ export function EvidenceUploadPage({ caseId }: Props) {
             <p className="text-[11px] text-gray-400 mt-1 mb-3">
               These strengthen your case if you have them available.
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="grid gap-2 md:grid-cols-2">
               {evidenceTypes.filter((e) => e.category === "good_to_have").map((type) => (
                 <EvidenceTypeRow
                   key={type.id}
                   type={type}
                   uploadedFiles={filesByType[type.id] ?? []}
                   caseId={caseId}
-                  businessId={businessId ?? "mock-business-id"}
                   onFileAdded={addFile}
                   onFileRemoved={removeFile}
                 />
@@ -197,14 +195,13 @@ export function EvidenceUploadPage({ caseId }: Props) {
           {/* Uploaded summary */}
           {files.length > 0 && (
             <SectionCard title="All Uploaded Documents">
-              <div className="flex flex-col mt-1">
+              <div className="grid gap-x-5 md:grid-cols-2 mt-1">
                 {files.map((f, i) => (
                   <UploadedFileRow
                     key={f.id}
                     file={f}
                     isLast={i === files.length - 1}
                     caseId={caseId}
-                    businessId={businessId ?? "mock-business-id"}
                     onRemoved={removeFile}
                   />
                 ))}
@@ -239,14 +236,12 @@ function EvidenceTypeRow({
   type,
   uploadedFiles,
   caseId,
-  businessId,
   onFileAdded,
   onFileRemoved,
 }: {
   type:         EvidenceType;
   uploadedFiles: EvidenceFileRow[];
   caseId:       string;
-  businessId:   string;
   onFileAdded:  (f: EvidenceFileRow) => void;
   onFileRemoved: (id: string) => void;
 }) {
@@ -255,6 +250,9 @@ function EvidenceTypeRow({
   const [progress,  setProgress]  = useState(0);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
   const [showTip,   setShowTip]   = useState(false);
+  const [description, setDescription] = useState("");
+  const [documentDate, setDocumentDate] = useState("");
+  const [isInternal, setIsInternal] = useState(true);
 
   const hasFiles = uploadedFiles.length > 0;
 
@@ -273,26 +271,15 @@ function EvidenceTypeRow({
     const result = await uploadEvidenceFileClient(
       file,
       caseId,
-      businessId,
       type.id as DbEvidenceType,
-      setProgress
+      setProgress,
+      { description, documentDate, isInternal }
     );
 
     if (result.error) {
       setUploadErr(result.error);
     } else if (result.data) {
       onFileAdded(result.data);
-      await appendAuditLogClient({
-        business_id: businessId,
-        case_id:     caseId,
-        action:      "evidence.uploaded",
-        actor_type:  "owner",
-        metadata:    {
-          file_name:     file.name,
-          file_size:     file.size,
-          evidence_type: type.id,
-        },
-      });
       track("evidence_uploaded", {
         evidence_type:    type.id,
         file_size_bucket: fileSizeBucket(file.size),
@@ -350,6 +337,14 @@ function EvidenceTypeRow({
               <p className="text-[11px] text-red-600 leading-snug">{uploadErr}</p>
             </div>
           )}
+          <details className="mt-2">
+            <summary className="cursor-pointer text-[10px] font-semibold text-gray-500">Add evidence metadata</summary>
+            <div className="mt-2 grid gap-2">
+              <input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} placeholder="Private description" className="rounded border border-gray-200 px-2 py-1 text-xs" />
+              <input value={documentDate} onChange={(event) => setDocumentDate(event.target.value)} type="date" className="rounded border border-gray-200 px-2 py-1 text-xs" />
+              <label className="flex items-center gap-2 text-[10px] text-gray-600"><input checked={isInternal} onChange={(event) => setIsInternal(event.target.checked)} type="checkbox" /> Internal/private evidence</label>
+            </div>
+          </details>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
@@ -400,13 +395,11 @@ function UploadedFileRow({
   file,
   isLast,
   caseId,
-  businessId,
   onRemoved,
 }: {
   file:       EvidenceFileRow;
   isLast:     boolean;
   caseId:     string;
-  businessId: string;
   onRemoved:  (id: string) => void;
 }) {
   const [deleting, setDeleting] = useState(false);
@@ -420,20 +413,19 @@ function UploadedFileRow({
   async function handleDelete() {
     setDeleting(true);
     setError(null);
-    const result = await deleteEvidenceFileClient(file.id, file.file_url);
+    const result = await archiveEvidenceFileClient(caseId, file.id);
     if (result.error) {
       setError(result.error);
       setDeleting(false);
     } else {
-      await appendAuditLogClient({
-        business_id: businessId,
-        case_id:     caseId,
-        action:      "evidence.deleted",
-        actor_type:  "owner",
-        metadata:    { file_name: file.file_name, evidence_type: file.evidence_type },
-      });
       onRemoved(file.id);
     }
+  }
+
+  async function handleAccess(mode: "preview" | "download") {
+    const result = await getEvidenceAccessUrl(caseId, file.id, mode);
+    if (result.error) setError(result.error);
+    else if (result.data) window.open(result.data, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -462,6 +454,12 @@ function UploadedFileRow({
         )}
       </div>
 
+      <button onClick={() => void handleAccess("preview")} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-emerald-50 text-gray-300 hover:text-emerald-600 transition-colors shrink-0" title="Preview">
+        <Eye className="w-3.5 h-3.5" />
+      </button>
+      <button onClick={() => void handleAccess("download")} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-emerald-50 text-gray-300 hover:text-emerald-600 transition-colors shrink-0" title="Download">
+        <Download className="w-3.5 h-3.5" />
+      </button>
       <button
         onClick={handleDelete}
         disabled={deleting}

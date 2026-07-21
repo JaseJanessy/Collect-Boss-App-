@@ -12,8 +12,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getAppUrl } from "@/lib/app-url";
 import { getStripeServer, getPriceId, isCheckoutSlug, isStripeConfigured } from "@/lib/stripe/server";
-import { getServerClient } from "@/lib/supabase/client";
+import { getServerClient } from "@/lib/supabase/server-client";
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
@@ -29,6 +30,13 @@ export async function POST(request: NextRequest) {
       "Stripe is not configured on this server. Add STRIPE_SECRET_KEY to your environment.",
       503,
     );
+  }
+
+  let appUrl: string;
+  try {
+    appUrl = getAppUrl();
+  } catch {
+    return err("Public application URL is not configured correctly on this server.", 503);
   }
 
   const stripe = getStripeServer()!;
@@ -121,10 +129,6 @@ export async function POST(request: NextRequest) {
   }
 
   // 7. Build redirect URLs
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    "http://localhost:3000";
-
   const successUrl = `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl  = `${appUrl}/billing/cancel`;
 
@@ -160,6 +164,6 @@ export async function POST(request: NextRequest) {
     const message =
       stripeErr instanceof Error ? stripeErr.message : "Stripe error";
     console.error("[billing] Stripe checkout session error:", message);
-    return err(`Stripe error: ${message}`, 500);
+    return err("Unable to start checkout. Please try again.", 502);
   }
 }

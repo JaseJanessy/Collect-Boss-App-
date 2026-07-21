@@ -22,11 +22,13 @@ export interface EvidencePackPayment {
 }
 
 export interface EvidencePackFile {
+  evidence_id?:      string;
   file_name:       string;
   file_type:       string;
   evidence_type:   string;
   file_size_bytes: number | null;
   uploaded_at:     string;
+  content_sha256?: string | null;
 }
 
 export interface EvidencePackTimeline {
@@ -77,6 +79,7 @@ export interface EvidencePackData {
   timeline:          EvidencePackTimeline[];
   // Acknowledgement
   hasAcknowledgement: boolean;
+  generatedAt?: string;
 }
 
 // ─── Formatters ────────────────────────────────────────────────────────────────
@@ -321,7 +324,7 @@ export async function generateEvidencePackPdf(data: EvidencePackData): Promise<B
   // Meta
   doc.setFontSize(8);
   doc.setTextColor(147, 197, 233);
-  const genDate = new Date().toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric" });
+  const genDate = new Date(data.generatedAt ?? Date.now()).toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric" });
   doc.text(`Case: ${data.caseId}  ·  Generated: ${genDate}`, ML, 36);
 
   // Evidence score pill
@@ -390,6 +393,18 @@ export async function generateEvidencePackPdf(data: EvidencePackData): Promise<B
         fmtDate(r.sent_at),
         `${r.message_type}  via ${CHANNEL_LABELS[r.sent_channel] ?? r.sent_channel}  —  ${r.status}`
       );
+    }
+  }
+  gap();
+
+  // The manifest deliberately excludes storage object paths and signed URLs.
+  sectionHeader(`Evidence Manifest (${data.evidenceFiles.length})`);
+  if (data.evidenceFiles.length === 0) {
+    smallText("No evidence files were selected for this pack.");
+  } else {
+    for (const [index, file] of data.evidenceFiles.entries()) {
+      const checksum = file.content_sha256 ? file.content_sha256.slice(0, 16) : "not recorded";
+      smallText(`${index + 1}. ${file.file_name} | SHA-256: ${checksum}`, 2);
     }
   }
   gap();

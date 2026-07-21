@@ -1,28 +1,82 @@
 import { createBrowserClient } from "@supabase/ssr";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
 
 // ─── Environment guard ────────────────────────────────────────────────────────
 
 export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+export const APP_URL = process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "";
 
-/** True when Supabase env vars are present. UI falls back to mock data when false. */
+export type AppEnvironment = "development" | "staging" | "production";
+
+const configuredAppEnvironment = process.env.NEXT_PUBLIC_APP_ENV;
+const appEnvironmentError =
+  "[CollectBoss] Blocking configuration error: NEXT_PUBLIC_APP_ENV must be development, staging, or production.";
+
+if (
+  configuredAppEnvironment &&
+  configuredAppEnvironment !== "development" &&
+  configuredAppEnvironment !== "staging" &&
+  configuredAppEnvironment !== "production"
+) {
+  throw new Error(appEnvironmentError);
+}
+
+export const appEnvironment: AppEnvironment =
+  (configuredAppEnvironment as AppEnvironment | undefined) ??
+  (process.env.NODE_ENV === "production" ? "production" : "development");
+
+export const isProduction = appEnvironment === "production";
+export const isDeploymentEnvironment = appEnvironment !== "development";
+
+const LOCALHOST_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+const appUrlConfigurationError =
+  "[CollectBoss] Blocking configuration error: set NEXT_PUBLIC_APP_URL to the canonical HTTPS application URL in staging or production.";
+
+function isCanonicalAppUrl(value: string): boolean {
+  if (!value) return false;
+
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    if (url.pathname !== "/" || url.search || url.hash) return false;
+    return !isDeploymentEnvironment ||
+      (url.protocol === "https:" && !LOCALHOST_HOSTS.has(url.hostname));
+  } catch {
+    return false;
+  }
+}
+
+export const isAppUrlConfigured = isCanonicalAppUrl(APP_URL);
+
+/**
+ * Mock data is an explicit local-development opt-in. The public flag is needed
+ * for browser data services; the server-only flag supports server-side demos.
+ */
+export const isMockDataEnabled =
+  !isDeploymentEnvironment &&
+  (process.env.NEXT_PUBLIC_ENABLE_MOCK_DATA === "true" ||
+    (typeof window === "undefined" && process.env.ENABLE_MOCK_DATA === "true"));
+
+/** True when the public Supabase connection settings are present and valid. */
 export const isSupabaseConfigured =
   SUPABASE_URL.startsWith("https://") && SUPABASE_ANON_KEY.length > 0;
 
+const configurationError =
+  "[CollectBoss] Blocking configuration error: set NEXT_PUBLIC_SUPABASE_URL and " +
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY, or enable mock data explicitly for local development with " +
+  "NEXT_PUBLIC_ENABLE_MOCK_DATA=true. Mock data is never allowed in staging or production.";
+
 /**
- * In production, mock mode (no Supabase) should never occur.
- * Log a clear warning so operators know something is wrong.
+ * Fail closed before any data service can reach its in-memory fallback.
+ * Staging and production always require a real Supabase connection.
  */
-if (
-  typeof window !== "undefined" &&
-  process.env.NEXT_PUBLIC_APP_ENV === "production" &&
-  !isSupabaseConfigured
-) {
-  console.error(
-    "[CollectBoss] CRITICAL: Running in production without Supabase configuration. " +
-    "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment."
-  );
+if (!isSupabaseConfigured && !isMockDataEnabled) {
+  throw new Error(configurationError);
+}
+
+if (isDeploymentEnvironment && !isAppUrlConfigured) {
+  throw new Error(appUrlConfigurationError);
 }
 
 // We use an untyped SupabaseClient here because Supabase SDK's GenericTable
@@ -46,38 +100,4 @@ export function getBrowserClient(): AppSupabaseClient | null {
 
 // ─── Server client (call inside Server Components / Route Handlers) ────────────
 
-export async function getServerClient(): Promise<AppSupabaseClient | null> {
-  if (!isSupabaseConfigured) return null;
-
-  const { createServerClient } = await import("@supabase/ssr");
-  const { cookies } = await import("next/headers");
-  const cookieStore = await cookies();
-
-  return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        } catch {
-          // Called from Server Component — ignore.
-        }
-      },
-    },
-  });
-}
-
 // ─── Service-role client (trusted server operations only) ─────────────────────
-
-export async function getServiceClient(): Promise<AppSupabaseClient | null> {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-  if (!isSupabaseConfigured || !serviceKey) return null;
-
-  return createClient(SUPABASE_URL, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}

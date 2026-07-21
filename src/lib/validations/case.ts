@@ -9,6 +9,7 @@ export const caseStatusSchema = z.enum([
   "paid",
   "overdue",
   "formal_demand_ready",
+  "closed",
 ]);
 
 export type CaseStatusValue = z.infer<typeof caseStatusSchema>;
@@ -20,11 +21,14 @@ export const STATUS_LABELS: Record<CaseStatusValue, string> = {
   paid:                "Paid",
   overdue:             "Overdue",
   formal_demand_ready: "Formal Demand Ready",
+  closed:              "Closed",
 };
 
 // ─── Create case ──────────────────────────────────────────────────────────────
 
 export const createCaseSchema = z.object({
+  debtor_type: z.enum(["individual", "business"]).default("individual"),
+
   debtor_name: z
     .string()
     .min(2, "Debtor name must be at least 2 characters")
@@ -48,6 +52,21 @@ export const createCaseSchema = z.object({
     .optional()
     .or(z.literal("")),
 
+  debtor_reg_no: z
+    .string()
+    .max(80, "Registration number is too long")
+    .optional()
+    .or(z.literal("")),
+
+  debtor_contact_name: z
+    .string()
+    .max(160, "Contact name is too long")
+    .optional()
+    .or(z.literal("")),
+
+  existing_debtor_id: z.string().uuid().optional(),
+  duplicate_acknowledged: z.boolean().optional().default(false),
+
   debtor_location: z
     .string()
     .max(200, "Location is too long")
@@ -57,10 +76,8 @@ export const createCaseSchema = z.object({
   amount_owed: z
     .string()
     .min(1, "Amount is required")
-    .refine(
-      (v) => !isNaN(parseFloat(v)) && parseFloat(v) > 0,
-      { message: "Amount must be greater than RM 0.00" }
-    ),
+    .regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, "Amount must use at most two decimal places")
+    .refine((v) => v !== "0" && v !== "0.0" && v !== "0.00", { message: "Amount must be greater than RM 0.00" }),
 
   due_date: z
     .string()
@@ -81,6 +98,14 @@ export const createCaseSchema = z.object({
     .max(1000, "Notes are too long")
     .optional()
     .or(z.literal("")),
+}).superRefine((value, context) => {
+  if (value.debtor_type === "business" && !value.debtor_company?.trim()) {
+    context.addIssue({
+      code: "custom",
+      path: ["debtor_company"],
+      message: "Business debtors need a company name.",
+    });
+  }
 });
 
 export type CreateCaseInput = z.infer<typeof createCaseSchema>;
@@ -104,6 +129,36 @@ export const updateNextActionSchema = z.object({
 });
 
 export type UpdateNextActionInput = z.infer<typeof updateNextActionSchema>;
+
+export const updatePaymentLockModeSchema = z.object({
+  payment_lock_mode: z.enum(["immediate", "approval", "manual"]),
+});
+
+export const casePatchSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("status"),
+    status: caseStatusSchema,
+    reason: z.string().max(500).optional(),
+    promise_due_date: z.string().date().optional(),
+    expected_version: z.number().int().positive().optional(),
+  }),
+  z.object({
+    action: z.literal("archive"),
+    reason: z.string().max(500).optional(),
+    expected_version: z.number().int().positive().optional(),
+  }),
+  z.object({
+    action: z.literal("next_action"),
+    next_best_action: z.string().max(200, "Next action description is too long").optional().or(z.literal("")),
+  }),
+  z.object({ action: z.literal("payment_lock_mode"), payment_lock_mode: z.enum(["immediate", "approval", "manual"]) }),
+  z.object({
+    action: z.literal("record_payment"),
+    amount: z.string().regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, "Amount must have at most two decimal places."),
+  }),
+]);
+
+export type CasePatchInput = z.infer<typeof casePatchSchema>;
 
 // ─── Record manual payment ────────────────────────────────────────────────────
 

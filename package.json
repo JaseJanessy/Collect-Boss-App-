@@ -3,10 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "node ./node_modules/next/dist/bin/next dev --webpack",
+    "build": "node ./node_modules/next/dist/bin/next build",
+    "start": "node ./node_modules/next/dist/bin/next start",
+    "lint": "node ./node_modules/eslint/bin/eslint.js",
+    "test": "npm run test:contracts && npm run test:unit",
+    "test:ci": "npm run test:contracts && npm run test:coverage",
+    "test:contracts": "node scripts/run-contract-tests.mjs",
+    "test:unit": "node ./node_modules/vitest/vitest.mjs run --config vitest.config.mts",
+    "test:integration": "node ./node_modules/vitest/vitest.mjs run --config vitest.config.mts tests/integration",
+    "test:coverage": "node ./node_modules/vitest/vitest.mjs run --coverage --config vitest.config.mts",
+    "test:watch": "node ./node_modules/vitest/vitest.mjs --config vitest.config.mts",
+    "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit",
+    "test:secrets": "node scripts/verify-no-secrets.mjs",
+    "test:e2e": "node ./node_modules/@playwright/test/cli.js test",
+    "test:e2e:ui": "node ./node_modules/@playwright/test/cli.js test --ui"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -19,6 +30,7 @@
     "next": "16.2.7",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "server-only": "^0.0.1",
     "shadcn": "^4.10.0",
     "stripe": "^22.2.0",
     "tailwind-merge": "^3.6.0",
@@ -26,13 +38,20 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "jsdom": "^29.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

@@ -9,7 +9,6 @@ import { getBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   type PaymentRow,
   type PaymentInsert,
-  type PaymentUpdate,
   type PaymentReviewStatus,
   type PaymentMethod,
 } from "@/lib/supabase/types";
@@ -43,10 +42,8 @@ export const REVIEW_STATUS_CONFIG: Record<
   approved:       { label: "Approved",       color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200", dot: "bg-emerald-500" },
   rejected:       { label: "Rejected",       color: "text-red-600",     bg: "bg-red-50",     border: "border-red-200",     dot: "bg-red-400"     },
   unmatched:      { label: "Unmatched",      color: "text-gray-500",    bg: "bg-gray-50",    border: "border-gray-200",    dot: "bg-gray-400"    },
+  reversed:       { label: "Reversed",       color: "text-rose-700",    bg: "bg-rose-50",    border: "border-rose-200",    dot: "bg-rose-500"    },
 };
-
-export const PROOF_BUCKET = "payment-proofs";
-export const MAX_PROOF_SIZE = 10 * 1024 * 1024; // 10 MB
 
 // ─── Mock store ───────────────────────────────────────────────────────────────
 
@@ -75,6 +72,11 @@ function initMockStore(): PaymentRow[] {
     reviewed_at:    r.proofStatus === "approved" ? new Date().toISOString() : null,
     reviewed_by:    r.proofStatus === "approved" ? "mock-owner-id" : null,
     notes:          r.notes ?? null,
+    financial_event_id: null,
+    source_submission_id: null,
+    reversed_at: null,
+    reversed_by: null,
+    reversal_reason: null,
     created_at:     new Date(Date.now() - Math.random() * 86400000 * 3).toISOString(),
   }));
 }
@@ -115,39 +117,12 @@ export async function getPaymentsClient(
 
 // ─── uploadProofFile ──────────────────────────────────────────────────────────
 
-export async function uploadProofFile(
-  file: File,
-  caseId: string,
-  onProgress?: (pct: number) => void
-): Promise<string | null> {
-  if (!isSupabaseConfigured) {
-    onProgress?.(100);
-    return `mock-proof-${Date.now()}-${file.name}`;
-  }
-
-  const client = getBrowserClient();
-  if (!client) return null;
-
-  const ext   = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-  const path  = `${caseId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-
-  onProgress?.(20);
-  const { error } = await client.storage.from(PROOF_BUCKET).upload(path, file, {
-    cacheControl: "3600",
-    upsert: false,
-    contentType: file.type,
-  });
-
-  if (error) { onProgress?.(0); return null; }
-  onProgress?.(100);
-  return path;
-}
-
 // ─── createPaymentClient ──────────────────────────────────────────────────────
 // Always created as pending_review — never auto-approved
 
 export async function createPaymentClient(
-  input: Omit<PaymentInsert, "review_status" | "reviewed_at" | "reviewed_by"> & {
+  input: Omit<PaymentInsert, "amount" | "review_status" | "reviewed_at" | "reviewed_by"> & {
+    amount: string | number;
     review_status?: PaymentReviewStatus;
   }
 ): Promise<DbResult<PaymentRow>> {
@@ -157,7 +132,7 @@ export async function createPaymentClient(
     const newRow: PaymentRow = {
       id:             mockId(),
       case_id:        input.case_id,
-      amount:         input.amount,
+      amount:         Number(input.amount),
       payment_method: input.payment_method,
       reference_no:   input.reference_no ?? null,
       proof_url:      input.proof_url ?? null,
@@ -165,35 +140,31 @@ export async function createPaymentClient(
       reviewed_at:    reviewStatus === "approved" ? new Date().toISOString() : null,
       reviewed_by:    reviewStatus === "approved" ? "mock-owner-id" : null,
       notes:          input.notes ?? null,
+      financial_event_id: null,
+      source_submission_id: null,
+      reversed_at: null,
+      reversed_by: null,
+      reversal_reason: null,
       created_at:     new Date().toISOString(),
     };
     getMockStore().unshift(newRow);
 
     // If creating as approved (creditor direct record), update case immediately
     if (reviewStatus === "approved") {
-      await recordPaymentClient(input.case_id, input.amount);
+      await recordPaymentClient(input.case_id, String(input.amount));
     }
 
     return ok(newRow);
   }
 
-  const client = getBrowserClient();
-  if (!client) return fail("Supabase client unavailable");
-
-  const { data, error } = await client
-    .from("payments")
-    .insert({ ...input, review_status: reviewStatus })
-    .select()
-    .single();
-
-  if (error) return fail(error.message);
-
-  // If creating as approved directly, update case amount_paid
-  if (reviewStatus === "approved") {
-    await recordPaymentClient(input.case_id, input.amount);
-  }
-
-  return ok(data as PaymentRow);
+  const response = await fetch(`/api/cases/${encodeURIComponent(input.case_id)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...input, amount: String(input.amount), review_status: reviewStatus }),
+  });
+  const payload = await response.json().catch(() => ({})) as { payment?: PaymentRow; error?: string };
+  if (!response.ok || !payload.payment) return fail(payload.error ?? "Unable to record payment.");
+  return ok(payload.payment);
 }
 
 // ─── approvePaymentClient ─────────────────────────────────────────────────────
@@ -201,7 +172,7 @@ export async function createPaymentClient(
 
 export async function approvePaymentClient(
   id: string,
-  businessId: string
+  _businessId: string
 ): Promise<DbResult<PaymentRow>> {
   if (!isSupabaseConfigured) {
     const store = getMockStore();
@@ -217,56 +188,18 @@ export async function approvePaymentClient(
     };
 
     // Update case.amount_paid
-    await recordPaymentClient(payment.case_id, payment.amount);
+    await recordPaymentClient(payment.case_id, String(payment.amount));
     return ok(store[idx]);
   }
 
-  const client = getBrowserClient();
-  if (!client) return fail("Supabase client unavailable");
-
-  // Fetch current payment to get amount + case_id
-  const { data: current, error: fetchErr } = await client
-    .from("payments")
-    .select("amount, case_id, review_status")
-    .eq("id", id)
-    .single();
-
-  if (fetchErr || !current) return fail(fetchErr?.message ?? "Payment not found");
-
-  // Don't double-count already approved
-  if ((current as PaymentRow).review_status === "approved") {
-    return fail("Payment is already approved");
-  }
-
-  const patch: PaymentUpdate = {
-    review_status: "approved",
-    reviewed_at:   new Date().toISOString(),
-    reviewed_by:   businessId,
-  };
-
-  const { data, error } = await client
-    .from("payments")
-    .update(patch)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) return fail(error.message);
-
-  // Update case.amount_paid
-  await recordPaymentClient(
-    (current as { case_id: string }).case_id,
-    (current as { amount: number }).amount
-  );
-
-  return ok(data as PaymentRow);
+  return reviewPaymentClient(id, "approved");
 }
 
 // ─── rejectPaymentClient ──────────────────────────────────────────────────────
 
 export async function rejectPaymentClient(
   id: string,
-  businessId: string
+  _businessId: string
 ): Promise<DbResult<PaymentRow>> {
   if (!isSupabaseConfigured) {
     const store = getMockStore();
@@ -276,25 +209,14 @@ export async function rejectPaymentClient(
     return ok(store[idx]);
   }
 
-  const client = getBrowserClient();
-  if (!client) return fail("Supabase client unavailable");
-
-  const { data, error } = await client
-    .from("payments")
-    .update({ review_status: "rejected", reviewed_at: new Date().toISOString(), reviewed_by: businessId } satisfies PaymentUpdate)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) return fail(error.message);
-  return ok(data as PaymentRow);
+  return reviewPaymentClient(id, "rejected");
 }
 
 // ─── markUnmatchedPaymentClient ───────────────────────────────────────────────
 
 export async function markUnmatchedPaymentClient(
   id: string,
-  businessId: string
+  _businessId: string
 ): Promise<DbResult<PaymentRow>> {
   if (!isSupabaseConfigured) {
     const store = getMockStore();
@@ -304,18 +226,19 @@ export async function markUnmatchedPaymentClient(
     return ok(store[idx]);
   }
 
-  const client = getBrowserClient();
-  if (!client) return fail("Supabase client unavailable");
+  return reviewPaymentClient(id, "unmatched");
+}
 
-  const { data, error } = await client
-    .from("payments")
-    .update({ review_status: "unmatched", reviewed_at: new Date().toISOString(), reviewed_by: businessId } satisfies PaymentUpdate)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) return fail(error.message);
-  return ok(data as PaymentRow);
+async function reviewPaymentClient(
+  id: string,
+  decision: "approved" | "rejected" | "unmatched",
+): Promise<DbResult<PaymentRow>> {
+  const response = await fetch(`/api/payments/${encodeURIComponent(id)}/review`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision }),
+  });
+  const payload = await response.json().catch(() => ({})) as { payment?: PaymentRow; error?: string };
+  if (!response.ok || !payload.payment) return fail(payload.error ?? "Unable to review payment.");
+  return ok(payload.payment);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

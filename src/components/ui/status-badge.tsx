@@ -11,6 +11,7 @@ const STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
   paid:                { label: "Paid",                color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
   overdue:             { label: "Overdue",             color: "bg-red-100    text-red-700    border-red-200" },
   formal_demand_ready: { label: "Formal Demand Ready", color: "bg-orange-100 text-orange-700 border-orange-200" },
+  closed:              { label: "Closed",              color: "bg-slate-100 text-slate-700 border-slate-200" },
   // Legacy human-readable (still used in some pages)
   "Action Needed":      { label: "Action Needed",      color: "bg-purple-100 text-purple-700 border-purple-200" },
   "Payment Promise":    { label: "Payment Promise",     color: "bg-amber-100  text-amber-700  border-amber-200" },

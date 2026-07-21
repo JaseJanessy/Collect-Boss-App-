@@ -53,14 +53,16 @@ const actionGroups: Array<{ group: string; items: ActionItem[] }> = [
         icon:        <Phone className="w-5 h-5" />,
         label:       "Log Phone Call",
         description: "Record call outcome and notes",
-        successRate: "54%",
+        tag:         "Coming Soon",
+        tagColor:    "bg-gray-100 text-gray-500",
       },
       {
         id:          "email",
         icon:        <Mail className="w-5 h-5" />,
         label:       "Send Email Notice",
         description: "Formal written notice via email",
-        successRate: "42%",
+        tag:         "Coming Soon",
+        tagColor:    "bg-gray-100 text-gray-500",
       },
     ],
   },
@@ -93,6 +95,8 @@ const actionGroups: Array<{ group: string; items: ActionItem[] }> = [
         icon:        <Clock className="w-5 h-5" />,
         label:       "Record Payment Promise",
         description: "Track promised payment date",
+        tag:         "Coming Soon",
+        tagColor:    "bg-gray-100 text-gray-500",
       },
       {
         id:          "payment",
@@ -228,8 +232,10 @@ export function ActionsPage({ dashboard }: ActionsPageProps) {
                 const inner = (
                   <button
                     key={item.id}
+                    disabled={!item.href}
                     className={cn(
-                      "flex items-center gap-3 py-3.5 text-left hover:bg-gray-50 -mx-4 px-4 transition-colors w-full",
+                      "flex items-center gap-3 py-3.5 text-left -mx-4 px-4 transition-colors w-full",
+                      item.href ? "hover:bg-gray-50" : "cursor-not-allowed opacity-60",
                       i < group.items.length - 1 && "border-b border-gray-50"
                     )}
                   >

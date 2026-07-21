@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 interface AuthShellProps {
   children: ReactNode;
@@ -11,7 +11,7 @@ interface AuthShellProps {
 
 /** Shared outer wrapper for all auth pages */
 export function AuthShell({ children, maxWidth = "sm" }: AuthShellProps) {
-  const widthClass = maxWidth === "sm" ? "max-w-sm" : "max-w-md";
+  const widthClass = maxWidth === "sm" ? "max-w-sm md:max-w-md" : "max-w-md";
   return (
     <div className="min-h-screen bg-[#F2F4F7] flex flex-col">
       {/* Top wordmark bar */}
@@ -25,7 +25,7 @@ export function AuthShell({ children, maxWidth = "sm" }: AuthShellProps) {
       </header>
 
       {/* Content */}
-      <main className={`flex-1 flex flex-col items-center justify-start py-8 px-4`}>
+      <main className={`flex-1 flex flex-col items-center justify-start md:justify-center py-8 md:py-12 px-4`}>
         <div className={`w-full ${widthClass}`}>
           {children}
         </div>
@@ -37,7 +37,7 @@ export function AuthShell({ children, maxWidth = "sm" }: AuthShellProps) {
 /** White card used in all auth forms */
 export function AuthCard({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
       {children}
     </div>
   );
@@ -65,9 +65,14 @@ export function AuthField({
   hint?: string;
   autoComplete?: string;
 }) {
+  const fieldId = useId();
+  const errorId = `${fieldId}-error`;
+  const hintId = `${fieldId}-hint`;
+  const describedBy = error ? errorId : hint ? hintId : undefined;
+
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-bold text-gray-700">{label}</label>
+      <label htmlFor={fieldId} className="text-sm font-bold text-gray-700">{label}</label>
       <div className="relative">
         {icon && (
           <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
@@ -75,11 +80,14 @@ export function AuthField({
           </div>
         )}
         <input
+          id={fieldId}
           type={type}
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           autoComplete={autoComplete}
+          aria-describedby={describedBy}
+          aria-invalid={error ? true : undefined}
           className={`w-full ${icon ? "pl-10" : "pl-4"} pr-4 py-3.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all ${
             error
               ? "border-red-300 focus:ring-2 focus:ring-red-100 bg-red-50"
@@ -87,8 +95,8 @@ export function AuthField({
           }`}
         />
       </div>
-      {error && <p className="text-xs text-red-500 ml-1">{error}</p>}
-      {hint && !error && <p className="text-[11px] text-gray-400 ml-1">{hint}</p>}
+      {error && <p id={errorId} className="text-xs text-red-500 ml-1">{error}</p>}
+      {hint && !error && <p id={hintId} className="text-[11px] text-gray-400 ml-1">{hint}</p>}
     </div>
   );
 }

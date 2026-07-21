@@ -20,8 +20,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getAppUrl } from "@/lib/app-url";
 import { getStripeServer, isStripeConfigured } from "@/lib/stripe/server";
-import { getServerClient } from "@/lib/supabase/client";
+import { getServerClient } from "@/lib/supabase/server-client";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,13 @@ export async function POST(_request: NextRequest) {
   // ── Guard: Stripe must be configured ──────────────────────────────────────
   if (!isStripeConfigured) {
     return err("Stripe is not configured on this server.", 503);
+  }
+
+  let appUrl: string;
+  try {
+    appUrl = getAppUrl();
+  } catch {
+    return err("Public application URL is not configured correctly on this server.", 503);
   }
 
   const stripe = getStripeServer()!;
@@ -71,9 +79,6 @@ export async function POST(_request: NextRequest) {
   }
 
   // ── Build return URL ───────────────────────────────────────────────────────
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
-
   const returnUrl = `${appUrl}/billing`;
 
   // ── Create Stripe Billing Portal session ──────────────────────────────────
@@ -88,6 +93,6 @@ export async function POST(_request: NextRequest) {
     const message =
       stripeErr instanceof Error ? stripeErr.message : "Stripe error";
     console.error("[billing] Customer portal session error:", message);
-    return err(`Could not open billing portal: ${message}`, 500);
+    return err("Unable to open the billing portal. Please try again.", 502);
   }
 }

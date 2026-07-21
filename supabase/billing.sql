@@ -150,6 +150,7 @@ CREATE OR REPLACE FUNCTION provision_free_tier()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   INSERT INTO subscriptions (business_id, plan_slug, status)
@@ -183,6 +184,7 @@ CREATE TRIGGER on_business_created_billing
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   NEW.updated_at = now();
@@ -201,3 +203,6 @@ CREATE TRIGGER entitlements_set_updated_at
   BEFORE UPDATE ON entitlements
   FOR EACH ROW
   EXECUTE FUNCTION set_updated_at();
+
+REVOKE ALL ON FUNCTION provision_free_tier() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION set_updated_at() FROM PUBLIC, anon, authenticated, service_role;

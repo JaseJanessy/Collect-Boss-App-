@@ -87,6 +87,8 @@ export function PaymentAccessSettingsPage({ caseId }: Props) {
   const [saving,     setSaving]    = useState(false);
   const [saved,      setSaved]     = useState(false);
   const [saveError,  setSaveError] = useState<string | null>(null);
+  const [publicUrl,  setPublicUrl] = useState<string | null>(null);
+  const [creatingPublicLink, setCreatingPublicLink] = useState(false);
 
   // Local-only security controls (not yet persisted to DB)
   const [requireOtp,    setRequireOtp]    = useState(true);
@@ -134,6 +136,29 @@ export function PaymentAccessSettingsPage({ caseId }: Props) {
   }
 
   const isDirty = lockMode !== null && lockMode !== c.payment_lock_mode;
+
+  async function createPaymentLink() {
+    setCreatingPublicLink(true);
+    setSaveError(null);
+    try {
+      const response = await fetch(`/api/cases/${encodeURIComponent(c.id)}/public-links`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ purpose: "payment", expiresInHours: autoHide ? 24 : 168 }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || typeof payload.url !== "string") {
+        setSaveError(typeof payload.error === "string" ? payload.error : "Unable to create secure payment link.");
+      } else {
+        setPublicUrl(payload.url);
+        await navigator.clipboard.writeText(payload.url).catch(() => {});
+      }
+    } catch {
+      setSaveError("Unable to create secure payment link.");
+    } finally {
+      setCreatingPublicLink(false);
+    }
+  }
 
   return (
     <div className="flex flex-col pb-6">
@@ -269,14 +294,16 @@ export function PaymentAccessSettingsPage({ caseId }: Props) {
           </div>
         </SectionCard>
 
-        {/* Preview link */}
-        <Link
-          href={`/pay/${c.id}`}
-          className="flex items-center justify-center gap-2 py-3 text-sm font-semibold text-gray-500 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
+        <button
+          type="button"
+          onClick={createPaymentLink}
+          disabled={creatingPublicLink}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-600 transition-colors hover:border-gray-300 disabled:opacity-60"
         >
-          <ExternalLink className="w-4 h-4" />
-          Preview Debtor View
-        </Link>
+          {creatingPublicLink ? <InlineSpinner /> : <ExternalLink className="w-4 h-4" />}
+          Create secure payment link
+        </button>
+        {publicUrl && <a href={publicUrl} target="_blank" rel="noreferrer" className="break-all text-center text-xs font-semibold text-[#009966] hover:underline">{publicUrl}</a>}
 
         {/* Error */}
         {saveError && (

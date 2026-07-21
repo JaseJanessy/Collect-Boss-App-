@@ -1,4 +1,5 @@
-import { getServerClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getServerClient } from "@/lib/supabase/server-client";
 import { type ReminderRow, type ReminderInsert } from "@/lib/supabase/types";
 import { ok, fail, type DbResult } from "./result";
 import { mockCaseActivities } from "@/lib/mock-data";
@@ -13,6 +14,13 @@ function activityToReminder(caseId: string, act: { id: string; description: stri
     sent_at:       new Date().toISOString(),
     status:        "sent",
     error_message: null,
+    template_version: 1,
+    recipient: null,
+    generated_at: new Date().toISOString(),
+    composer_opened_at: null,
+    manually_confirmed_at: null,
+    next_action_at: null,
+    request_key: act.id,
   };
 }
 

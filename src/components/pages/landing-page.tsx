@@ -38,15 +38,21 @@ function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
+    <header className="sticky top-0 z-50 bg-[#10284E]/95 backdrop-blur-sm border-b border-[#244777] shadow-sm">
+      <a
+        href="#landing-main-content"
+        className="sr-only fixed left-3 top-3 z-[100] rounded-md bg-white px-3 py-2 text-sm font-semibold text-[#0D1B3D] shadow focus:not-sr-only"
+      >
+        Skip to main content
+      </a>
       <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/landing" className="text-xl font-black tracking-tight text-[#0D1B3D] leading-none">
+        <Link href="/landing" className="text-xl font-black tracking-tight text-white leading-none">
           Collect<span className="text-[#009966]">Boss</span>
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="cb-phone-landscape-desktop hidden md:flex items-center gap-6">
           {links.map((l) => (
             <a
               key={l.href}
@@ -59,7 +65,7 @@ function Navbar() {
         </nav>
 
         {/* Desktop CTA */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="cb-phone-landscape-desktop hidden md:flex items-center gap-3">
           <Link href="/login" className="text-sm font-semibold text-gray-600 hover:text-[#0D1B3D] transition-colors">
             Sign In
           </Link>
@@ -73,9 +79,11 @@ function Navbar() {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+          className="cb-phone-landscape-mobile md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Toggle menu"
+          aria-controls="landing-mobile-nav"
+          aria-expanded={menuOpen}
         >
           {menuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
         </button>
@@ -83,8 +91,8 @@ function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-5 pb-4">
-          <nav className="flex flex-col gap-0 mt-2">
+        <div className="cb-phone-landscape-mobile-block md:hidden border-t border-gray-100 bg-white px-5 pb-4">
+          <nav id="landing-mobile-nav" className="flex flex-col gap-0 mt-2">
             {links.map((l) => (
               <a
                 key={l.href}
@@ -773,13 +781,15 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
-      <Hero />
-      <PainPoints />
-      <Features />
-      <HowItWorks />
-      <Pricing />
-      <FAQ />
-      <CTABanner />
+      <main id="landing-main-content">
+        <Hero />
+        <PainPoints />
+        <Features />
+        <HowItWorks />
+        <Pricing />
+        <FAQ />
+        <CTABanner />
+      </main>
       <Footer />
     </div>
   );

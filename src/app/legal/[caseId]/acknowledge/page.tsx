@@ -2,11 +2,12 @@ import { MobileShell } from "@/components/shells/mobile-shell";
 import { DashboardShell } from "@/components/shells/dashboard-shell";
 import { DebtAcknowledgementPage } from "@/components/pages/legal/debt-acknowledgement-page";
 import { mockCases } from "@/lib/mock-data";
+import { isMockDataEnabled } from "@/lib/supabase/client";
 
 interface Props { params: Promise<{ caseId: string }> }
 
 export function generateStaticParams() {
-  return mockCases.map((c) => ({ caseId: c.id }));
+  return isMockDataEnabled ? mockCases.map((c) => ({ caseId: c.id })) : [];
 }
 
 export default async function AcknowledgePage({ params }: Props) {

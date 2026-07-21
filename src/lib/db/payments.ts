@@ -1,4 +1,5 @@
-import { getServerClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getServerClient } from "@/lib/supabase/server-client";
 import {
   type PaymentRow,
   type PaymentInsert,
@@ -31,6 +32,11 @@ function mockToRow(r: (typeof mockPaymentRecords)[0]): PaymentRow {
     reviewed_at:    null,
     reviewed_by:    null,
     notes:          r.notes ?? null,
+    financial_event_id: null,
+    source_submission_id: null,
+    reversed_at: null,
+    reversed_by: null,
+    reversal_reason: null,
     created_at:     new Date().toISOString(),
   };
 }

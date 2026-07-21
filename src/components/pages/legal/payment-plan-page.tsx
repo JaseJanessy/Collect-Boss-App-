@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { PrimaryButton } from "@/components/ui/primary-button";
@@ -8,20 +8,16 @@ import { SectionCard } from "@/components/ui/section-card";
 import { LoadingSpinner, InlineSpinner } from "@/components/ui/loading-spinner";
 import { useCase } from "@/hooks/use-case";
 import { usePaymentPlans } from "@/hooks/use-payment-plans";
-import { useBusinessId } from "@/hooks/use-business-id";
 import {
-  createPaymentPlanClient,
-  calculateDueDates,
-  calculateInstallment,
+  createPaymentPlanProposalClient,
   formatDate,
   getNextDueDate,
 } from "@/lib/db/payment-plans-client";
-import { updateNextActionClient } from "@/lib/db/cases-client";
-import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
 import { type PaymentPlanRow } from "@/lib/supabase/types";
+import { buildInstallmentPreview, minorToMyrNumber, type PaymentPlanFrequency } from "@/lib/payment-plans/schedule";
 import { formatRM } from "@/lib/mock-data";
 import {
-  ChevronLeft, Calendar, DollarSign, Hash,
+  ChevronLeft, DollarSign,
   CheckCircle2, AlertCircle, Info, Copy, Check,
   ClipboardList, ExternalLink,
 } from "lucide-react";
@@ -31,21 +27,21 @@ interface Props {
 }
 
 export function PaymentPlanPage({ caseId }: Props) {
-  const { caseData, loading: caseLoading, update: updateCase } = useCase(caseId);
+  const { caseData, loading: caseLoading } = useCase(caseId);
   const { activePlan, addPlan }                                = usePaymentPlans(caseId);
-  const businessId = useBusinessId();
 
   const [count,      setCount]      = useState(3);
+  const [frequency,  setFrequency]  = useState<PaymentPlanFrequency>("monthly");
   const [startDate,  setStartDate]  = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
     return d.toISOString().split("T")[0];
   });
   const [notes,     setNotes]     = useState("");
+  const [customDueDates, setCustomDueDates] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]     = useState<string | null>(null);
   const [saved,      setSaved]     = useState<PaymentPlanRow | null>(null);
-  const [copied,     setCopied]    = useState(false);
 
   if (caseLoading) return <LoadingSpinner />;
   if (!caseData) {
@@ -59,32 +55,34 @@ export function PaymentPlanPage({ caseId }: Props) {
   }
 
   const c = caseData;
-  const totalAmount   = c.balance > 0 ? c.balance : c.amount_owed;
-  const installAmount = calculateInstallment(totalAmount, count);
-  const dueDates      = calculateDueDates(startDate, count);
+  const totalMinor = BigInt(c.outstanding_minor);
+  const totalAmount = minorToMyrNumber(totalMinor);
+  let schedule: ReturnType<typeof buildInstallmentPreview> = [];
+  let scheduleError: string | null = null;
+  try {
+    schedule = buildInstallmentPreview({
+      totalMinor,
+      count,
+      firstDueDate: startDate,
+      frequency,
+      customDueDates: customDueDates.split(","),
+    });
+  } catch (previewError) {
+    scheduleError = previewError instanceof Error ? previewError.message : "Unable to preview this schedule.";
+  }
 
   async function handleCreate() {
-    if (count < 1 || count > 24) { setError("Installment count must be between 1 and 24."); return; }
-    if (!startDate) { setError("Start date is required."); return; }
+    if (count < 1 || count > 24 || !startDate || scheduleError) { setError(scheduleError ?? "Enter valid payment-plan terms."); return; }
 
     setSubmitting(true);
     setError(null);
-    const bId = businessId ?? "mock-business-id";
-
-    const result = await createPaymentPlanClient({
-      case_id:            c.id,
-      total_amount:       totalAmount,
-      installment_count:  count,
-      installment_amount: installAmount,
-      start_date:         startDate,
-      due_dates:          dueDates,
-      status:             "active",
-      debtor_confirmed:   false,
-      debtor_name:        null,
-      debtor_phone:       c.debtor_phone,
-      signature_url:      null,
-      confirmed_at:       null,
-      notes:              notes.trim() || null,
+    const result = await createPaymentPlanProposalClient({
+      caseId: c.id,
+      frequency,
+      firstDueDate: startDate,
+      installmentCount: count,
+      customDueDates: customDueDates.split(",").map((value) => value.trim()).filter(Boolean),
+      notes: notes.trim(),
     });
 
     if (result.error) {
@@ -97,38 +95,8 @@ export function PaymentPlanPage({ caseId }: Props) {
     addPlan(plan);
     setSaved(plan);
 
-    // Update case next_best_action
-    const actionResult = await updateNextActionClient(
-      c.id,
-      `Payment plan active: ${count} instalment(s) of ${formatRM(installAmount)}. Next due: ${formatDate(dueDates[0])}`
-    );
-    if (actionResult.data) updateCase(actionResult.data);
-
-    // Audit log
-    await appendAuditLogClient({
-      business_id: bId,
-      case_id:     c.id,
-      action:      "payment_plan.created",
-      actor_type:  "owner",
-      metadata: {
-        plan_id:           plan.id,
-        total_amount:      totalAmount,
-        installment_count: count,
-        installment_amount: installAmount,
-      },
-    });
-
     setSubmitting(false);
   }
-
-  function copyAckLink() {
-    const url = `${window.location.origin}/acknowledge/${c.id}`;
-    navigator.clipboard.writeText(url).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  const ackUrl = `/acknowledge/${c.id}`;
 
   // ── Existing active plan view ──────────────────────────────────────────────
   if (activePlan && !saved) {
@@ -136,8 +104,8 @@ export function PaymentPlanPage({ caseId }: Props) {
       <div className="flex flex-col pb-6">
         <PageHeader caseId={c.id} />
         <div className="px-4 pt-5 flex flex-col gap-5">
-          <PlanSummaryCard plan={activePlan} caseId={c.id} />
-          <ShareSection caseId={c.id} />
+          <PlanSummaryCard plan={activePlan} />
+          <ShareSection caseId={c.id} planId={activePlan.id} />
           <AcknowledgementLinkCard caseId={c.id} />
           <Disclaimer />
         </div>
@@ -156,24 +124,19 @@ export function PaymentPlanPage({ caseId }: Props) {
             <div>
               <p className="text-sm font-bold text-emerald-800">Payment Plan Created!</p>
               <p className="text-[11px] text-emerald-700 mt-0.5">
-                {count} instalments of {formatRM(installAmount)} — starting {formatDate(dueDates[0])}
+                {count} instalments proposed — first due {formatDate(schedule[0]?.dueDate ?? startDate)}
               </p>
             </div>
           </div>
 
-          <PlanSummaryCard plan={saved} caseId={c.id} />
-          <ShareSection caseId={c.id} />
+          <PlanSummaryCard plan={saved} />
+          <ShareSection caseId={c.id} planId={saved.id} />
           <AcknowledgementLinkCard caseId={c.id} />
           <Disclaimer />
 
           <div className="flex flex-col gap-2">
             <Link href={`/cases/${c.id}`}>
               <PrimaryButton fullWidth>Back to Case</PrimaryButton>
-            </Link>
-            <Link href={ackUrl}>
-              <PrimaryButton fullWidth variant="ghost" icon={<ExternalLink className="w-4 h-4" />}>
-                Preview Debtor Acknowledgement
-              </PrimaryButton>
             </Link>
           </div>
         </div>
@@ -215,13 +178,13 @@ export function PaymentPlanPage({ caseId }: Props) {
               <label className="text-xs font-semibold text-gray-600 mb-1 block">
                 Number of Instalments
               </label>
-              <div className="grid grid-cols-6 gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
                 {[1, 2, 3, 4, 6, 12].map((n) => (
                   <button
                     key={n}
                     onClick={() => setCount(n)}
                     className={cn(
-                      "py-2.5 rounded-xl text-sm font-bold border-2 transition-all",
+                      "min-h-11 rounded-xl border-2 py-2.5 text-sm font-bold transition-all",
                       count === n
                         ? "border-[#009966] bg-emerald-50 text-[#009966]"
                         : "border-gray-100 bg-white text-gray-500 hover:border-gray-200"
@@ -232,7 +195,7 @@ export function PaymentPlanPage({ caseId }: Props) {
                 ))}
               </div>
               <p className="text-[11px] text-gray-400 mt-1">
-                Each instalment: <strong className="text-gray-700">{formatRM(installAmount)}</strong>
+                First instalment: <strong className="text-gray-700">{schedule[0] ? formatRM(minorToMyrNumber(schedule[0].amountMinor)) : "—"}</strong>
               </p>
             </div>
 
@@ -248,6 +211,23 @@ export function PaymentPlanPage({ caseId }: Props) {
                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-200"
               />
             </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Payment Frequency</label>
+              <select value={frequency} onChange={(event) => setFrequency(event.target.value as PaymentPlanFrequency)} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-200">
+                <option value="monthly">Monthly</option>
+                <option value="weekly">Weekly</option>
+                <option value="custom">Custom dates</option>
+              </select>
+            </div>
+
+            {frequency === "custom" && (
+              <div>
+                <label className="text-xs font-semibold text-gray-600 mb-1 block">Custom Due Dates</label>
+                <textarea value={customDueDates} onChange={(event) => setCustomDueDates(event.target.value)} rows={2} placeholder="YYYY-MM-DD, YYYY-MM-DD, ..." className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-200 resize-none" />
+                <p className="mt-1 text-[11px] text-gray-400">Provide {count} increasing dates; the first must match the first due date.</p>
+              </div>
+            )}
 
             {/* Notes */}
             <div>
@@ -268,15 +248,15 @@ export function PaymentPlanPage({ caseId }: Props) {
         {/* Due dates preview */}
         <SectionCard title="Instalment Schedule Preview">
           <div className="flex flex-col gap-2 mt-2">
-            {dueDates.map((d, i) => (
-              <div key={d} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+            {schedule.map((item) => (
+              <div key={`${item.sequence}-${item.dueDate}`} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-full bg-[#F2F4F7] flex items-center justify-center shrink-0">
-                    <span className="text-xs font-bold text-gray-600">{i + 1}</span>
+                    <span className="text-xs font-bold text-gray-600">{item.sequence}</span>
                   </div>
-                  <p className="text-sm text-gray-700">{formatDate(d)}</p>
+                  <p className="text-sm text-gray-700">{formatDate(item.dueDate)}</p>
                 </div>
-                <p className="text-sm font-bold text-gray-900">{formatRM(installAmount)}</p>
+                <p className="text-sm font-bold text-gray-900">{formatRM(minorToMyrNumber(item.amountMinor))}</p>
               </div>
             ))}
             <div className="flex items-center justify-between pt-1.5 border-t border-gray-200">
@@ -293,11 +273,12 @@ export function PaymentPlanPage({ caseId }: Props) {
             <p className="text-xs text-red-700">{error}</p>
           </div>
         )}
+        {scheduleError && !error && <p className="text-xs text-red-600">{scheduleError}</p>}
 
         <Disclaimer />
 
         <PrimaryButton
-          fullWidth size="lg" onClick={handleCreate} disabled={submitting}
+          fullWidth size="lg" onClick={handleCreate} disabled={submitting || Boolean(scheduleError)}
           icon={submitting ? <InlineSpinner className="text-white" /> : <ClipboardList className="w-4 h-4" />}
         >
           {submitting ? "Creating Plan…" : "Create Payment Plan"}
@@ -323,19 +304,19 @@ function PageHeader({ caseId }: { caseId: string }) {
   );
 }
 
-function PlanSummaryCard({ plan: p, caseId }: { plan: PaymentPlanRow; caseId: string }) {
+function PlanSummaryCard({ plan: p }: { plan: PaymentPlanRow }) {
   const nextDue = getNextDueDate(p);
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
-        <p className="text-sm font-bold text-gray-900">Active Payment Plan</p>
+        <p className="text-sm font-bold text-gray-900">Payment Plan</p>
         <span className={cn(
           "text-[10px] font-bold px-2 py-0.5 rounded-full border",
-          p.debtor_confirmed
+          p.status === "active" && p.debtor_confirmed
             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
             : "bg-amber-50 text-amber-700 border-amber-200"
         )}>
-          {p.debtor_confirmed ? "Debtor Confirmed" : "Awaiting Confirmation"}
+          {p.status === "pending_acceptance" ? "Awaiting Confirmation" : p.status === "defaulted" ? "Defaulted" : p.debtor_confirmed ? "Debtor Confirmed" : p.status}
         </span>
       </div>
       <div className="px-4 py-3 flex flex-col gap-2.5">
@@ -358,13 +339,36 @@ function PlanSummaryCard({ plan: p, caseId }: { plan: PaymentPlanRow; caseId: st
   );
 }
 
-function ShareSection({ caseId }: { caseId: string }) {
+function ShareSection({ caseId, planId }: { caseId: string; planId: string }) {
   const [copied, setCopied] = useState(false);
-  const url = typeof window !== "undefined"
-    ? `${window.location.origin}/acknowledge/${caseId}`
-    : `/acknowledge/${caseId}`;
+  const [url, setUrl] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function create() {
+    setCreating(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/public-links`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ purpose: "acknowledgement", paymentPlanId: planId, expiresInHours: 168 }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || typeof payload.url !== "string") {
+        setError(typeof payload.error === "string" ? payload.error : "Unable to create acknowledgement link.");
+      } else {
+        setUrl(payload.url);
+      }
+    } catch {
+      setError("Unable to create acknowledgement link.");
+    } finally {
+      setCreating(false);
+    }
+  }
 
   function copy() {
+    if (!url) return;
     navigator.clipboard.writeText(url).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -373,15 +377,9 @@ function ShareSection({ caseId }: { caseId: string }) {
   return (
     <div className="bg-[#F2F4F7] rounded-2xl p-4">
       <p className="text-xs font-bold text-gray-600 mb-2">Share with Debtor</p>
-      <p className="text-[11px] text-gray-500 mb-3">
-        Send this link to the debtor so they can view and confirm the plan.
-      </p>
-      <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5">
-        <p className="text-xs font-mono text-gray-600 flex-1 truncate">{url}</p>
-        <button onClick={copy} className="text-[#009966] hover:text-emerald-700 shrink-0">
-          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-        </button>
-      </div>
+      <p className="text-[11px] text-gray-500 mb-3">Create a one-time, expiring link for this exact payment plan.</p>
+      {!url ? <button onClick={create} disabled={creating} className="w-full rounded-xl bg-[#009966] px-3 py-2.5 text-xs font-bold text-white disabled:opacity-60">{creating ? "Creating secure link…" : "Create secure acknowledgement link"}</button> : <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5"><p className="text-xs font-mono text-gray-600 flex-1 truncate">{url}</p><button onClick={copy} className="text-[#009966] hover:text-emerald-700 shrink-0">{copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}</button></div>}
+      {error && <p className="mt-2 text-[11px] text-red-600">{error}</p>}
     </div>
   );
 }

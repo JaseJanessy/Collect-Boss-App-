@@ -12,30 +12,22 @@ import {
   evidenceTypes,
   mockCaseTimelines,
 } from "@/lib/mock-legal-data";
-import { type EvidenceFileRow, type EvidenceType as DbEvidenceType } from "@/lib/supabase/types";
+import { type EvidenceType as DbEvidenceType } from "@/lib/supabase/types";
 import { useCase } from "@/hooks/use-case";
 import { useEvidence } from "@/hooks/use-evidence";
 import { usePayments } from "@/hooks/use-payments";
 import { useReminders } from "@/hooks/use-reminders";
 import { usePaymentPlans } from "@/hooks/use-payment-plans";
 import { useLegalDocuments } from "@/hooks/use-legal-documents";
-import { useBusinessId } from "@/hooks/use-business-id";
-import { formatFileSize, getFileTypeLabel } from "@/lib/db/evidence-client";
-import { saveEvidencePackClient } from "@/lib/db/legal-documents-client";
-import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
+import { formatFileSize } from "@/lib/db/evidence-client";
 import { track } from "@/lib/analytics/tracker";
 import { useEntitlements } from "@/hooks/use-entitlements";
-import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { UsageMeter } from "@/components/billing/usage-meter";
 import { PAYMENT_METHOD_LABELS } from "@/lib/db/payments-client";
 import {
-  type EvidencePackData,
-  generateEvidencePackPdf,
-} from "@/lib/pdf/evidence-pack-generator";
-import {
   ChevronLeft, FileText, Download, MapPin, Phone, Calendar,
-  Clock, CheckCircle2, MessageCircle, Send, DollarSign, Building2,
-  AlertCircle, Image, Info, ClipboardList, ShieldCheck, XCircle,
+  CheckCircle2, MessageCircle, Send, Building2,
+  AlertCircle, Image, Info, XCircle,
 } from "lucide-react";
 
 interface Props {
@@ -48,17 +40,18 @@ export function EvidencePackPage({ caseId }: Props) {
   const { payments }                               = usePayments(caseId);
   const { reminders }                              = useReminders(caseId);
   const { activePlan }                             = usePaymentPlans(caseId);
-  const { docs, addDoc }                           = useLegalDocuments(caseId);
-  const businessId                                 = useBusinessId();
+  const { docs, refresh: refreshDocuments }        = useLegalDocuments(caseId);
   const { entitlement }                            = useEntitlements();
 
   const [exporting,   setExporting]   = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [pdfBlob,     setPdfBlob]     = useState<Blob | null>(null);
   const [pdfUrl,      setPdfUrl]      = useState<string | null>(null);
+  const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[] | null>(null);
 
   const loading = caseLoading || filesLoading;
   const timeline = mockCaseTimelines[caseId] ?? [];
+  const effectiveSelectedEvidenceIds = selectedEvidenceIds ?? files.map((file) => file.id);
 
   if (loading) {
     return (
@@ -121,7 +114,28 @@ export function EvidencePackPage({ caseId }: Props) {
     }
 
     try {
-      const bId = businessId ?? "mock-business-id";
+      const response = await fetch(`/api/cases/${encodeURIComponent(c.id)}/evidence-pack`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ evidenceIds: effectiveSelectedEvidenceIds, generationKey: crypto.randomUUID() }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(payload.error ?? "Export failed.");
+      }
+      const packBlob = await response.blob();
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl!);
+      setPdfBlob(packBlob);
+      setPdfUrl(URL.createObjectURL(packBlob));
+      refreshDocuments();
+      track("evidence_pack_exported", { case_id: c.id, evidence_score: score, file_count: effectiveSelectedEvidenceIds.length });
+      setExporting(false);
+      return;
+
+      /* Legacy client-side generation is intentionally disabled. The server route
+         above authorizes the selection, creates the manifest, persists the audit
+         record, and returns the private no-store PDF response.
+      const bId = "legacy-client-export";
 
       const packData: EvidencePackData = {
         caseId:            c.id,
@@ -164,12 +178,12 @@ export function EvidencePackPage({ caseId }: Props) {
         missingMustHave:       missingMust.map((t) => t.name),
         evidenceScore:         score,
         activePlan: activePlan ? {
-          total_amount:       activePlan.total_amount,
-          installment_count:  activePlan.installment_count,
-          installment_amount: activePlan.installment_amount,
-          due_dates:          activePlan.due_dates,
-          debtor_confirmed:   activePlan.debtor_confirmed,
-          confirmed_at:       activePlan.confirmed_at,
+          total_amount:       activePlan!.total_amount,
+          installment_count:  activePlan!.installment_count,
+          installment_amount: activePlan!.installment_amount,
+          due_dates:          activePlan!.due_dates,
+          debtor_confirmed:   activePlan!.debtor_confirmed,
+          confirmed_at:       activePlan!.confirmed_at,
         } : null,
         timeline,
         hasAcknowledgement: false,
@@ -178,7 +192,7 @@ export function EvidencePackPage({ caseId }: Props) {
       const blob = await generateEvidencePackPdf(packData);
 
       // Revoke old URL
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl!);
       const url = URL.createObjectURL(blob);
       setPdfBlob(blob);
       setPdfUrl(url);
@@ -198,7 +212,7 @@ export function EvidencePackPage({ caseId }: Props) {
         }),
       });
 
-      if (saveResult.data) addDoc(saveResult.data);
+      if (saveResult.data) refreshDocuments();
 
       // Audit log
       await appendAuditLogClient({
@@ -218,6 +232,7 @@ export function EvidencePackPage({ caseId }: Props) {
         evidence_score: score,
         file_count:     files.length,
       });
+      */
 
     } catch (err) {
       setExportError(err instanceof Error ? err.message : "Export failed.");
@@ -537,6 +552,18 @@ export function EvidencePackPage({ caseId }: Props) {
 
         {/* Uploaded documents */}
         <SectionCard title={`Uploaded Documents (${files.length})`}>
+          {files.length > 0 && (
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[11px] text-gray-500">Choose the files included in the server-generated manifest.</p>
+              <button
+                type="button"
+                onClick={() => setSelectedEvidenceIds(effectiveSelectedEvidenceIds.length === files.length ? [] : files.map((file) => file.id))}
+                className="text-[11px] font-semibold text-[#009966]"
+              >
+                {effectiveSelectedEvidenceIds.length === files.length ? "Clear all" : "Select all"}
+              </button>
+            </div>
+          )}
           {files.length === 0 ? (
             <div className="py-4 text-center">
               <p className="text-xs text-gray-400">No documents uploaded yet.</p>
@@ -553,6 +580,16 @@ export function EvidencePackPage({ caseId }: Props) {
                 });
                 return (
                   <div key={f.id} className="flex items-center gap-3 bg-[#F2F4F7] rounded-xl p-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Include ${f.file_name} in evidence pack`}
+                      checked={effectiveSelectedEvidenceIds.includes(f.id)}
+                      onChange={() => setSelectedEvidenceIds((current) => {
+                        const next = current ?? files.map((file) => file.id);
+                        return next.includes(f.id) ? next.filter((id) => id !== f.id) : [...next, f.id];
+                      })}
+                      className="h-4 w-4 accent-[#009966]"
+                    />
                     <div className="w-8 h-8 bg-white rounded-lg border border-gray-100 flex items-center justify-center shrink-0">
                       {f.file_type === "PDF"
                         ? <FileText className="w-4 h-4 text-red-500" />
