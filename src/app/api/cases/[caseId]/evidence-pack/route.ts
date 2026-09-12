@@ -26,7 +26,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const input = requestSchema.safeParse(await request.json().catch(() => null));
   if (!input.success) return json({ error: "Invalid evidence-pack request." }, 400);
 
-  const auth = await getAuthenticatedBusiness();
+  const auth = await getAuthenticatedBusiness("case.manage");
   if ("error" in auth) return json({ error: auth.error ?? "Evidence-pack service is unavailable." }, 401);
 
   const { data: caseData } = await auth.client

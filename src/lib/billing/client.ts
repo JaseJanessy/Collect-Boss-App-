@@ -19,13 +19,9 @@ async function getBusinessId(): Promise<string | null> {
   const { data: { user } } = await client.auth.getUser();
   if (!user) return null;
 
-  const { data } = await client
-    .from("businesses")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  return (data as { id: string } | null)?.id ?? null;
+  const { data, error } = await client.rpc("my_business_id");
+  if (error) throw new Error("Your workspace plan could not be verified. Please retry.");
+  return typeof data === "string" ? data : null;
 }
 
 // ─── Subscription ─────────────────────────────────────────────────────────────
@@ -66,8 +62,7 @@ export async function getMySubscriptionClient(): Promise<SubscriptionRow | null>
     .maybeSingle();
 
   if (error) {
-    console.error("[billing] getMySubscriptionClient:", error.message);
-    return null;
+    throw new Error("Your subscription could not be loaded. Please retry.");
   }
 
   return data as SubscriptionRow | null;
@@ -85,10 +80,10 @@ export async function getMyEntitlementClient(): Promise<EntitlementRow> {
   }
 
   const client = getBrowserClient();
-  if (!client) return FREE_ENTITLEMENT_MOCK;
+  if (!client) throw new Error("Account access is unavailable.");
 
   const businessId = await getBusinessId();
-  if (!businessId) return FREE_ENTITLEMENT_MOCK;
+  if (!businessId) throw new Error("Choose or join a workspace to view your plan.");
 
   const { data, error } = await client
     .from("entitlements")
@@ -97,10 +92,9 @@ export async function getMyEntitlementClient(): Promise<EntitlementRow> {
     .maybeSingle();
 
   if (error) {
-    console.error("[billing] getMyEntitlementClient:", error.message);
-    return FREE_ENTITLEMENT_MOCK;
+    throw new Error("Your plan permissions could not be loaded. Please retry.");
   }
 
-  // If no row yet (new business before trigger fires), return free defaults
-  return (data as EntitlementRow | null) ?? FREE_ENTITLEMENT_MOCK;
+  if (!data) throw new Error("Your workspace plan is still being prepared. Please retry.");
+  return data as EntitlementRow;
 }

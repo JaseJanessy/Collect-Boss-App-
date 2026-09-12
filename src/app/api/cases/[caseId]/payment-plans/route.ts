@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/supabase/server-client";
+import { getAuthenticatedBusiness } from "@/lib/debtors/server";
+import type { PaymentPlanEventRow, PaymentPlanInstallmentRow, PaymentPlanRow } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,10 +13,38 @@ function isDate(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+export async function GET(_request: NextRequest, context: { params: Promise<{ caseId: string }> }) {
+  const auth = await getAuthenticatedBusiness();
+  if ("error" in auth) return response({ error: auth.error }, auth.error === "You must be signed in." ? 401 : 503);
+  const { caseId } = await context.params;
+  const { data: ownedCase } = await auth.client.from("cases").select("id")
+    .eq("id", caseId).eq("business_id", auth.businessId).maybeSingle();
+  if (!ownedCase) return response({ error: "Case not found." }, 404);
+
+  const { data: planData, error: planError } = await auth.client.from("payment_plans").select("*")
+    .eq("case_id", caseId).order("created_at", { ascending: false });
+  if (planError) return response({ error: "Unable to load payment plans." }, 500);
+  const plans = (planData ?? []) as PaymentPlanRow[];
+  const planIds = plans.map((plan) => plan.id);
+  if (planIds.length === 0) return response({ plans: [] });
+
+  const [installmentResult, eventResult] = await Promise.all([
+    auth.client.from("payment_plan_installments").select("*").in("payment_plan_id", planIds).order("sequence_no"),
+    auth.client.from("payment_plan_events").select("*").in("payment_plan_id", planIds).order("created_at", { ascending: false }),
+  ]);
+  if (installmentResult.error || eventResult.error) return response({ error: "Unable to load payment-plan progress." }, 500);
+  const installments = (installmentResult.data ?? []) as PaymentPlanInstallmentRow[];
+  const events = (eventResult.data ?? []) as PaymentPlanEventRow[];
+  return response({ plans: plans.map((plan) => ({
+    ...plan,
+    installments: installments.filter((item) => item.payment_plan_id === plan.id),
+    events: events.filter((item) => item.payment_plan_id === plan.id),
+  })) });
+}
+
 export async function POST(request: NextRequest, context: { params: Promise<{ caseId: string }> }) {
-  const client = await getServerClient();
-  const { data: { user } } = client ? await client.auth.getUser() : { data: { user: null } };
-  if (!client || !user) return response({ error: "You must be signed in." }, 401);
+  const auth = await getAuthenticatedBusiness("promise.manage");
+  if ("error" in auth) return response({ error: auth.error }, auth.error === "You must be signed in." ? 401 : 403);
 
   const { caseId } = await context.params;
   const body = await request.json().catch(() => null) as {
@@ -38,7 +67,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ca
   }
   if (!customDueDates.every(isDate)) return response({ error: "Custom due dates must use YYYY-MM-DD." }, 400);
 
-  const { data: plan, error } = await client.rpc("payment_plan_create_proposal", {
+  const { data: plan, error } = await auth.client.rpc("payment_plan_create_proposal", {
     p_case_id: caseId,
     p_frequency: frequency,
     p_first_due_date: body.firstDueDate,

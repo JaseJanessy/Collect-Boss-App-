@@ -1,0 +1,681 @@
+
+> collectboss@1.0.0-rc.1 test:contracts
+> node scripts/run-contract-tests.mjs
+
+(node:13964) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/accounting-integration-framework.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ accounting adapters share normalized reads and controlled payment-allocation write-back (56.9658ms)
+✔ stable mappings and transactional batches prevent replay duplicates (1.8092ms)
+✔ external payments and credits reuse the financial ledger and receivables projection (1.4562ms)
+✔ OAuth secrets remain encrypted, server-only and tenant-scoped (24.185ms)
+✔ disconnect preserves imported history and Settings owns the integration UI (43.8885ms)
+✔ provider events are verified, durably queued and reconciled by polling fallback (41.0645ms)
+(node:10832) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/action-priority-dashboard.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ priority projection covers every required operational queue and closes cleared conditions (26.8663ms)
+✔ database owns deterministic ranking, timezone-safe due filters and authoritative totals (13.1179ms)
+✔ team filters cannot expand the caller's authorised base scope (3.3083ms)
+✔ API validates every filter, uses opaque cursors and fails loudly without the migration (19.1295ms)
+✔ dashboard shows five direct-action rows and the full queue supports filters and incremental loading (7.0596ms)
+✔ case overview exposes server-reconciled decision fields and hides unavailable values (6.2333ms)
+(node:5564) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/api-request-guard.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ request origin accepts same-origin browser calls and non-browser callers only (1.8416ms)
+✔ rate limiter blocks after the configured request count (34.5432ms)
+✔ rate limiter uses the platform address before a forwarded address (58.3881ms)
+✔ proxy applies origin, payload, and rate checks before API authentication (0.9224ms)
+(node:11412) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/billing-lifecycle-contract.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Stripe mode is strictly separated between production and non-production (2.5449ms)
+✔ checkout and portal expose only generic provider failures (1.0383ms)
+✔ refund authority is controlled outside the customer API (46.3451ms)
+(node:10564) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/bulk-operations-import-merge.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ R16 search covers operational identifiers, metadata and indexed tenant filters (2.5504ms)
+✔ import uses mapping, dry-run errors and one transactional commit RPC (4.2344ms)
+✔ duplicate matches require confirmation and merge preserves linked financial records (1.5256ms)
+✔ bulk actions are tenant-scoped, audited and messaging reuses contact guardrails (7.1161ms)
+✔ import reports are tenant-readable and remain server-write-only (1.367ms)
+(node:9576) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/business-verification-abuse-controls.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ business identity and verification states are additive and owner writes cannot self-verify (2.6209ms)
+✔ high-risk industries use configurable additional review instead of blanket suspicion (0.5161ms)
+✔ payment-link restrictions are database-enforced and revoke active capabilities (0.5683ms)
+✔ debtor report reasons feed tenant and platform review queues (0.5529ms)
+✔ review decisions and policy changes retain an audit trail with tenant/platform separation (0.8299ms)
+(node:5176) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/case-workspace.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ case workspace has seven non-overlapping authoritative sections (4.0541ms)
+✔ case workspace defers section data and preserves visited section state (1.5031ms)
+✔ case mutation APIs enforce the section permission model (7.1799ms)
+✔ organisation-wide queues remain outside the case workspace (31.1381ms)
+(node:9220) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/communication-activity.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ communication activity models every V1 channel and WhatsApp delivery state (2.6284ms)
+✔ tenant scope and related entities are enforced in SQL, not trusted to the browser (0.6309ms)
+✔ call handoff has one-tap outcomes and all activity reaches the case timeline (82.0866ms)
+✔ future official WhatsApp updates share the activity status model (46.5027ms)
+✔ existing and future reminder handoffs use the unified activity model (0.7186ms)
+(node:7508) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/contact-frequency-guardrails.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ rolling contact counts come from unified real communication activity (2.0083ms)
+✔ documented contact preferences and configurable policy cover every required control (0.4149ms)
+✔ RLS is tenant-read-only and preference, policy and override writes use owner RPCs (0.6626ms)
+✔ single, reminder, Action Centre and bulk paths share the guardrail (61.8072ms)
+✔ high-frequency overrides are durable, actor-bound and audited (23.637ms)
+(node:10272) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/data-export-multi-business-readiness.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ business data export selection is explicit, deterministic and rejects unknown datasets (4.6029ms)
+✔ R18 export is permission-gated, tenant-scoped, private and audited before download (77.9831ms)
+✔ R18 entity model is optional, preserves business ownership and blocks cross-tenant assignment (16.3191ms)
+✔ business data export remains available when analytics entitlement is disabled (24.2687ms)
+(node:2292) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/debt-truth-engine.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ canonical debt components are integer minor-unit projections (5.5564ms)
+✔ only approved facts enter confirmed debt and unverified payments never reduce it (0.5331ms)
+✔ fees, interest, write-offs, and manual adjustments require explicit authority (0.4316ms)
+✔ versions and reversals preserve immutable history (1.1042ms)
+✔ legacy cases reconcile with exception reporting and a history-preserving rollback (0.4328ms)
+✔ tenant API validates inputs, scopes every query, and returns structured errors (1.1984ms)
+✔ schema and RLS sources declare the same tenant read/service write boundary (2.7734ms)
+(node:9712) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/dispute-system.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ structured dispute categories and lifecycle are complete (2.5811ms)
+✔ disputed and undisputed amounts reconcile without erasing the obligation (0.7519ms)
+✔ accepted disputes reuse the financial ledger credit adjustment (0.5905ms)
+✔ evidence, events, notifications and review actions remain attached (1.4009ms)
+✔ collection messages use only the current undisputed amount (0.9861ms)
+✔ debtor flow uses simple language and token-scoped public submission (4.0766ms)
+✔ dispute RLS is tenant-read-only and mutations are RPC controlled (1.0613ms)
+(node:13024) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/document-extraction-intelligence.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ native PDF text is attempted before page rendering and OCR (2.2982ms)
+✔ provider transmission is explicit, versioned, timed out, and retry bounded (0.4963ms)
+✔ jobs are atomic, lease checked, idempotent, tenant scoped, and scan gated (0.8415ms)
+✔ raw results stay protected and client errors expose stable codes only (0.7703ms)
+✔ extraction always routes the intake to review or a safe failure and never writes financial records (5.2649ms)
+✔ result and retry access are authorised and cross-business scoped (0.4115ms)
+(node:248) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/document-human-review-confirmation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ draft saves cannot silently become ready and finalise requires a confirmed current extraction (2.2161ms)
+✔ the server resolves tenant, business currency, extraction, candidate, actor, and evidence (0.4658ms)
+✔ amount ranking excludes balance, fee, limit and total debit from automatic recommendation (2.4615ms)
+✔ audit records proposals, corrections, citations, confirmer and timestamp (0.5652ms)
+✔ mobile review is results-first, accessible, and keeps advanced fields behind Edit (0.5202ms)
+✔ review confirmation never writes an official financial or identity record (0.9814ms)
+(node:10104) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/document-intake-foundation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ drafts, placeholders, lifecycle events and retry-safe idempotency are additive (2.1677ms)
+✔ existing evidence is extended for immutable originals, derivatives and replacement versions (0.9298ms)
+✔ private storage, exact duplicate warnings and tenant scoping do not leak across businesses (0.6233ms)
+✔ session roles are reused, viewers cannot write and manager submission is configurable (0.5946ms)
+✔ upload metadata failure performs compensating cleanup and records cleanup failure (0.4988ms)
+✔ database writes are atomic RPCs and client-facing errors remain stable (2.9242ms)
+(node:14000) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/domain-event-scheduler.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ tenant-local dates differ correctly around the international date line (81.423ms)
+✔ due and missed events use their semantic effective dates (0.9273ms)
+✔ deduplication keys are deterministic and tenant-separated (0.4897ms)
+✔ migration detects every required event without message delivery (22.6637ms)
+✔ tenant RLS is read-only and every candidate derives its tenant from source data (3.7911ms)
+✔ Vercel cron uses authenticated GET and preserves the legacy plan endpoint (10.4967ms)
+(node:5332) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/enterprise-security-hardening.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ public capabilities carry a database-enforced immutable tenant scope (4.4342ms)
+✔ public capability routes have shared fail-closed abuse controls (23.4796ms)
+✔ sensitive file reads re-authorize through same-origin routes without storage signatures (27.6096ms)
+✔ privileged public-link actions use a central role and explicit tenant predicate (1.0659ms)
+✔ audit rows are immutable and new events are tenant hash chained (2.8289ms)
+✔ route bodies are not passed wholesale into database mutations (876.1695ms)
+✔ schema and RLS sources contain the Prompt 21 service-only boundary (14.6628ms)
+(node:6412) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/evidence-pack.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ manifest sorts records and removes traversal from display filenames (52.1893ms)
+✔ pack selection caps aggregate declared evidence size (0.5076ms)
+✔ PDF generation emits a PDF for a deterministic manifest (3677.6354ms)
+(node:12208) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/evidence-validation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ accepts verified PDF and creates a non-overwritable server path (5.9262ms)
+✔ rejects unsupported MIME, mismatched signatures, and oversized payloads (12.5228ms)
+(node:5860) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/explainable-discrepancy-detection.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ all required discrepancy categories and separate review states are persisted (2.19ms)
+✔ history is append-only, source changes reopen decisions, and queue projections close (0.5015ms)
+✔ mutations are permission checked, validated, rate limited and structured (0.7011ms)
+✔ findings are review-only and cannot initiate communication or financial correction (1.4009ms)
+(node:2220) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/financial-adjustments.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ classified adjustments are additive ledger records, never historical payment rewrites (3.7073ms)
+✔ write-off requires a separate owner approval and records audit evidence (1.468ms)
+✔ settlement keeps cash and concession separate and must end at zero (0.7297ms)
+✔ manual correction captures old/new values and obligation totals remain synchronized (0.6329ms)
+✔ closure reasons are controlled and auditable (2.5926ms)
+✔ adjustment tables are tenant read-only and mutations use owner RPCs (2.7293ms)
+✔ statements distinguish credit notes, write-offs, settlements and ordinary adjustments (42.5372ms)
+✔ reports exclude every adjustment category from recovered cash (63.339ms)
+(node:14228) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/financial-balance-engine.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ MYR parser accepts only exact positive minor-unit inputs (95.8505ms)
+✔ partial and full approved payments derive deterministic balances (1.3238ms)
+✔ pending and rejected proofs are balance-neutral because they create no events (4.1727ms)
+✔ overpayment is retained as credit instead of producing a negative outstanding balance (1.7587ms)
+✔ reversals restore the outstanding balance exactly once (0.5241ms)
+✔ adjustments change contractual due while payment-plan schedules do not (1.645ms)
+✔ reconciliation reports drift without repairing it (1.0134ms)
+✔ concurrent approval simulation posts one event for one source (1.7329ms)
+✔ case projection and report consumer use the same exact outstanding value (1.3983ms)
+(node:8136) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/formal-demand-template.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ all creditor/debtor identity combinations produce a demand with immutable identifiers (5.8501ms)
+✔ partial-payment demand preserves the remaining balance snapshot (1.085ms)
+✔ version 2 payment notices use factual labels while version 1 remains reproducible (0.9043ms)
+✔ demand PDF renders from the persisted snapshot (3004.6608ms)
+(node:6136) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/i05-international-release-gate.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ I05 keeps global capability out of primary navigation (5.3674ms)
+✔ international configuration and specialist integrations remain contextual in Settings (0.7564ms)
+✔ Action Centre never combines unlike currencies (26.1555ms)
+✔ Case Detail and communication workflows use tenant region presentation (30.8217ms)
+✔ Email templates use case currency and tenant date settings (16.4289ms)
+✔ release documentation avoids unverified certification claims (35.1951ms)
+(node:6740) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/international-foundation-contract.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ I01 preserves and records the legacy Malaysia defaults (3.8063ms)
+✔ payment plans inherit tenant region and scheduler dates are tenant-local (0.5472ms)
+✔ region settings are tenant-scoped and Owner/Admin managed (1.6212ms)
+✔ I01 adds no country or locale top-level navigation (0.9782ms)
+✔ country capabilities remain adapters and make no legal correctness claim (4.6258ms)
+(node:1276) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/lawyer-referral-handoff.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ only open cases with a positive balance are eligible for legal-review requests (2.6535ms)
+✔ withdrawal is unavailable after provider acceptance or terminal states (0.5191ms)
+(node:6040) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/legal-adjacent-repositioning.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ legacy routes and document types remain available (3.5903ms)
+✔ active UI separates factual preparation from legal advice and authority (5.8968ms)
+✔ new generated outputs are versioned and historical rendering remains explicit (1.2549ms)
+✔ legal-adjacent APIs retain authenticated tenant scoping (1.2748ms)
+(node:13624) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/multi-currency-financial-presentation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ required currencies render for a Malaysia locale without changing stored minor units (70.6298ms)
+✔ generic ISO metadata supports non-two-decimal currencies exactly (10.8611ms)
+✔ partial payments and adjustments reconcile independently by currency (26.8513ms)
+✔ a USD payment event cannot reduce a GBP case (1.2693ms)
+✔ single-currency MYR reporting preserves the previous aggregate behaviour (8.3729ms)
+✔ statement ledger reconciles multiple invoices without floating-point arithmetic (3.7528ms)
+✔ I02 migration and exports preserve currency and enforce reconciliation guards (20.2078ms)
+(node:248) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/multiple-invoice-recurring-credit-limits.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ ongoing accounts roll forward from invoice detail without storing a second balance (4.3333ms)
+✔ invoice-led account cases never add a duplicate account balance (0.6854ms)
+✔ credit utilization and transparent warning thresholds are exact (0.6635ms)
+✔ R17 migration is additive, advisory by default and tenant-safe (114.3135ms)
+✔ customer overview and API expose invoice-level and account-level chasing (32.1975ms)
+(node:4340) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/navigation-consolidation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ one source defines the five required primary destinations (3.7947ms)
+✔ route ownership selects one primary destination without overlap (0.6983ms)
+✔ desktop, responsive web and native mobile consume the shared source (2.2371ms)
+✔ secondary destinations live in More or Settings and remain permission labelled (2.192ms)
+✔ privileged direct page routes are covered by server permission checks (2.1583ms)
+✔ deep-linked specialist pages remain present (1.2751ms)
+(node:7872) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/otp-secure-payment-access.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ OTP challenges are hashed, short-lived, attempt-limited, and rate-limited (2.611ms)
+✔ short-lived sessions are server-only and required before details or proof (0.8868ms)
+✔ verified session cookie and debtor UI preserve the direct-to-creditor proof flow (10.5667ms)
+✔ delivery uses configured adapters without embedding credentials (0.6448ms)
+✔ R13 tables preserve tenant ownership and expose no OTP secrets to browsers (3.9022ms)
+(node:13496) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/payment-access-lock.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ immediate access requires an open case, active token, and bound account (1.8254ms)
+✔ approval access stays masked until the linked request is approved and unexpired (0.4321ms)
+✔ manual, revoked, and account-replaced access is never disclosed (0.3099ms)
+(node:12116) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/payment-candidate-matching.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ normalized transactions preserve source IDs, batches, proof lineage, and duplicate signals (13.3402ms)
+✔ imports and matching jobs are idempotent, tenant-scoped, and rate limited by the shared proxy (0.8466ms)
+✔ amount equality alone cannot reach review and every candidate keeps explanations (1.4329ms)
+✔ review history is append-only and one transaction cannot be approved twice (2.1545ms)
+✔ tenant thresholds stay inside safe bounds and changes are audited (1.3984ms)
+✔ RLS permits tenant payment reviewers to read but keeps writes service-only (3.179ms)
+✔ new accounting payments enter matching instead of the legacy auto-post path (7.174ms)
+(node:8292) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/payment-operations-contract.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Prompt 17 migration is mirrored in the canonical schema (9.4082ms)
+✔ allocation is transaction-safe, concurrency-protected and idempotent (0.887ms)
+✔ Prompt 16 matched allocations are bridged without duplicating case ledger events (0.471ms)
+✔ consolidated-case invoice projections follow explicit allocation and credit events (0.5425ms)
+✔ ledger records are append-only, balanced by currency, and drive case projections (2.0023ms)
+✔ currency conversion requires an immutable explicit exchange-rate record (0.3751ms)
+✔ reversals retain actor, reason, original allocation and opposite ledger event (0.3765ms)
+✔ RLS denies anonymous writes and sensitive RPCs are service-only (2.5085ms)
+✔ accounting failures are isolated in a retryable idempotent outbox (0.7937ms)
+✔ accounting writeback replay is tenant-bound, reasoned, and audited (19.1984ms)
+(node:12360) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/payment-plan-allocation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ allocates a partial approved payment to the earliest unpaid instalment (54.8777ms)
+✔ allocates multiple payments deterministically across instalments (0.597ms)
+✔ late unpaid instalments become overdue only after their grace period (1.0829ms)
+✔ an early full payoff settles every instalment (1.7553ms)
+✔ a reversed payment is excluded when the projection is rebuilt (0.5725ms)
+✔ duplicate concurrent delivery of one payment cannot double allocate it (0.4859ms)
+(node:10104) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/payment-plan-integration.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ legacy and integrated payment-plan statuses remain mapped (3.0951ms)
+✔ FIFO allocation transparently carries a payment across installments (44.1265ms)
+✔ scheduler persists due-soon, due-today, and missed events once (15.8547ms)
+✔ completion resolves plan actions and financial recalculation remains authoritative (24.3388ms)
+✔ one open schedule and one debtor acceptance remain authoritative (26.0492ms)
+✔ plan events are owner-scoped and scheduler remains server-only (31.2853ms)
+✔ case and debtor views expose safe installment progress (2.4219ms)
+(node:14288) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/payment-plan-schedule.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ monthly schedules retain the first due date and clamp month ends (4.1214ms)
+✔ the final instalment retains the exact rounding remainder (0.8733ms)
+✔ custom schedules require strictly increasing civil dates (0.8861ms)
+(node:11044) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/payment-proof-secure-flow.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ debtor proof is linked to tenant, case, debtor, invoice and receiving account (2.7878ms)
+✔ receipt, idempotency, and immutable source controls protect confirmation (0.6791ms)
+✔ proof lifecycle requires reasons and produces action, notification, timeline, and audit rows (0.8615ms)
+✔ tenant RLS scopes every Y02 creditor-facing table (0.6074ms)
+(node:12448) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/payment-proof-validation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ accepts a matching PDF signature and produces a deterministic SHA-256 (3.6614ms)
+✔ rejects an executable payload presented as a PDF (1.5728ms)
+✔ rejects future and malformed payment dates (0.7265ms)
+(node:14228) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/pdf-transaction-intake.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Phase D is PDF-only and repeats critical validation on the server (2.5103ms)
+✔ mobile bearer requests use server-resolved tenant permissions (0.5618ms)
+✔ uploads are idempotent, duplicate warnings are tenant-scoped, and replacements are versioned (0.4106ms)
+✔ remove and cancel retain originals and write audit events (0.5536ms)
+✔ focused mobile flow renders validation, progress, retry, persistence, preview and guarded continue states (0.9715ms)
+✔ navigation keeps the five requested mobile destinations and adds scoped entry points (2.8869ms)
+(node:8872) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/pocket-authoritative-payments.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Pocket extends the shared payment truth without a second payment table (3.381ms)
+✔ posting is tenant scoped, decimal safe, entitlement checked and retry safe (1.4021ms)
+✔ stale and concurrent payments cannot overdraw an obligation (1.2591ms)
+✔ full, partial and reversal states come from committed obligation truth (2.6193ms)
+✔ Pocket UX is simplified and documents its V1 and receipt boundaries (2.5401ms)
+✔ Pocket reports reconcile from generated obligation balances and allocation reversals (0.4728ms)
+(node:12360) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/pocket-billing-entitlements.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ monthly and annual are integer-priced base offers with identical capabilities (2.872ms)
+✔ invoice tiers are 0, 30, and 60 with a hard maximum (0.8691ms)
+✔ active-debt enforcement excludes settled and archived rows and rejects the 101st (6.6983ms)
+✔ OCR is charged by source hash, retries are idempotent, and the 101st unique job is blocked (1.2322ms)
+✔ quota consumption serializes the counter and cancellation preserves read access (1.5742ms)
+✔ provider ordering, pack price verification, and Main API isolation are explicit (0.5383ms)
+(node:3784) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/pocket-customer-debt-ledger.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Pocket customer reads and writes are tenant scoped and duplicate reviewed (2.6477ms)
+✔ Pocket debt uses shared obligations and authoritative payment projections (0.7875ms)
+✔ quota counts only active, partial and overdue Pocket balances (0.4865ms)
+✔ Pocket UI keeps the product deliberately simple and history preserving (6.7385ms)
+(node:11896) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/pocket-receipt-capture.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Pocket capture reuses private immutable document intake and never creates another OCR pipeline (4.0649ms)
+✔ camera, image, and PDF controls keep human confirmation explicit (0.6369ms)
+✔ security scan precedes shared extraction and source-hash quota is retry-safe (1.1159ms)
+✔ review saves shared candidate provenance before the payment handoff (0.8296ms)
+✔ confirmation is atomic, idempotent, append-only, and links evidence to shared payment truth (3.8684ms)
+✔ duplicate, tenant, role, stale-review, and authoritative-balance guards remain server-side (1.0689ms)
+✔ weak customer names are never auto-selected (0.5219ms)
+(node:9344) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/pocket-reminders-notifications.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Pocket reminders use an additive tenant-owned schedule and immutable handoff history (3.0107ms)
+✔ debt, balance, status, archive, due-date and contact changes cancel pending work (1.212ms)
+✔ scheduler is timezone-safe, deterministic and retry deduplicated (2.2468ms)
+✔ shared owner notifications and push use an authorised Pocket deep link and per-reminder push setting (1.7268ms)
+✔ WhatsApp handoff is multilingual, trusted, encoded, reviewed and never auto-sent (1.093ms)
+✔ Pocket UI exposes grouped cards, Home totals, Remind All and customer handoff history (1.9103ms)
+✔ Prompt 7 does not claim unsupported expected-payment, invoice, delivery or read states (1.1768ms)
+(node:10068) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/pocket-shell.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Pocket has a separate guarded App Router shell without moving Main (66.7361ms)
+✔ Pocket navigation and placeholders follow the locked vocabulary (120.8829ms)
+✔ web and Expo shells include responsive and accessibility foundations (45.7029ms)
+✔ workspace state migration is additive, tenant scoped, and unapplied by application code (3.866ms)
+✔ mobile selects one shell from the authenticated server context (4.8384ms)
+(node:9348) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/pocket-simple-invoice-addon.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ invoice add-on reuses the committed RM10 30-plus-30 commercial policy (4.125ms)
+✔ draft save, issue quota and invoice numbering are transactional and concurrency safe (1.0195ms)
+✔ invoice conversion creates exactly one shared Pocket obligation (1.1855ms)
+✔ issued state is immutable and status follows authoritative allocations (0.641ms)
+✔ PDFs and logos are private, authorised and user-shared without a public invoice route (10.9604ms)
+✔ the e-Invoice boundary is prominent in UI, PDF and immutable metadata (0.8012ms)
+✔ invoice due reminders extend the Pocket scheduler only while entitlement is active (3.1136ms)
+(node:14000) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/pocket-to-solo-upgrade.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Pocket-to-Solo migration is staged, owner-only, and exactly once (3.9743ms)
+✔ all source balances validate before any projection write and product switch is last (0.8665ms)
+✔ review states are explicit and checkout is blocked until refreshed (7.2778ms)
+✔ Solo checkout uses server configuration and verified webhook metadata (0.5277ms)
+✔ migration provenance is tenant-readable, service-written, and schema-consistent (20.1071ms)
+✔ retained Pocket history is projected into Main timeline and export without copying (30.3838ms)
+✔ release documentation forbids downgrade and does not overclaim readiness (36.7147ms)
+(node:7520) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/pocket-ux-accessibility.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Pocket has a scoped, tactile, approved navy and green visual system (9.3169ms)
+✔ Pocket shell keeps touch navigation through tablet and uses a laptop rail (48.7671ms)
+✔ Pocket home exposes the locked three-second hierarchy (13.2026ms)
+✔ Core Pocket forms associate server errors and expose busy state (11.2158ms)
+✔ Long names and amounts wrap in Pocket data cards (14.4854ms)
+✔ Web and native shells share the Pocket motif and short action language (27.3375ms)
+(node:9036) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/production-integrations-failure-recovery.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ integration retries are leased, exponentially delayed, dead-lettered, and service-only (5.661ms)
+✔ manual replay is tenant-bound, reasoned, audited, and cannot replay successful jobs (14.132ms)
+✔ accounting OAuth and sync preserve organization ownership and recover revoked access (3.7492ms)
+✔ Stripe webhook replay uses current provider truth and atomic billing state (9.36ms)
+✔ email failures are visible, retryable, and suppressed without copying message content (60.2487ms)
+✔ pricing and entitlements share the canonical plan catalogue (12.3197ms)
+✔ operator runbooks cover reconnect, replay, reconciliation, suppression, and outage (21.5246ms)
+(node:9712) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/professional-legal-handoff.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ professional handoff package reconciles and contains only selected case metadata (73.4106ms)
+✔ migration enforces tenant controls, idempotency, audit and document-request notifications (7.67ms)
+✔ professional callback and owner response retain authentication and tenant boundaries (3.8887ms)
+✔ active product copy describes external professional review without commissions (3.5308ms)
+(node:12516) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/promise-to-pay.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ promise is a first-class tenant-scoped recovery object (12.7017ms)
+✔ only an explicitly selected approved same-case payment fulfils a promise (1.5308ms)
+✔ partial, full, reversal and override transitions remain auditable (0.4319ms)
+✔ missed scheduler is timezone-aware, retry-safe and creates one action (19.6982ms)
+✔ promise tables expose tenant reads only and mutations use owner RPCs (4.1739ms)
+✔ case overview and timeline surface promise lifecycle (13.4487ms)
+(node:13964) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/public-token.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ public capabilities are URL-safe 256-bit values and only their SHA-256 hash is stable (5.69ms)
+✔ token redaction never returns capability material (7.3992ms)
+(node:13476) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/r19-dashboard-reports.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ R19 dashboards consume the server summary instead of raw case and payment collections (3.2781ms)
+✔ Receivables Pulse exposes every required range and accessible chart meaning (13.883ms)
+✔ Reports 2.0 labels projections and fair team context without invented values (1.2428ms)
+✔ mobile case puts outstanding, progress, next action and timeline in its priority summary (1.4829ms)
+(node:9116) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/receivables-foundation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ one customer can hold multiple accounts and obligations without counting covered cases twice (27.8262ms)
+✔ one case covers multiple invoices and ledger payments allocate FIFO (1.1042ms)
+✔ obligation arithmetic labels adjustments independently from payments (0.6103ms)
+✔ migration provides controlled metadata, relationships, indexes and double-counting controls (3.2402ms)
+✔ legacy cases remain standalone and new relationship writes are tenant-gated (15.0673ms)
+(node:8368) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/receiving-account-security.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ account identifiers are masked and disabled/rejected destinations are not selectable (1.3471ms)
+✔ receiving account migration preserves rows and removes direct mutation policies (0.9677ms)
+✔ secure mutations verify ownership, audit redacted summaries, and guard case selection (0.4199ms)
+✔ QR bucket is private and QR paths are tenant/account scoped (2.0562ms)
+(node:6104) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/release-candidate-gates.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ release workflow gates web, mobile, security, performance, build, and browser checks (11.9443ms)
+✔ critical scenario and negative release paths are explicit and evidence-backed (19.364ms)
+✔ backup restore tooling refuses destructive or production-like targets by default (3.5973ms)
+✔ release checklist cannot be mistaken for approval or a signed release (13.3006ms)
+✔ the static security gate distinguishes source remediation from staging approval (59.2024ms)
+✔ scope freeze clearly labels unsupported commercial claims (23.847ms)
+✔ monitoring requires named owners, alert drills, and redacted payloads (44.1906ms)
+(node:8816) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/reminder-handoff-links.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ WhatsApp handoff normalizes Malaysian phone numbers and URL-encodes long content (3.048ms)
+✔ email handoff URL-encodes all composer fields and handles a missing recipient (2.7114ms)
+(node:2668) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/report-metrics.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ report metrics use Malaysia calendar boundaries and current ledger projections (91.598ms)
+✔ CSV cells cannot execute spreadsheet formulas (0.7167ms)
+✔ R19 analytics use recorded promise, plan, action, aging and closure outcomes (12.0585ms)
+(node:8292) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/roles-permissions-audit.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ R15 backfills owners and defines the five tenant roles (2.853ms)
+✔ permissions are database-enforced and manager financial approvals are configurable (1.5789ms)
+✔ audit records carry sensitive context and are immutable (1.8105ms)
+✔ team, role-setting and audit APIs use central server permission checks (40.3398ms)
+(node:11724) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/safe-receivables-migration.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ legacy partial payment rows normalize without changing decimal balances (81.2436ms)
+✔ modern ledger values remain authoritative for adjusted and overpaid cases (0.5872ms)
+✔ closed and zero-balance legacy cases remain closed and settled (1.712ms)
+✔ safe migration snapshots counts, totals and relationship attachments (5.1215ms)
+✔ General Account backfill is additive, balance-neutral and rerunnable (7.7981ms)
+✔ compatibility surfaces are typed, tenant-scoped and used by legacy case routes (17.883ms)
+(node:6256) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/security-policy-contract.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ tenant policy migration removes broad owner policies and constrains every mutation (4.9008ms)
+✔ storage policy migration keeps sensitive buckets private and excludes client proof writes (1.0419ms)
+✔ manual payment proof uploads use the authenticated evidence endpoint (1.3033ms)
+(node:14288) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/server-client-boundary.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ browser-safe Supabase module cannot create a server session client (3.4058ms)
+✔ privileged client modules are explicitly server-only (1.9635ms)
+✔ server session consumers import the guarded client factory (28.3851ms)
+✔ audit fallback never logs arbitrary metadata (12.932ms)
+(node:6128) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/small-claim-pack.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ case-record text preserves jurisdiction and external legal-review gate (3.307ms)
+✔ version 3 is presented as a Case Evidence Export without changing legacy snapshots (1.4303ms)
+✔ long case-record pack renders as a PDF (363.5587ms)
+(node:1276) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/smart-notification-engine.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ migration extends legacy notifications with the complete persistent model (45.6066ms)
+✔ domain events project once into notifications without creating work actions or messages (8.0282ms)
+✔ payment receipts and submitted disputes create tenant-owned source events (20.032ms)
+✔ RLS limits notification reads and state changes to tenant and optional recipient (9.6213ms)
+✔ notification APIs explicitly scope every operation and expose durable bell operations (38.0855ms)
+✔ desktop and mobile bells use persistent counts, previews and deep links (21.9698ms)
+✔ scheduled detection and notification projection remain separate retryable calls (8.7918ms)
+(node:13244) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/statements-v2.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Statement 2.0 resolves every preset and inclusive custom dates (79.607ms)
+✔ 6-month statement reconciles multiple invoices and labels adjustments separately (4.0592ms)
+✔ 12-month statement reconciles the same history from zero opening (0.739ms)
+✔ multi-page PDF retains every transaction row without clipping the page footer (510.7291ms)
+✔ legacy statement data still renders through the existing PDF export (9.9547ms)
+✔ customer-facing statement modules never select internal note fields (3.3575ms)
+(node:13476) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/stripe-webhook-contract.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Stripe signatures validate only the unchanged raw payload (10.276ms)
+✔ event ID claim is atomic and a duplicate cannot reset processed state (2.4316ms)
+✔ subscription state is obtained from Stripe now, and mapping disagreements retry (0.3629ms)
+✔ retryable failures and refund/cancel outcomes are explicit and redacted (0.4653ms)
+(node:7032) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/structured-financial-party-candidates.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ candidate rows retain complete provenance and remain separate from approved records (7.6797ms)
+✔ re-extraction creates immutable versions instead of replacing approved or prior results (0.9112ms)
+✔ candidate access is tenant scoped, permission checked and role masked (2.8836ms)
+✔ deterministic validation precedes any provider inference and covers required rules (2.0302ms)
+(node:14092) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/today-action-centre.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ migration extends legacy actions with the complete operational model (30.926ms)
+✔ deterministic domain-event projection covers required recovery work without reading notifications (17.4951ms)
+✔ payment-plan responses create one explicit customer-response action (4.0363ms)
+✔ underlying business completion closes active work and preserves history (19.5843ms)
+✔ controlled snooze verifies ownership, duration and records actor history (2.1358ms)
+✔ RLS is tenant and assignee aware with mutations restricted to the reviewed RPC (9.9489ms)
+✔ Today APIs use the permission-scoped dashboard RPC and expose auditable history (75.1891ms)
+✔ desktop, mobile and Action Centre route render the shared operational panel (4.5131ms)
+✔ cron projects actions only after domain detection and notification projection (5.6579ms)
+(node:5608) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/transaction-evidence-release-gate.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Prompts 8 through 14 have ordered release-gate artifacts (15.1701ms)
+✔ scan queue is leased, bounded, retryable, provenance-preserving, and service-only (1.7908ms)
+✔ production scanning configuration fails closed and secrets stay server-only (2.0463ms)
+✔ exact duplicates and route mismatches are blocked before an outcome can post (0.447ms)
+✔ module rate limits cover each privileged document operation (0.5051ms)
+✔ review logs are redacted and health metrics expose no document payload (1.9951ms)
+✔ canonical schema and RLS reference include Prompt 15 controls (0.8436ms)
+(node:12092) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/unified-case-timeline.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ unified timeline derives the required history from existing source records (2.798ms)
+✔ event layer uses deterministic source references rather than a duplicated event table (0.4957ms)
+✔ visibility is enforced server-side for tokenized debtor access (0.5124ms)
+✔ case page renders one timeline with all required filters (0.4316ms)
+✔ generated statements append source audit references per case (0.4047ms)
+(node:1104) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/ux-terminology-flow.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ product glossary covers every approved domain concept and its audience exception (56.5845ms)
+✔ development standard references executable labels and confirmation rules (53.5092ms)
+✔ transition contracts gate both UI and privileged API paths (3.6438ms)
+✔ critical closure, promise and dispute actions state their consequences (5.2219ms)
+ℹ tests 376
+ℹ suites 0
+ℹ pass 376
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18245.8846
+npm notice
+npm notice New major version of npm available! 11.16.0 -> 12.0.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+npm notice To update run: npm install -g npm@12.0.2
+npm notice

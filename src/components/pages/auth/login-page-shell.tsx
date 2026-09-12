@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import { Mail, Smartphone, ArrowRight, CheckCircle2 } from "lucide-react";
+import { CollectBossWordmark } from "@/components/brand/wordmark";
 
 interface Props {
   isSignup?: boolean;
@@ -15,12 +16,10 @@ export function LoginPageShell({ isSignup }: Props) {
   const [email, setEmail] = useState("");
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="cb-light-surface min-h-screen bg-white flex flex-col">
       {/* Wordmark */}
       <header className="px-6 py-5">
-        <span className="text-2xl font-black text-[#0D1B3D]">
-          Collect<span className="text-[#009966]">Boss</span>
-        </span>
+        <CollectBossWordmark className="text-2xl" />
         <p className="text-xs text-gray-400 mt-0.5">Collect Smart. Recover Better.</p>
       </header>
 
@@ -40,15 +39,17 @@ export function LoginPageShell({ isSignup }: Props) {
 
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-bold text-gray-700">Email Address</label>
+                <label htmlFor="login-email" className="text-sm font-bold text-gray-700">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
+                    id="login-email"
                     type="email"
                     placeholder="you@company.com.my"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300 transition-all"
+                    autoComplete="email"
+                    className="cb-field cb-field-with-icon"
                   />
                 </div>
               </div>
@@ -94,8 +95,11 @@ export function LoginPageShell({ isSignup }: Props) {
                   <input
                     key={i}
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    aria-label={`Verification code digit ${i + 1}`}
                     maxLength={1}
-                    className="w-12 h-14 text-center text-xl font-black border-2 border-gray-200 rounded-xl outline-none focus:border-[#009966] focus:ring-2 focus:ring-emerald-200 transition-all"
+                    className="cb-field h-14 w-12 px-0 text-center text-xl font-black"
                   />
                 ))}
               </div>

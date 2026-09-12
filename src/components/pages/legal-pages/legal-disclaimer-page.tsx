@@ -7,7 +7,7 @@ export function LegalDisclaimerPage() {
     <LegalShell
       title="Legal Disclaimer"
       subtitle="Important limitations and disclaimers about the CollectBoss platform."
-      lastUpdated="2025-01-01"
+      lastUpdated="2026-09-01"
     >
       <LegalWarning>
         CollectBoss is a software tool, not a law firm. Nothing on this platform constitutes

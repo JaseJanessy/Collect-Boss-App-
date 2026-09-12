@@ -14,8 +14,8 @@ import {
   getNextDueDate,
 } from "@/lib/db/payment-plans-client";
 import { type PaymentPlanRow } from "@/lib/supabase/types";
-import { buildInstallmentPreview, minorToMyrNumber, type PaymentPlanFrequency } from "@/lib/payment-plans/schedule";
-import { formatRM } from "@/lib/mock-data";
+import { buildInstallmentPreview, type PaymentPlanFrequency } from "@/lib/payment-plans/schedule";
+import { databaseAmountToMinor, formatCurrencyMinor } from "@/lib/financial/money";
 import {
   ChevronLeft, DollarSign,
   CheckCircle2, AlertCircle, Info, Copy, Check,
@@ -56,7 +56,7 @@ export function PaymentPlanPage({ caseId }: Props) {
 
   const c = caseData;
   const totalMinor = BigInt(c.outstanding_minor);
-  const totalAmount = minorToMyrNumber(totalMinor);
+  const money = (minor: bigint | number) => formatCurrencyMinor(minor, c.currency, { explicitCode: true });
   let schedule: ReturnType<typeof buildInstallmentPreview> = [];
   let scheduleError: string | null = null;
   try {
@@ -104,7 +104,7 @@ export function PaymentPlanPage({ caseId }: Props) {
       <div className="flex flex-col pb-6">
         <PageHeader caseId={c.id} />
         <div className="px-4 pt-5 flex flex-col gap-5">
-          <PlanSummaryCard plan={activePlan} />
+          <PlanSummaryCard plan={activePlan} fallbackCurrency={c.currency} />
           <ShareSection caseId={c.id} planId={activePlan.id} />
           <AcknowledgementLinkCard caseId={c.id} />
           <Disclaimer />
@@ -129,7 +129,7 @@ export function PaymentPlanPage({ caseId }: Props) {
             </div>
           </div>
 
-          <PlanSummaryCard plan={saved} />
+          <PlanSummaryCard plan={saved} fallbackCurrency={c.currency} />
           <ShareSection caseId={c.id} planId={saved.id} />
           <AcknowledgementLinkCard caseId={c.id} />
           <Disclaimer />
@@ -157,7 +157,7 @@ export function PaymentPlanPage({ caseId }: Props) {
           </div>
           <div className="text-right">
             <p className="text-[10px] text-blue-200">Balance Due</p>
-            <p className="text-xl font-black text-white">{formatRM(totalAmount)}</p>
+            <p className="text-xl font-black text-white">{money(totalMinor)}</p>
           </div>
         </div>
 
@@ -166,10 +166,10 @@ export function PaymentPlanPage({ caseId }: Props) {
           <div className="flex flex-col gap-4 mt-3">
             {/* Total (read-only) */}
             <div>
-              <label className="text-xs font-semibold text-gray-600 mb-1 block">Total Amount to Settle (RM)</label>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Total Amount to Settle ({c.currency})</label>
               <div className="flex items-center gap-2 bg-[#F2F4F7] rounded-xl px-4 py-3">
                 <DollarSign className="w-4 h-4 text-gray-400" />
-                <p className="text-base font-black text-[#0D1B3D]">{formatRM(totalAmount)}</p>
+                <p className="text-base font-black text-[#0D1B3D]">{money(totalMinor)}</p>
               </div>
             </div>
 
@@ -195,7 +195,7 @@ export function PaymentPlanPage({ caseId }: Props) {
                 ))}
               </div>
               <p className="text-[11px] text-gray-400 mt-1">
-                First instalment: <strong className="text-gray-700">{schedule[0] ? formatRM(minorToMyrNumber(schedule[0].amountMinor)) : "—"}</strong>
+                First instalment: <strong className="text-gray-700">{schedule[0] ? money(schedule[0].amountMinor) : "—"}</strong>
               </p>
             </div>
 
@@ -256,12 +256,12 @@ export function PaymentPlanPage({ caseId }: Props) {
                   </div>
                   <p className="text-sm text-gray-700">{formatDate(item.dueDate)}</p>
                 </div>
-                <p className="text-sm font-bold text-gray-900">{formatRM(minorToMyrNumber(item.amountMinor))}</p>
+                <p className="text-sm font-bold text-gray-900">{money(item.amountMinor)}</p>
               </div>
             ))}
             <div className="flex items-center justify-between pt-1.5 border-t border-gray-200">
               <p className="text-xs font-bold text-gray-500">Total</p>
-              <p className="text-sm font-black text-[#0D1B3D]">{formatRM(totalAmount)}</p>
+              <p className="text-sm font-black text-[#0D1B3D]">{money(totalMinor)}</p>
             </div>
           </div>
         </SectionCard>
@@ -304,8 +304,12 @@ function PageHeader({ caseId }: { caseId: string }) {
   );
 }
 
-function PlanSummaryCard({ plan: p }: { plan: PaymentPlanRow }) {
+function PlanSummaryCard({ plan: p, fallbackCurrency }: { plan: PaymentPlanRow; fallbackCurrency: string }) {
   const nextDue = getNextDueDate(p);
+  const currency = p.currency ?? fallbackCurrency;
+  const majorMoney = (value: number) => formatCurrencyMinor(
+    databaseAmountToMinor(String(value), currency), currency, { explicitCode: true },
+  );
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
@@ -321,8 +325,8 @@ function PlanSummaryCard({ plan: p }: { plan: PaymentPlanRow }) {
       </div>
       <div className="px-4 py-3 flex flex-col gap-2.5">
         {[
-          { label: "Total Amount",    value: formatRM(p.total_amount) },
-          { label: "Instalments",     value: `${p.installment_count}× ${formatRM(p.installment_amount)}` },
+          { label: "Total Amount",    value: majorMoney(p.total_amount) },
+          { label: "Instalments",     value: `${p.installment_count}× ${majorMoney(p.installment_amount)}` },
           { label: "First Due",       value: formatDate(p.due_dates[0] ?? p.start_date) },
           { label: "Next Due",        value: nextDue ? formatDate(nextDue) : "Completed" },
         ].map((row) => (

@@ -1,0 +1,33 @@
+(node:14796) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/billing-lifecycle-contract.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Stripe mode is strictly separated between production and non-production (2.1183ms)
+✔ checkout and portal expose only generic provider failures (0.7912ms)
+✔ refund authority is controlled outside the customer API (53.8097ms)
+(node:5992) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/pocket-billing-entitlements.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ monthly and annual are integer-priced base offers with identical capabilities (1.4208ms)
+✔ invoice tiers are 0, 30, and 60 with a hard maximum (0.4336ms)
+✔ active-debt enforcement excludes settled and archived rows and rejects the 101st (0.643ms)
+✔ OCR is charged by source hash, retries are idempotent, and the 101st unique job is blocked (0.5991ms)
+✔ quota consumption serializes the counter and cancellation preserves read access (0.9644ms)
+✔ provider ordering, pack price verification, and Main API isolation are explicit (0.2837ms)
+(node:14960) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Web%20App%20and%20phone%20app/COMPLETED%20&%20RUN/Completed%20Collectboss/collectboss/tests/stripe-webhook-contract.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Stripe signatures validate only the unchanged raw payload (9.6469ms)
+✔ event ID claim is atomic and a duplicate cannot reset processed state (19.3173ms)
+✔ subscription state is obtained from Stripe now, and mapping disagreements retry (0.3652ms)
+✔ retryable failures and refund/cancel outcomes are explicit and redacted (0.3417ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8793.7411

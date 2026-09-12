@@ -275,7 +275,7 @@ export function BillingDebugPage() {
               { label: "→ Billing Page",     href: "/billing" },
               { label: "→ Add Case",         href: "/add" },
               { label: "→ Reports",          href: "/reports" },
-              { label: "→ Beta Welcome",     href: "/beta-welcome" },
+              { label: "→ Public Landing",   href: "/landing" },
             ].map((a) => (
               <Link
                 key={a.href}

@@ -18,7 +18,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   if (!snapshot.pdf || snapshot.templateVersion !== document.template_version || !snapshot.legalReviewRequired) return NextResponse.json({ error: "The case-record pack snapshot is invalid." }, { status: 409, headers: { "Cache-Control": "no-store" } });
   try {
     const pdf = await generateSmallClaimPdf(snapshot.pdf);
-    return new NextResponse(await pdf.arrayBuffer(), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename=\"case-record-pack-${document.document_number ?? documentId}.pdf\"`, "Cache-Control": "private, no-store, max-age=0", "X-Content-Type-Options": "nosniff" } });
+    const filename = snapshot.templateVersion < 3 ? "case-record-pack" : "case-evidence-export";
+    return new NextResponse(await pdf.arrayBuffer(), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename=\"${filename}-${document.document_number ?? documentId}.pdf\"`, "Cache-Control": "private, no-store, max-age=0", "X-Content-Type-Options": "nosniff" } });
   } catch {
     return NextResponse.json({ error: "Unable to render the issued case-record pack." }, { status: 500, headers: { "Cache-Control": "no-store" } });
   }

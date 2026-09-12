@@ -81,13 +81,37 @@ CREATE TABLE IF NOT EXISTS billing_events (
   stripe_event_id text UNIQUE NOT NULL,
   event_type      text NOT NULL,
   processed       boolean NOT NULL DEFAULT false,
+  status          text NOT NULL DEFAULT 'pending',
+  attempts        integer NOT NULL DEFAULT 0,
+  next_attempt_at timestamptz NOT NULL DEFAULT now(),
+  event_created_at timestamptz,
+  processed_at    timestamptz,
+  last_error_code text,
+  last_error_message text,
   metadata        jsonb,
   created_at      timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE billing_events
+  ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS next_attempt_at timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS event_created_at timestamptz,
+  ADD COLUMN IF NOT EXISTS processed_at timestamptz,
+  ADD COLUMN IF NOT EXISTS last_error_code text,
+  ADD COLUMN IF NOT EXISTS last_error_message text;
+ALTER TABLE billing_events DROP CONSTRAINT IF EXISTS billing_events_status_check;
+ALTER TABLE billing_events ADD CONSTRAINT billing_events_status_check
+  CHECK (status IN ('pending', 'processing', 'retry_scheduled', 'succeeded', 'dead_letter'));
+ALTER TABLE billing_events DROP CONSTRAINT IF EXISTS billing_events_attempts_check;
+ALTER TABLE billing_events ADD CONSTRAINT billing_events_attempts_check CHECK (attempts BETWEEN 0 AND 100);
+
 CREATE INDEX IF NOT EXISTS billing_events_stripe_event_idx ON billing_events (stripe_event_id);
 CREATE INDEX IF NOT EXISTS billing_events_business_idx     ON billing_events (business_id);
 CREATE INDEX IF NOT EXISTS billing_events_processed_idx    ON billing_events (processed);
+CREATE INDEX IF NOT EXISTS billing_events_retry_idx
+  ON billing_events (next_attempt_at, created_at)
+  WHERE status IN ('pending', 'retry_scheduled');
 
 ALTER TABLE billing_events ENABLE ROW LEVEL SECURITY;
 -- No SELECT / INSERT / UPDATE policies → only service_role key can access

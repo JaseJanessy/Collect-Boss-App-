@@ -1,15 +1,15 @@
 import { MobileShell } from "@/components/shells/mobile-shell";
 import { DashboardShell } from "@/components/shells/dashboard-shell";
-import { ActionsPage } from "@/components/pages/actions-page";
+import { ActionCentrePage } from "@/components/pages/action-centre-page";
 
 export default function Actions() {
   return (
     <>
       <MobileShell>
-        <ActionsPage />
+        <ActionCentrePage />
       </MobileShell>
       <DashboardShell>
-        <ActionsPage dashboard />
+        <ActionCentrePage dashboard />
       </DashboardShell>
     </>
   );

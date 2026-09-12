@@ -73,12 +73,26 @@ export interface BillingEventRow {
   event_type:      string;
   processed:       boolean;
   metadata:        Record<string, unknown> | null;
+  status:           "pending" | "processing" | "retry_scheduled" | "succeeded" | "dead_letter";
+  attempts:         number;
+  next_attempt_at:  string;
+  event_created_at: string | null;
+  processed_at:     string | null;
+  last_error_code:  string | null;
+  last_error_message: string | null;
   created_at:      string;
 }
 
-export type BillingEventInsert = Omit<BillingEventRow, "id" | "created_at"> & {
+export type BillingEventInsert = Omit<BillingEventRow, "id" | "created_at" | "status" | "attempts" | "next_attempt_at" | "event_created_at" | "processed_at" | "last_error_code" | "last_error_message"> & {
   id?:         string;
   created_at?: string;
+  status?: BillingEventRow["status"];
+  attempts?: number;
+  next_attempt_at?: string;
+  event_created_at?: string | null;
+  processed_at?: string | null;
+  last_error_code?: string | null;
+  last_error_message?: string | null;
 };
 
 // ─── entitlements ─────────────────────────────────────────────────────────────

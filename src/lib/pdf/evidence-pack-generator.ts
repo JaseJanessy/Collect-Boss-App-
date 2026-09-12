@@ -4,6 +4,9 @@
  * SECURITY: no bank/DuitNow details included by default.
  */
 
+import { CASE_STATUS_METADATA } from "../domain/workflows.ts";
+import { brandPdfColors } from "../brand/pdf-theme.ts";
+
 // ─── Data types ────────────────────────────────────────────────────────────────
 
 export interface EvidencePackReminder {
@@ -99,12 +102,12 @@ function fmtDate(iso: string): string {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  action_needed:       "Action Needed",
-  payment_promise:     "Payment Promise",
-  partial_paid:        "Partial Paid",
-  paid:                "Paid",
-  overdue:             "Overdue",
-  formal_demand_ready: "Formal Demand Ready",
+  action_needed:       CASE_STATUS_METADATA.action_needed.label,
+  payment_promise:     CASE_STATUS_METADATA.payment_promise.label,
+  partial_paid:        CASE_STATUS_METADATA.partial_paid.label,
+  paid:                CASE_STATUS_METADATA.paid.label,
+  overdue:             CASE_STATUS_METADATA.overdue.label,
+  formal_demand_ready: CASE_STATUS_METADATA.formal_demand_ready.label,
 };
 
 const LOCK_LABELS: Record<string, string> = {
@@ -156,16 +159,16 @@ export async function generateEvidencePackPdf(data: EvidencePackData): Promise<B
   let y = 14;
 
   // ── Color setters ────────────────────────────────────────────────────────────
-  const navy     = () => doc.setTextColor(13, 27, 61);
-  const emerald  = () => doc.setTextColor(0, 153, 102);
+  const navy     = () => doc.setTextColor(...brandPdfColors.navy);
+  const emerald  = () => doc.setTextColor(...brandPdfColors.green);
   const dark     = () => doc.setTextColor(31, 41, 55);
   const mid      = () => doc.setTextColor(107, 114, 128);
   const light    = () => doc.setTextColor(156, 163, 175);
   const white    = () => doc.setTextColor(255, 255, 255);
   const red      = () => doc.setTextColor(220, 38, 38);
 
-  const fillNavy    = () => doc.setFillColor(13, 27, 61);
-  const fillEme     = () => doc.setFillColor(0, 153, 102);
+  const fillNavy    = () => doc.setFillColor(...brandPdfColors.navy);
+  const fillEme     = () => doc.setFillColor(...brandPdfColors.green);
   const fillLGray   = () => doc.setFillColor(242, 244, 247);
   const fillWhite   = () => doc.setFillColor(255, 255, 255);
   const fillMissing = () => doc.setFillColor(254, 242, 242);
@@ -186,7 +189,7 @@ export async function generateEvidencePackPdf(data: EvidencePackData): Promise<B
     doc.setFontSize(7);
     light();
     doc.text(
-      `CollectBoss Evidence Pack · Case: ${data.caseId} · Page ${n}`,
+      `CollectBoss Case Evidence Export · Case: ${data.caseId} · Page ${n}`,
       W / 2, H - 6, { align: "center" }
     );
     doc.setPage(savedPage);
@@ -309,17 +312,19 @@ export async function generateEvidencePackPdf(data: EvidencePackData): Promise<B
   // CollectBoss wordmark
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
-  white();
+  doc.setFillColor(...brandPdfColors.surface);
+  doc.roundedRect(ML - 2, 5, 59, 19, 1, 1, "F");
+  navy();
   const collectW = doc.getTextWidth("Collect");
   doc.text("Collect", ML, 18);
-  doc.setTextColor(0, 153, 102);
+  doc.setTextColor(...brandPdfColors.green);
   doc.text("Boss", ML + collectW, 18);
 
   // Title
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   white();
-  doc.text("DEBT RECOVERY EVIDENCE PACK", ML, 27);
+  doc.text("FACTUAL CASE EVIDENCE EXPORT", ML, 27);
 
   // Meta
   doc.setFontSize(8);

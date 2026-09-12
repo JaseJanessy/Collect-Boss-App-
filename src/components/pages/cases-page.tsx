@@ -6,10 +6,18 @@ import { CaseCard } from "@/components/ui/case-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { formatRM } from "@/lib/mock-data";
 import { useCases } from "@/hooks/use-cases";
-import { Search, FolderOpen, AlertCircle, Plus } from "lucide-react";
+import { Search, FolderOpen, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  CaseOperations, emptyOperationalFilters, type OperationalCaseFilters,
+} from "@/components/operations/case-operations";
+import { useRegion } from "@/contexts/region-context";
+import { formatCalendarDate, formatCurrency } from "@/lib/international/formatting";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { DataTable, DataTableContainer } from "@/components/ui/data-table";
+import { Alert } from "@/components/ui/feedback";
+import { Tabs } from "@/components/ui/tabs";
 
 const filters = [
   { label: "All",           value: "all",             emoji: "" },
@@ -23,30 +31,51 @@ interface CasesPageProps {
 }
 
 export function CasesPage({ dashboard }: CasesPageProps) {
+  const { configuration } = useRegion();
   const [search, setSearch]             = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [operationalFilters, setOperationalFilters] = useState<OperationalCaseFilters>(emptyOperationalFilters);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const deferredSearch = useDeferredValue(search);
-  const caseStatus = activeFilter === "all" ? undefined : activeFilter as "action_needed" | "payment_promise" | "paid";
+  const statuses = activeFilter === "all"
+    ? []
+    : [activeFilter as "action_needed" | "payment_promise" | "paid"];
+  const aging = operationalFilters.aging === "0-30" ? { agingMin: 0, agingMax: 30 }
+    : operationalFilters.aging === "31-60" ? { agingMin: 31, agingMax: 60 }
+      : operationalFilters.aging === "61-90" ? { agingMin: 61, agingMax: 90 }
+        : operationalFilters.aging === "91+" ? { agingMin: 91 } : {};
   const { cases, loading, loadingMore, error, total, hasMore, refresh, loadMore } = useCases({
     query: deferredSearch,
-    status: caseStatus,
+    statuses,
+    priorities: operationalFilters.priority ? [operationalFilters.priority] : [],
+    owner: operationalFilters.owner || undefined,
+    ...aging,
+    promiseMissed: operationalFilters.promiseMissed,
+    plan: operationalFilters.plan,
+    dispute: operationalFilters.dispute,
+    dueToday: operationalFilters.dueToday,
+    highValueMinor: operationalFilters.highValue ? 1_000_000 : undefined,
+    closed: operationalFilters.closed,
   });
 
   const filtered = cases;
+  const selectedIds = [...selected];
+  const toggleSelected = (id: string) => setSelected((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   /* ── Dashboard (table) ─────────────────────────────────────── */
   if (dashboard) {
     return (
-      <div className="flex flex-col gap-5">
+      <div className="cb-analytics-light flex flex-col gap-5 text-slate-900">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Cases</h1>
             <p className="text-sm text-gray-500 mt-0.5">See which customers need follow-up.</p>
           </div>
-          <Link
-            href="/add"
-            className="flex items-center gap-1.5 bg-[#009966] hover:bg-[#00B377] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
-          >
+          <Link href="/add" className={buttonVariants()}>
             <Plus className="w-4 h-4" />
             Add Case
           </Link>
@@ -58,6 +87,13 @@ export function CasesPage({ dashboard }: CasesPageProps) {
           activeFilter={activeFilter}
           setActiveFilter={setActiveFilter}
         />
+        <CaseOperations
+          filters={operationalFilters}
+          onFilters={setOperationalFilters}
+          selectedIds={selectedIds}
+          onComplete={refresh}
+          onClearSelection={() => setSelected(new Set())}
+        />
 
         {loading ? (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -66,17 +102,16 @@ export function CasesPage({ dashboard }: CasesPageProps) {
         ) : error ? (
           <ErrorBanner message={error} onRetry={refresh} />
         ) : (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px] text-sm">
+          <DataTableContainer label="Cases">
+            <DataTable>
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">
-                  {["Case ID", "Company", "Amount Due", "Due Date", "Status", "Action"].map((h, i) => (
+                  {["", "Case ID", "Company", "Amount Due", "Due Date", "Status", "Action"].map((h, i) => (
                     <th
                       key={h}
                       className={cn(
                         "px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide",
-                        i === 2 ? "text-right" : "text-left"
+                        i === 3 ? "text-right" : "text-left"
                       )}
                     >
                       {h}
@@ -87,6 +122,14 @@ export function CasesPage({ dashboard }: CasesPageProps) {
               <tbody className="divide-y divide-gray-50">
                 {filtered.map((c) => (
                   <tr key={c.id} className="hover:bg-gray-50 cursor-pointer transition-colors">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select case ${c.id}`}
+                        checked={selected.has(c.id)}
+                        onChange={() => toggleSelected(c.id)}
+                      />
+                    </td>
                     <td className="px-4 py-3 text-xs text-gray-500 font-mono">{c.id}</td>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-gray-900">{c.debtor_name}</p>
@@ -96,13 +139,13 @@ export function CasesPage({ dashboard }: CasesPageProps) {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <p className="font-bold text-gray-900">
-                        {formatRM(c.balance > 0 ? c.balance : c.amount_paid)}
+                        {formatCurrency(c.balance > 0 ? c.balance : c.amount_paid, configuration.settings, c.currency ?? configuration.settings.defaultCurrency)}
                       </p>
                       {c.days_overdue > 0 && (
                         <p className="text-xs text-red-500">{c.days_overdue}d overdue</p>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{c.due_date}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{formatCalendarDate(c.due_date, configuration.settings)}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={c.status} />
                     </td>
@@ -117,8 +160,7 @@ export function CasesPage({ dashboard }: CasesPageProps) {
                   </tr>
                 ))}
               </tbody>
-            </table>
-            </div>
+            </DataTable>
             {filtered.length === 0 && (
               <EmptyState
                 icon={<FolderOpen className="w-6 h-6" />}
@@ -130,10 +172,7 @@ export function CasesPage({ dashboard }: CasesPageProps) {
                 }
                 action={
                   cases.length === 0 ? (
-                    <Link
-                      href="/add"
-                      className="flex items-center gap-1.5 bg-[#009966] hover:bg-[#00B377] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
-                    >
+                    <Link href="/add" className={buttonVariants()}>
                       <Plus className="w-4 h-4" />
                       Add Your First Case
                     </Link>
@@ -152,7 +191,7 @@ export function CasesPage({ dashboard }: CasesPageProps) {
                 </button>
               </div>
             )}
-          </div>
+          </DataTableContainer>
         )}
       </div>
     );
@@ -160,7 +199,7 @@ export function CasesPage({ dashboard }: CasesPageProps) {
 
   /* ── Mobile (cards) ────────────────────────────────────────── */
   return (
-    <div className="flex flex-col pb-6">
+    <div className="cb-light-surface flex flex-col pb-6">
       <div className="bg-white border-b border-gray-100 px-4 py-4">
         <h1 className="text-lg font-bold text-[#0D1B3D]">Cases</h1>
         <p className="text-xs text-gray-400 mt-0.5">
@@ -174,26 +213,20 @@ export function CasesPage({ dashboard }: CasesPageProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by customer or case ID"
-            className="w-full pl-9 pr-4 py-2.5 bg-[#F2F4F7] rounded-xl text-sm text-gray-700 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-emerald-200 transition-all border border-transparent focus:border-emerald-200"
+            aria-label="Search cases"
+            className="cb-field cb-field-with-icon bg-slate-50"
           />
         </div>
 
-        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide pb-0.5">
-          {filters.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setActiveFilter(f.value)}
-              className={cn(
-                "shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
-                activeFilter === f.value
-                  ? "bg-[#0D1B3D] text-white border-[#0D1B3D]"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
-              )}
-            >
-              {f.emoji && <span className="mr-1">{f.emoji}</span>}
-              {f.label}
-            </button>
-          ))}
+        <Tabs className="mt-3" label="Case status" value={activeFilter} onValueChange={setActiveFilter} options={filters.map((filter) => ({ value: filter.value, label: filter.label }))} />
+        <div className="mt-3">
+          <CaseOperations
+            filters={operationalFilters}
+            onFilters={setOperationalFilters}
+            selectedIds={selectedIds}
+            onComplete={refresh}
+            onClearSelection={() => setSelected(new Set())}
+          />
         </div>
       </div>
 
@@ -215,7 +248,17 @@ export function CasesPage({ dashboard }: CasesPageProps) {
 
           <div className="px-4 flex flex-col gap-3">
             {filtered.map((c) => (
-              <CaseCard key={c.id} case={c} />
+              <div key={c.id} className="relative">
+                <label className="absolute right-3 top-3 z-10 rounded-full bg-white/90 p-1 shadow-sm">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select case ${c.id}`}
+                    checked={selected.has(c.id)}
+                    onChange={() => toggleSelected(c.id)}
+                  />
+                </label>
+                <CaseCard case={c} />
+              </div>
             ))}
 
             {filtered.length === 0 && (
@@ -260,19 +303,7 @@ export function CasesPage({ dashboard }: CasesPageProps) {
 
 function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-xl p-4">
-      <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-red-700">Failed to load cases</p>
-        <p className="text-[11px] text-red-500 mt-0.5 break-words">{message}</p>
-      </div>
-      <button
-        onClick={onRetry}
-        className="shrink-0 text-xs font-semibold text-red-600 hover:text-red-700"
-      >
-        Retry
-      </button>
-    </div>
+    <Alert tone="error" title="Failed to load cases" action={<Button variant="outline" size="sm" onClick={onRetry}>Retry</Button>}><p>{message}</p></Alert>
   );
 }
 
@@ -297,26 +328,12 @@ function SearchAndFilters({
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by customer or case ID"
-          className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300 transition-all"
+          placeholder="Search name, phone, email, case, invoice, PO, agreement or vehicle"
+          aria-label="Search cases"
+          className="cb-field cb-field-with-icon"
         />
       </div>
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-        {filters.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setActiveFilter(f.value)}
-            className={cn(
-              "shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
-              activeFilter === f.value
-                ? "bg-[#0D1B3D] text-white border-[#0D1B3D]"
-                : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      <Tabs label="Case status" value={activeFilter} onValueChange={setActiveFilter} options={filters.map((filter) => ({ value: filter.value, label: filter.label }))} />
     </div>
   );
 }

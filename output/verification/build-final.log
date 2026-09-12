@@ -1,0 +1,274 @@
+
+> collectboss@1.0.0-rc.1 build
+> node ./node_modules/next/dist/bin/next build
+
+▲ Next.js 16.2.7 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 30.8s
+  Running TypeScript ...
+  Finished TypeScript in 36.6s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/48) ...
+  Generating static pages using 7 workers (12/48) 
+  Generating static pages using 7 workers (24/48) 
+  Generating static pages using 7 workers (36/48) 
+✓ Generating static pages using 7 workers (48/48) in 976ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /acknowledge/[caseId]
+├ ○ /actions
+├ ○ /add
+├ ƒ /api/abuse-reports
+├ ƒ /api/abuse-reports/[reportId]
+├ ƒ /api/action-centre
+├ ƒ /api/action-centre/[actionId]
+├ ƒ /api/audit-log
+├ ƒ /api/billing/create-checkout-session
+├ ƒ /api/billing/create-customer-portal-session
+├ ƒ /api/billing/validate-action
+├ ƒ /api/business-verification
+├ ƒ /api/cases
+├ ƒ /api/cases/[caseId]
+├ ƒ /api/cases/[caseId]/communications
+├ ƒ /api/cases/[caseId]/communications/[activityId]
+├ ƒ /api/cases/[caseId]/compliance-holds
+├ ƒ /api/cases/[caseId]/debt-truth
+├ ƒ /api/cases/[caseId]/discrepancies
+├ ƒ /api/cases/[caseId]/disputes
+├ ƒ /api/cases/[caseId]/disputes/[disputeId]
+├ ƒ /api/cases/[caseId]/email
+├ ƒ /api/cases/[caseId]/evidence
+├ ƒ /api/cases/[caseId]/evidence-pack
+├ ƒ /api/cases/[caseId]/evidence/[evidenceId]
+├ ƒ /api/cases/[caseId]/formal-demands
+├ ƒ /api/cases/[caseId]/formal-demands/[documentId]
+├ ƒ /api/cases/[caseId]/lawyer-referrals
+├ ƒ /api/cases/[caseId]/payment-plans
+├ ƒ /api/cases/[caseId]/promises
+├ ƒ /api/cases/[caseId]/promises/[promiseId]
+├ ƒ /api/cases/[caseId]/public-links
+├ ƒ /api/cases/[caseId]/receivables
+├ ƒ /api/cases/[caseId]/reminders
+├ ƒ /api/cases/[caseId]/small-claim-packs
+├ ƒ /api/cases/[caseId]/small-claim-packs/[documentId]
+├ ƒ /api/cases/[caseId]/timeline
+├ ƒ /api/communications/bulk-preflight
+├ ƒ /api/compliance/checks
+├ ƒ /api/compliance/checks/[checkId]/decision
+├ ƒ /api/compliance/policies
+├ ƒ /api/cron/accounting-sync
+├ ƒ /api/cron/document-extractions
+├ ƒ /api/cron/document-intake-health
+├ ƒ /api/cron/document-scans
+├ ƒ /api/cron/domain-events
+├ ƒ /api/cron/integration-jobs
+├ ƒ /api/cron/payment-plans
+├ ƒ /api/cron/pocket-billing-lifecycle
+├ ƒ /api/dashboard/summary
+├ ƒ /api/debtors
+├ ƒ /api/debtors/[debtorId]
+├ ƒ /api/debtors/[debtorId]/receivables
+├ ƒ /api/document-intakes
+├ ƒ /api/document-intakes/[intakeId]
+├ ƒ /api/document-intakes/[intakeId]/evidence
+├ ƒ /api/document-intakes/[intakeId]/evidence/[evidenceId]
+├ ƒ /api/document-intakes/[intakeId]/evidence/[evidenceId]/preview
+├ ƒ /api/document-intakes/[intakeId]/evidence/[evidenceId]/replace
+├ ƒ /api/document-intakes/[intakeId]/extraction
+├ ƒ /api/document-intakes/[intakeId]/review
+├ ƒ /api/document-intakes/[intakeId]/workflow
+├ ƒ /api/email/settings
+├ ƒ /api/exports/business-data
+├ ƒ /api/feedback
+├ ƒ /api/integrations/accounting
+├ ƒ /api/integrations/accounting/[provider]/callback
+├ ƒ /api/integrations/accounting/[provider]/connect
+├ ƒ /api/integrations/accounting/[provider]/sync
+├ ƒ /api/integrations/accounting/[provider]/writeback
+├ ƒ /api/integrations/accounting/webhooks/[provider]
+├ ƒ /api/integrations/jobs/[jobId]/replay
+├ ƒ /api/legal-handoffs/[referralId]/document-requests/[requestId]
+├ ƒ /api/legal-handoffs/[referralId]/professional-updates
+├ ƒ /api/mobile/cases/[caseId]/evidence
+├ ƒ /api/navigation
+├ ƒ /api/notifications
+├ ƒ /api/notifications/[notificationId]
+├ ƒ /api/operations/assignees
+├ ƒ /api/operations/bulk
+├ ƒ /api/operations/bulk-reminders
+├ ƒ /api/operations/duplicates
+├ ƒ /api/operations/import
+├ ƒ /api/operations/import/[batchId]/errors
+├ ƒ /api/operations/import/template
+├ ƒ /api/payment-matching/settings
+├ ƒ /api/payment-matching/transactions
+├ ƒ /api/payment-matching/transactions/[transactionId]/match
+├ ƒ /api/payment-matching/transactions/[transactionId]/review
+├ ƒ /api/payment-operations/accounting-outbox
+├ ƒ /api/payment-operations/accounting-outbox/[outboxId]/retry
+├ ƒ /api/payment-operations/allocations/[allocationId]/reverse
+├ ƒ /api/payment-operations/approval-requests
+├ ƒ /api/payment-operations/approval-requests/[requestId]/decision
+├ ƒ /api/payment-operations/exchange-rates
+├ ƒ /api/payment-operations/receipts
+├ ƒ /api/payment-operations/receipts/[receiptId]/allocations
+├ ƒ /api/payment-operations/receipts/[receiptId]/refund
+├ ƒ /api/payment-operations/receipts/[receiptId]/reverse
+├ ƒ /api/payment-operations/reconciliation
+├ ƒ /api/payment-submissions
+├ ƒ /api/payment-submissions/[id]/review
+├ ƒ /api/payments/[id]/review
+├ ƒ /api/pocket/billing/checkout
+├ ƒ /api/pocket/customers
+├ ƒ /api/pocket/customers/[customerId]
+├ ƒ /api/pocket/debts
+├ ƒ /api/pocket/debts/[debtId]
+├ ƒ /api/pocket/debts/[debtId]/attachments
+├ ƒ /api/pocket/entitlements
+├ ƒ /api/pocket/invoices
+├ ƒ /api/pocket/invoices/[invoiceId]
+├ ƒ /api/pocket/invoices/[invoiceId]/convert
+├ ƒ /api/pocket/invoices/[invoiceId]/issue
+├ ƒ /api/pocket/invoices/[invoiceId]/logo
+├ ƒ /api/pocket/invoices/[invoiceId]/pdf
+├ ƒ /api/pocket/invoices/[invoiceId]/whatsapp
+├ ƒ /api/pocket/payments
+├ ƒ /api/pocket/payments/[allocationId]
+├ ƒ /api/pocket/payments/[allocationId]/reverse
+├ ƒ /api/pocket/payments/preview
+├ ƒ /api/pocket/receipts
+├ ƒ /api/pocket/receipts/[intakeId]
+├ ƒ /api/pocket/receipts/[intakeId]/confirm
+├ ƒ /api/pocket/receipts/[intakeId]/review
+├ ƒ /api/pocket/reminders
+├ ƒ /api/pocket/reminders/compose
+├ ƒ /api/pocket/reports/summary
+├ ƒ /api/pocket/upgrade
+├ ƒ /api/pocket/upgrade/checkout
+├ ƒ /api/profile
+├ ƒ /api/public-links/[id]/revoke
+├ ƒ /api/public-links/[id]/rotate
+├ ƒ /api/public/acknowledge/[token]
+├ ƒ /api/public/pay/[token]
+├ ƒ /api/public/pay/[token]/dispute
+├ ƒ /api/public/pay/[token]/negotiation
+├ ƒ /api/public/pay/[token]/otp/request
+├ ƒ /api/public/pay/[token]/otp/verify
+├ ƒ /api/public/pay/[token]/proof
+├ ƒ /api/public/pay/[token]/suspicious
+├ ƒ /api/public/pay/[token]/timeline
+├ ƒ /api/receiving-accounts
+├ ƒ /api/receiving-accounts/[id]
+├ ƒ /api/receiving-accounts/[id]/qr
+├ ƒ /api/region-settings
+├ ƒ /api/reports/export
+├ ƒ /api/reports/summary
+├ ƒ /api/role-settings
+├ ƒ /api/search
+├ ƒ /api/statements/pdf
+├ ƒ /api/statements/summary
+├ ƒ /api/stripe/webhook
+├ ƒ /api/team-members
+├ ƒ /api/team-members/[memberId]
+├ ƒ /api/webhooks/resend
+├ ƒ /api/workspace/context
+├ ƒ /api/workspace/provision
+├ ƒ /auth/callback
+├ ○ /beta-welcome
+├ ƒ /billing
+├ ○ /billing/cancel
+├ ○ /billing/success
+├ ○ /cases
+├ ƒ /cases/[id]
+├ ƒ /choose-product
+├ ○ /customers
+├ ○ /dashboard
+├ ○ /debtors
+├ ƒ /dev/billing-debug
+├ ○ /dev/pocket-ux
+├ ○ /documents
+├ ƒ /evidence/[caseId]
+├ ƒ /evidence/[caseId]/checklist
+├ ƒ /evidence/[caseId]/pack
+├ ○ /forgot-password
+├ ○ /glossary
+├ ○ /landing
+├ ○ /legal-disclaimer
+├ ● /legal/[caseId]/acknowledge
+├ ● /legal/[caseId]/demand
+├ ● /legal/[caseId]/lawyer
+├ ● /legal/[caseId]/plan
+├ ● /legal/[caseId]/smallclaim
+├ ƒ /login
+├ ○ /manifest.webmanifest
+├ ○ /more
+├ ○ /notifications
+├ ƒ /onboarding/profile
+├ ○ /operations
+├ ƒ /pay/[caseId]
+├ ○ /payments
+├ ƒ /payments/access/[caseId]
+├ ○ /payments/account
+├ ƒ /payments/record/[caseId]
+├ ○ /payments/requests
+├ ƒ /payments/requests/[requestId]
+├ ○ /pdpa-consent
+├ ƒ /pocket
+├ ƒ /pocket/[...segments]
+├ ƒ /pocket/activity
+├ ƒ /pocket/add
+├ ƒ /pocket/billing
+├ ƒ /pocket/customers
+├ ƒ /pocket/customers/[customerId]
+├ ƒ /pocket/customers/[customerId]/edit
+├ ƒ /pocket/customers/new
+├ ƒ /pocket/debts
+├ ƒ /pocket/debts/[debtId]
+├ ƒ /pocket/debts/new
+├ ƒ /pocket/due-today
+├ ƒ /pocket/invoices
+├ ƒ /pocket/invoices/[invoiceId]
+├ ƒ /pocket/invoices/[invoiceId]/edit
+├ ƒ /pocket/invoices/new
+├ ○ /pocket/manifest.webmanifest
+├ ƒ /pocket/more
+├ ƒ /pocket/overdue
+├ ƒ /pocket/payments/[allocationId]
+├ ƒ /pocket/payments/new
+├ ƒ /pocket/receipts
+├ ƒ /pocket/receipts/[intakeId]
+├ ƒ /pocket/receipts/scan
+├ ƒ /pocket/reminders
+├ ƒ /pocket/reminders/[scheduleId]
+├ ƒ /pocket/reminders/compose
+├ ƒ /pocket/reports
+├ ƒ /pocket/upgrade
+├ ○ /privacy
+├ ƒ /reminders/[caseId]
+├ ○ /reports
+├ ƒ /reset-password
+├ ○ /settings
+├ ƒ /signup
+├ ○ /statements
+├ ƒ /status
+├ ○ /support
+├ ○ /terms
+└ ○ /workspace-unavailable
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+
+npm notice
+npm notice New major version of npm available! 11.16.0 -> 12.0.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+npm notice To update run: npm install -g npm@12.0.2
+npm notice

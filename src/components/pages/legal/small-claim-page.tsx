@@ -108,12 +108,12 @@ export function SmallClaimPage({ caseId }: Props) {
       },
       {
         id:    "ev_pack",
-        label: "Evidence pack generated",
+        label: "Case evidence export generated",
         done:  evidencePacks.length > 0,
       },
       {
         id:    "demand",
-        label: "Formal demand draft generated",
+        label: "Payment notice draft generated",
         done:  formalDemands.length > 0,
       },
     ];
@@ -170,7 +170,7 @@ export function SmallClaimPage({ caseId }: Props) {
       const url = URL.createObjectURL(blob);
       const a   = document.createElement("a");
       a.href     = url;
-      a.download = `case-record-pack-${caseData.id}.pdf`;
+      a.download = `case-evidence-export-${caseData.id}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -207,10 +207,10 @@ export function SmallClaimPage({ caseId }: Props) {
           <Link href={`/cases/${caseId}`} className="text-gray-400 hover:text-gray-600">
             <ChevronLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-lg font-bold text-[#0D1B3D]">Case-Record Pack</h1>
+          <h1 className="text-lg font-bold text-[#0D1B3D]">Small Claim Readiness</h1>
         </div>
         <p className="text-xs text-gray-400 ml-7">
-          Prepare a factual record pack for external legal review.
+          Check factual record completeness and prepare a Case Evidence Export for external review.
         </p>
       </div>
 
@@ -319,8 +319,8 @@ export function SmallClaimPage({ caseId }: Props) {
               { label: "Evidence Files",       value: `${files.length} file(s)`,        ok: files.length > 0 },
               { label: "Reminders Sent",       value: `${reminders.length}`,             ok: reminders.length > 0 },
               { label: "Payment Records",      value: `${payments.length}`,              ok: payments.length > 0 },
-              { label: "Evidence Pack",        value: evidencePacks.length > 0 ? "Generated" : "Not yet",     ok: evidencePacks.length > 0 },
-              { label: "Formal Demand",        value: formalDemands.length > 0 ? "Draft saved" : "Not yet",   ok: formalDemands.length > 0 },
+              { label: "Case Evidence Export", value: evidencePacks.length > 0 ? "Generated" : "Not yet",     ok: evidencePacks.length > 0 },
+              { label: "Payment Notice",       value: formalDemands.length > 0 ? "Draft saved" : "Not yet",   ok: formalDemands.length > 0 },
               { label: "Payment Plan",         value: activePlan ? "Active" : "None",    ok: !!activePlan },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
@@ -399,7 +399,7 @@ export function SmallClaimPage({ caseId }: Props) {
 
         {/* Previously saved packs */}
         {savedSCPacks.length > 0 && (
-          <SectionCard title={`Saved Packs (${savedSCPacks.length})`}>
+          <SectionCard title={`Saved Case Evidence Exports (${savedSCPacks.length})`}>
             <div className="flex flex-col gap-2 mt-2">
               {savedSCPacks.map((d) => {
                 let meta: { generated_at?: string; readiness_pct?: number; readiness_status?: string; snapshot?: { generatedAt?: string; pdf?: { readinessPct?: number; readinessStatus?: string } } } = {};
@@ -468,7 +468,7 @@ export function SmallClaimPage({ caseId }: Props) {
             disabled={saving}
             icon={saving ? <InlineSpinner className="text-white" /> : <FileText className="w-4 h-4" />}
           >
-            {saving ? "Saving…" : saved ? "Save Again" : "Save Case-Record Pack"}
+            {saving ? "Saving…" : saved ? "Save Again" : "Save Readiness Snapshot"}
           </PrimaryButton>
 
           <PrimaryButton
@@ -477,7 +477,7 @@ export function SmallClaimPage({ caseId }: Props) {
             disabled={downloading}
             icon={downloading ? <InlineSpinner className="text-gray-600" /> : <Download className="w-4 h-4" />}
           >
-            {downloading ? "Generating PDF…" : "Issue & Download PDF"}
+            {downloading ? "Generating PDF…" : "Export Case Evidence PDF"}
           </PrimaryButton>
 
           <Link href={`/legal/${caseId}/lawyer`}>

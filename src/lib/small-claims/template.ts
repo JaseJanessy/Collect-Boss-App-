@@ -1,6 +1,6 @@
 import type { SmallClaimCheckItem, SmallClaimPdfData } from "../pdf/small-claim-generator";
 
-export const SMALL_CLAIM_TEMPLATE_VERSION = 2;
+export const SMALL_CLAIM_TEMPLATE_VERSION = 3;
 export const SMALL_CLAIM_DISCLAIMER =
   "This document is a factual case-record pack prepared from CollectBoss data. It is not legal advice, does not determine court eligibility, and does not submit a claim. Obtain qualified legal review and verify current filing requirements with the relevant official authority before taking action.";
 
@@ -22,7 +22,7 @@ export function buildSmallClaimPackText(snapshot: SmallClaimPackSnapshot): strin
     : `Case reference: ${snapshot.pdf.caseId}`;
   const missing = snapshot.missingItems.length ? snapshot.missingItems.map((item) => `- ${item}`).join("\n") : "None recorded";
   return [
-    "CASE-RECORD PACK FOR LEGAL REVIEW",
+    snapshot.templateVersion < 3 ? "CASE-RECORD PACK FOR LEGAL REVIEW" : "CASE EVIDENCE EXPORT FOR LEGAL REVIEW",
     `Generated: ${snapshot.generatedAt}`,
     `Jurisdiction configuration: ${snapshot.jurisdiction.label} (${snapshot.jurisdiction.code}); filing rules not verified by CollectBoss.`,
     debtReference,

@@ -1,284 +1,44 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
-import { SectionCard } from "@/components/ui/section-card";
-import { CaseCard } from "@/components/ui/case-card";
-import { formatRM } from "@/lib/mock-data";
-import { useCases } from "@/hooks/use-cases";
-import { usePayments } from "@/hooks/use-payments";
-import { computeCaseStats } from "@/lib/analytics/case-stats";
-import { cn } from "@/lib/utils";
-import {
-  DollarSign, AlertCircle, Plus, Send, FileText, CheckCircle2,
-  Clock, ArrowRight, Upload, BarChart2,
-} from "lucide-react";
-import { OnboardingChecklist } from "@/components/beta/onboarding-checklist";
+import { ArrowRight, CalendarCheck, FilePlus2, RefreshCw, TriangleAlert } from "lucide-react";
+import { ActionCentrePanel } from "@/components/action-centre/action-centre-panel";
+import { AgingDonut } from "@/components/analytics/aging-donut";
+import { ReceivablesPulse } from "@/components/analytics/receivables-pulse";
+import { useReportSummary } from "@/hooks/use-report-summary";
+import { formatCurrencyMinor } from "@/lib/financial/money";
+
+function money(minor: number, currency: string) {
+  return formatCurrencyMinor(minor, currency, { explicitCode: currency !== "MYR" });
+}
 
 export function HomeMobile() {
-  const { cases } = useCases();
-  const { payments } = usePayments();
-  const stats = useMemo(() => computeCaseStats(cases), [cases]);
-  const pendingProofs = payments.filter((p) => p.review_status === "pending_review").length;
-  const recentCases = [...cases]
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-    .slice(0, 4);
+  const { metrics, loading, refresh } = useReportSummary();
+  if (loading) return <div className="cb-analytics-light space-y-3 px-4 py-5"><div className="h-24 animate-pulse rounded-2xl bg-slate-200" /><div className="h-64 animate-pulse rounded-2xl bg-slate-200" /></div>;
+  if (!metrics) return <div className="cb-analytics-light flex flex-col gap-4 bg-[#F6F8FC] px-4 pb-8 pt-5 text-slate-900"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-700">Today</p><h1 className="mt-1 text-xl font-black text-[#0D1B3D]">What needs attention</h1></div><ActionCentrePanel compact /><div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><p className="font-bold">Ledger reporting is unavailable.</p><p className="mt-1 text-xs">Priority work remains available above. No estimated financial values are shown.</p><button type="button" onClick={refresh} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#0D1B3D] px-3 py-2 text-xs font-bold text-white"><RefreshCw className="h-3.5 w-3.5" />Retry reporting</button></div></div>;
+  if (metrics.isMultiCurrency) return <div className="cb-analytics-light flex flex-col gap-4 bg-[#F6F8FC] px-4 pb-8 pt-5 text-slate-900"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-700">Today</p><h1 className="mt-1 text-xl font-black text-[#0D1B3D]">What needs attention</h1><p className="text-[11px] text-slate-500">The five highest-priority items appear first.</p></div><ActionCentrePanel compact />{metrics.totalsByCurrency.map((group) => <section key={group.currency} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-black text-blue-700">{group.currency}</p><p className="mt-2 text-[10px] text-slate-500">Outstanding</p><p className="text-xl font-black text-[#0D1B3D]">{formatCurrencyMinor(group.totalOutstandingMinor, group.currency, { explicitCode: true })}</p><div className="mt-3 grid grid-cols-2 gap-2"><MoneyCard label="Recovered" value={formatCurrencyMinor(group.totalCollectedMinor, group.currency, { explicitCode: true })} detail={`${group.collectionRate}% rate`} positive /><MoneyCard label="Overdue" value={formatCurrencyMinor(group.overdueAmountMinor, group.currency, { explicitCode: true })} detail={`${group.topOverdue.length} shown`} risk={group.overdueAmountMinor > 0} /></div></section>)}</div>;
+  const currency = metrics.currencies[0] ?? "MYR";
 
-  const urgentCases = cases.filter(
-    (c) => c.status === "overdue" || c.status === "action_needed" || c.status === "formal_demand_ready"
-  );
+  return <div className="cb-analytics-light flex flex-col gap-4 bg-[#F6F8FC] px-4 pb-8 pt-5 text-slate-900">
+    <div className="flex items-end justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-700">Today</p><h1 className="mt-1 text-xl font-black text-[#0D1B3D]">Money first</h1><p className="text-[11px] text-slate-500">As at {metrics.asOfDate}</p></div><Link href="/reports" className="inline-flex items-center gap-1 text-xs font-bold text-blue-700">Reports <ArrowRight className="h-3 w-3" /></Link></div>
 
-  return (
-    <div className="flex flex-col gap-5 pb-6">
-      {/* ── Hero banner ───────────────────────────────────────────── */}
-      <div className="bg-[#0D1B3D] px-4 pt-4 pb-7">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-blue-200 text-sm font-semibold">Good morning, Amin 👋</p>
-            <p className="text-white/60 text-xs mt-0.5">Your collection overview</p>
-          </div>
-          <Link
-            href="/reports"
-            className="flex items-center gap-1 text-[10px] font-bold text-blue-200 border border-blue-600 rounded-xl px-2.5 py-1.5 hover:bg-blue-800 transition-colors"
-          >
-            <BarChart2 className="w-3 h-3" /> Report
-          </Link>
-        </div>
+    <ActionCentrePanel compact />
 
-        {/* Hero numbers */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white/10 rounded-2xl p-3.5">
-            <p className="text-blue-200 text-[11px] font-medium">Money to Collect</p>
-            <p className="text-white text-xl font-black mt-0.5 leading-tight">
-              {formatRM(stats.totalToCollect)}
-            </p>
-            <p className="text-blue-300 text-[10px] mt-1">
-              {stats.active} active case{stats.active !== 1 ? "s" : ""}
-            </p>
-          </div>
-          <div className="bg-[#009966]/80 rounded-2xl p-3.5 text-[#0B1B3A]">
-            <p className="text-[#173361] text-[11px] font-semibold">Recovered</p>
-            <p className="text-[#0B1B3A] text-xl font-black mt-0.5 leading-tight">
-              {formatRM(stats.totalRecovered)}
-            </p>
-            <p className="text-[#173361] text-[10px] font-medium mt-1">
-              {stats.recoveryRate}% recovery rate
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-4 flex flex-col gap-5">
-        {/* ── Secondary stats strip ─────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-2 -mt-10">
-          <MiniStat
-            label="Overdue"
-            value={String(stats.overdue)}
-            color={stats.overdue > 0 ? "text-red-600" : "text-gray-400"}
-            bg="bg-[#2A1724] border-red-900/60"
-          />
-          <MiniStat
-            label="Pending Proofs"
-            value={String(pendingProofs)}
-            color={pendingProofs > 0 ? "text-amber-600" : "text-gray-400"}
-            bg="bg-[#2B2413] border-amber-800/60"
-          />
-          <MiniStat
-            label="Paid"
-            value={String(stats.paid)}
-            color="text-emerald-600"
-            bg="bg-[#102E2B] border-emerald-800/60"
-          />
-        </div>
-
-        {/* ── Beta onboarding checklist ────────────────────────────── */}
-        <OnboardingChecklist variant="mobile" />
-
-        {/* ── Alerts ────────────────────────────────────────────────── */}
-        {(stats.overdue > 0 || pendingProofs > 0) && (
-          <div className="flex flex-col gap-2">
-            {stats.overdue > 0 && (
-              <Link
-                href="/cases"
-                className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-xl px-3.5 py-3 hover:border-red-300 transition-colors"
-              >
-                <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-                <p className="text-xs font-semibold text-red-700 flex-1">
-                  {stats.overdue} overdue case{stats.overdue !== 1 ? "s" : ""} — {formatRM(stats.overdueAmount)} at risk
-                </p>
-                <ArrowRight className="w-3.5 h-3.5 text-red-400 shrink-0" />
-              </Link>
-            )}
-            {pendingProofs > 0 && (
-              <Link
-                href="/payments/requests"
-                className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl px-3.5 py-3 hover:border-amber-300 transition-colors"
-              >
-                <Clock className="w-4 h-4 text-amber-500 shrink-0" />
-                <p className="text-xs font-semibold text-amber-700 flex-1">
-                  {pendingProofs} payment proof{pendingProofs !== 1 ? "s" : ""} waiting for review
-                </p>
-                <ArrowRight className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              </Link>
-            )}
-          </div>
-        )}
-
-        {/* ── Quick actions ─────────────────────────────────────────── */}
-        <div>
-          <p className="text-sm font-bold text-gray-900 mb-2.5">Quick Actions</p>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { icon: <Plus className="w-4 h-4" />,     label: "Add Case",       sub: "New recovery case",       href: "/add",             accent: true },
-              { icon: <Send className="w-4 h-4" />,     label: "Send Reminder",  sub: "Generate a reminder",      href: "/actions",         accent: false },
-              { icon: <CheckCircle2 className="w-4 h-4" />, label: "Review Payments", sub: `${pendingProofs} pending`, href: "/payments/requests", accent: false },
-              { icon: <FileText className="w-4 h-4" />, label: "Evidence Pack",  sub: "Export PDF pack",         href: "/documents",       accent: false },
-            ].map((btn) => (
-              <Link key={btn.label} href={btn.href}>
-                <div className={cn(
-                  "flex items-center gap-2.5 rounded-2xl border px-3.5 py-3 hover:shadow-sm transition-shadow",
-                  btn.accent
-                    ? "bg-[#009966] border-[#009966] text-white"
-                    : "bg-white border-gray-100 shadow-sm"
-                )}>
-                  <div className={cn(
-                    "w-8 h-8 rounded-xl flex items-center justify-center shrink-0",
-                    btn.accent ? "bg-white/20" : "bg-[#F2F4F7]"
-                  )}>
-                    <span className={btn.accent ? "text-white" : "text-[#009966]"}>
-                      {btn.icon}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <p className={cn("text-xs font-bold truncate", btn.accent ? "text-white" : "text-gray-900")}>
-                      {btn.label}
-                    </p>
-                    <p className={cn("text-[10px] truncate", btn.accent ? "text-emerald-100" : "text-gray-400")}>
-                      {btn.sub}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Cases needing attention ───────────────────────────────── */}
-        {urgentCases.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <p className="text-sm font-bold text-gray-900">
-                Needs Attention
-                <span className="ml-1.5 text-[10px] font-black text-white bg-red-500 rounded-full px-1.5 py-0.5">
-                  {urgentCases.length}
-                </span>
-              </p>
-              <Link href="/cases" className="text-xs text-[#009966] font-semibold flex items-center gap-0.5">
-                View All <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <div className="flex flex-col gap-3">
-              {urgentCases.slice(0, 3).map((c) => (
-                <CaseCard key={c.id} case={c} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Today's actions ───────────────────────────────────────── */}
-        <SectionCard
-          title="Today's Actions"
-          action={
-            <Link href="/actions" className="flex items-center gap-0.5 text-[#009966]">
-              View All <ArrowRight className="w-3 h-3" />
-            </Link>
-          }
-        >
-          <div className="flex flex-col gap-2 mt-2">
-            {[
-              { icon: <Send className="w-4 h-4 text-emerald-600" />,  bg: "bg-emerald-50", label: "Send Reminder",      sub: "Generate a reminder",        href: "/actions" },
-              { icon: <Upload className="w-4 h-4 text-blue-600" />,  bg: "bg-blue-50",    label: "Upload Evidence",     sub: "Strengthen your case",       href: "/cases" },
-              { icon: <FileText className="w-4 h-4 text-orange-600" />, bg: "bg-orange-50", label: "Formal Demand Draft", sub: `${stats.formalDemandReady} cases ready`, href: "/documents" },
-            ].map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="flex items-center gap-3 p-3 bg-[#F2F4F7] rounded-xl hover:bg-gray-100 transition-colors"
-              >
-                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0", item.bg)}>
-                  {item.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">{item.label}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">{item.sub}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
-              </Link>
-            ))}
-          </div>
-        </SectionCard>
-
-        {/* ── Recent activity ───────────────────────────────────────── */}
-        <SectionCard
-          title="Recent Activity"
-          action={
-            <span className="flex items-center gap-0.5 text-[#009966]">
-              View All <ArrowRight className="w-3 h-3" />
-            </span>
-          }
-        >
-          <div className="flex flex-col mt-1">
-            {recentCases.map((c, i) => {
-              return (
-                <Link
-                  key={c.id}
-                  href={`/cases/${c.id}`}
-                  className={cn(
-                    "flex items-center gap-3 py-3 hover:bg-gray-50 -mx-4 px-4 transition-colors",
-                    i < recentCases.length - 1 && "border-b border-gray-50"
-                  )}
-                >
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-gray-100">
-                    <Clock className="w-4 h-4 text-gray-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800 truncate leading-tight">Case updated</p>
-                    <p className="text-[11px] text-gray-400 truncate mt-0.5">{c.debtor_name}</p>
-                  </div>
-                  <div className="text-right shrink-0 ml-2">
-                    <p className="text-xs font-bold text-emerald-600">{formatRM(c.balance)}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{new Date(c.updated_at).toLocaleDateString("en-MY")}</p>
-                  </div>
-                </Link>
-              );
-            })}
-            {recentCases.length === 0 && (
-              <p className="py-4 text-center text-xs text-gray-400">No case activity yet.</p>
-            )}
-          </div>
-        </SectionCard>
-      </div>
+    <div className="grid grid-cols-2 gap-3" aria-label="Ledger position">
+      <MoneyCard label="Outstanding" value={money(metrics.totalOutstandingMinor, currency)} detail={`${metrics.activeCases} active cases`} />
+      <MoneyCard label="Recovered this month" value={money(metrics.recoveredThisMonthMinor, currency)} detail="Approved, net of reversals" positive />
+      <MoneyCard label="Overdue" value={money(metrics.overdueAmountMinor, currency)} detail={`${metrics.overdueCases} cases`} risk={metrics.overdueAmountMinor > 0} />
+      <MoneyCard label="Actions today" value={String(metrics.actionsToday)} detail="Due or carried forward" risk={metrics.actionsToday > 0} />
     </div>
-  );
+
+    <details className="rounded-2xl border border-slate-200 bg-white p-4"><summary className="cursor-pointer text-xs font-black text-[#0D1B3D]">Explore charts</summary><div className="mt-3 space-y-4"><ReceivablesPulse metrics={metrics} compact /><AgingDonut metrics={metrics} compact /></div></details>
+
+    {(metrics.overdueAmountMinor > 0 || metrics.actionsToday > 0) && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="flex items-center gap-2"><TriangleAlert className="h-4 w-4 text-amber-800" /><h2 className="text-sm font-bold text-amber-950">Important now</h2></div><div className="mt-3 space-y-2">{metrics.actionsToday > 0 && <Link href="/actions" className="flex items-center gap-3 rounded-xl bg-white p-3 text-xs font-bold text-slate-800"><CalendarCheck className="h-4 w-4 text-blue-700" /><span className="flex-1">Work {metrics.actionsToday} due action{metrics.actionsToday === 1 ? "" : "s"}</span><ArrowRight className="h-3.5 w-3.5" /></Link>}{metrics.overdueAmountMinor > 0 && <Link href="/cases" className="flex items-center gap-3 rounded-xl bg-white p-3 text-xs font-bold text-slate-800"><TriangleAlert className="h-4 w-4 text-red-700" /><span className="flex-1">Review {money(metrics.overdueAmountMinor, currency)} overdue</span><ArrowRight className="h-3.5 w-3.5" /></Link>}</div></section>}
+
+    <div className="grid grid-cols-2 gap-2"><Link href="/add" className="flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-3 py-3 text-xs font-bold text-white"><FilePlus2 className="h-4 w-4" />Add case</Link><Link href="/actions" className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs font-bold text-[#0D1B3D]"><CalendarCheck className="h-4 w-4" />Action centre</Link></div>
+  </div>;
 }
 
-// ─── Mini stat chip ───────────────────────────────────────────────────────────
-
-function MiniStat({ label, value, color, bg }: {
-  label: string; value: string; color: string; bg: string;
-}) {
-  return (
-    <div className={cn("rounded-xl border px-3 py-2.5 shadow-sm text-center", bg)}>
-      <p className={cn("text-lg font-black leading-tight", color)}>{value}</p>
-      <p className="text-[10px] text-[#AFC0DE] mt-0.5">{label}</p>
-    </div>
-  );
-}
-
-function ChevronRight({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-    </svg>
-  );
+function MoneyCard({ label, value, detail, positive, risk }: { label: string; value: string; detail: string; positive?: boolean; risk?: boolean }) {
+  return <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm"><p className="text-[10px] font-semibold text-slate-500">{label}</p><p className={`mt-1 text-lg font-black tracking-tight ${positive ? "text-emerald-700" : risk ? "text-red-700" : "text-[#0D1B3D]"}`}>{value}</p><p className="mt-1 text-[9px] text-slate-500">{detail}</p></div>;
 }

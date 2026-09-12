@@ -7,7 +7,8 @@
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { type CaseRow } from "@/lib/supabase/types";
 import { ok, fail, type DbResult } from "./result";
-import { type CreateCaseInput, parseAmount } from "@/lib/validations/case";
+import { type CreateCaseInput } from "@/lib/validations/case";
+import { minorToMajorNumber, parseCurrencyToMinor } from "@/lib/financial/money";
 import { mockCases, type DebtorCase } from "@/lib/mock-data";
 
 // ─── In-memory mock store (seeded from mock-data, persists for the session) ───
@@ -32,7 +33,11 @@ function mockDebtorToRow(m: DebtorCase): CaseRow {
   return {
     id:                m.id,
     business_id:       "mock-business-id",
+    business_entity_id: null,
     debtor_id:         null,
+    account_id:        null,
+    case_scope:        "standalone",
+    currency:          "MYR",
     debtor_type:       m.companyRegNo ? "business" : "individual",
     debtor_name:       m.debtorName,
     debtor_phone:      m.phone,
@@ -93,25 +98,50 @@ export interface CaseListOptions {
   page?: number;
   perPage?: number;
   query?: string;
-  status?: CaseRow["status"];
+  statuses?: CaseRow["status"][];
+  priorities?: Array<"low" | "medium" | "high" | "urgent">;
+  owner?: string;
+  agingMin?: number;
+  agingMax?: number;
+  promiseMissed?: boolean;
+  plan?: boolean;
+  dispute?: boolean;
+  dueToday?: boolean;
+  highValueMinor?: number;
+  closed?: boolean;
 }
 
 export async function getCasesClient(
-  { page = 1, perPage = 50, query = "", status }: CaseListOptions = {},
+  {
+    page = 1, perPage = 50, query = "", statuses = [], priorities = [], owner,
+    agingMin, agingMax, promiseMissed, plan, dispute, dueToday, highValueMinor, closed,
+  }: CaseListOptions = {},
 ): Promise<DbResult<CaseListPage>> {
   if (!isSupabaseConfigured) {
     const normalizedQuery = query.trim().toLowerCase();
     const cases = getMockStore().filter((caseData) => {
       const matchesQuery = !normalizedQuery || [caseData.id, caseData.debtor_name, caseData.debtor_company ?? ""]
         .some((value) => value.toLowerCase().includes(normalizedQuery));
-      return matchesQuery && (!status || caseData.status === status);
+      return matchesQuery
+        && (!statuses.length || statuses.includes(caseData.status))
+        && (!priorities.length || priorities.includes(caseData.priority ?? "medium"));
     });
     return ok({ cases: cases.slice((page - 1) * perPage, page * perPage), page, perPage, total: cases.length });
   }
 
   const searchParams = new URLSearchParams({ page: String(page), perPage: String(perPage) });
   if (query.trim()) searchParams.set("query", query.trim());
-  if (status) searchParams.set("status", status);
+  statuses.forEach((status) => searchParams.append("status", status));
+  priorities.forEach((priority) => searchParams.append("priority", priority));
+  if (owner) searchParams.set("owner", owner);
+  if (agingMin !== undefined) searchParams.set("agingMin", String(agingMin));
+  if (agingMax !== undefined) searchParams.set("agingMax", String(agingMax));
+  if (promiseMissed) searchParams.set("promiseMissed", "true");
+  if (plan) searchParams.set("plan", "true");
+  if (dispute) searchParams.set("dispute", "true");
+  if (dueToday) searchParams.set("dueToday", "true");
+  if (highValueMinor !== undefined) searchParams.set("highValueMinor", String(highValueMinor));
+  if (closed) searchParams.set("closed", "true");
   const response = await fetch(`/api/cases?${searchParams.toString()}`, { cache: "no-store" });
   const payload = await response.json().catch(() => ({})) as Partial<CaseListPage> & { error?: string };
   if (!response.ok) return fail(apiError(response.status, payload.error, "Failed to load cases."));
@@ -148,14 +178,19 @@ export async function createCaseClient(
   input: CreateCaseInput,
   businessId: string
 ): Promise<DbResult<CaseRow>> {
-  const amountOwed = parseAmount(input.amount_owed);
+  const amountMinor = parseCurrencyToMinor(input.amount_owed, input.currency);
+  const amountOwed = minorToMajorNumber(amountMinor, input.currency);
 
   if (!isSupabaseConfigured) {
     // Mock: add to in-memory store
     const newCase: CaseRow = {
       id:                generateCaseId(),
       business_id:       businessId,
+      business_entity_id: null,
       debtor_id:         null,
+      account_id:        null,
+      case_scope:        "standalone",
+      currency:          input.currency,
       debtor_type:       input.debtor_type,
       debtor_name:       input.debtor_name,
       debtor_phone:      input.debtor_phone || null,
@@ -166,10 +201,10 @@ export async function createCaseClient(
       amount_owed:       amountOwed,
       amount_paid:       0,
       balance:           amountOwed,
-      original_principal_minor: Math.round(amountOwed * 100),
-      contractual_due_minor:    Math.round(amountOwed * 100),
+      original_principal_minor: Number(amountMinor),
+      contractual_due_minor:    Number(amountMinor),
       approved_payment_minor:   0,
-      outstanding_minor:        Math.round(amountOwed * 100),
+      outstanding_minor:        Number(amountMinor),
       overpayment_minor:        0,
       financial_version:        0,
       due_date:          input.due_date,

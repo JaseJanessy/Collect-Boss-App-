@@ -15,7 +15,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerClient } from "@/lib/supabase/server-client";
+import { requireTenantPermission } from "@/lib/auth/tenant-access";
+import type { TenantPermission } from "@/lib/auth/permissions";
 import type { EntitlementRow } from "@/lib/billing/types";
 import { FREE_ENTITLEMENT_MOCK } from "@/lib/billing/plans";
 
@@ -43,12 +44,6 @@ const err = (msg: string, status = 400) =>
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // ── Auth ──────────────────────────────────────────────────────────────────
-  const supabase = await getServerClient();
-  if (!supabase) return err("Auth service unavailable", 503);
-
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) return err("Authentication required", 401);
-
   // ── Parse body ────────────────────────────────────────────────────────────
   let body: unknown;
   try { body = await request.json(); } catch { return err("Invalid JSON", 400); }
@@ -66,14 +61,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // ── Get business_id ───────────────────────────────────────────────────────
-  const { data: biz } = await supabase
-    .from("businesses")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  const businessId = (biz as { id: string } | null)?.id ?? null;
-  if (!businessId) return err("Business not found", 404);
+  const permissionByAction: Record<ValidateAction, TenantPermission> = {
+    create_case: "case.manage",
+    export_evidence_pack: "export.run",
+    use_formal_demand: "case.manage",
+    use_lawyer_referral: "case.manage",
+    use_payment_lock: "case.manage",
+    use_reports: "report.read",
+    invite_team_member: "users.manage",
+  };
+  const access = await requireTenantPermission(permissionByAction[action as ValidateAction]);
+  if ("error" in access) return err(access.error ?? "Action access denied.", access.status ?? 403);
+  const { client: supabase, businessId } = access;
 
   // ── Get entitlements ──────────────────────────────────────────────────────
   // RLS: owner can SELECT their own entitlements
@@ -176,7 +175,7 @@ async function evaluateAction(
       if (!ent.formal_demand_enabled) {
         return {
           allowed:  false,
-          reason:   "Formal Demand Letter is not available on your current plan. Upgrade to unlock this feature.",
+          reason:   "Formal Payment Notice is not available on your current plan. Upgrade to unlock this feature.",
           planSlug,
         };
       }
@@ -188,7 +187,7 @@ async function evaluateAction(
       if (!ent.lawyer_referral_enabled) {
         return {
           allowed:  false,
-          reason:   "Lawyer Referral is not available on your current plan. Upgrade to unlock this feature.",
+          reason:   "Request Legal Review is not available on your current plan. Upgrade to unlock this feature.",
           planSlug,
         };
       }
@@ -224,7 +223,12 @@ async function evaluateAction(
       // Team member invites not built yet — enforce limit for future use
       const limit = ent.team_member_limit;
       // For now: current team members = 1 (owner only)
-      const current = 1;
+      const { count } = await supabase
+        .from("business_memberships")
+        .select("*", { count: "exact", head: true })
+        .eq("business_id", businessId)
+        .in("status", ["active", "invited"]);
+      const current = count ?? 1;
       if (current >= limit) {
         return {
           allowed:  false,

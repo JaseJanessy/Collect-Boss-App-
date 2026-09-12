@@ -5,6 +5,7 @@
  */
 
 import { type CaseRow } from "@/lib/supabase/types";
+import { CASE_STATUS_METADATA } from "@/lib/domain/workflows";
 
 export interface AgeBucket {
   label:  string;
@@ -58,12 +59,12 @@ export function computeCaseStats(cases: CaseRow[]): CaseStats {
   for (const c of cases) byStatusKey[c.status] = (byStatusKey[c.status] ?? 0) + 1;
 
   const statusMeta: Array<{ key: string; label: string; color: string; bg: string }> = [
-    { key: "overdue",            label: "Overdue",             color: "bg-red-500",    bg: "text-red-700"    },
-    { key: "action_needed",      label: "Action Needed",       color: "bg-purple-500", bg: "text-purple-700" },
-    { key: "formal_demand_ready",label: "Formal Demand Ready", color: "bg-orange-500", bg: "text-orange-700" },
-    { key: "payment_promise",    label: "Payment Promise",     color: "bg-amber-400",  bg: "text-amber-700"  },
-    { key: "partial_paid",       label: "Partial Paid",        color: "bg-blue-500",   bg: "text-blue-700"   },
-    { key: "paid",               label: "Paid",                color: "bg-emerald-500",bg: "text-emerald-700"},
+    { key: "overdue",            label: CASE_STATUS_METADATA.overdue.label,             color: "bg-red-500",    bg: "text-red-700"    },
+    { key: "action_needed",      label: CASE_STATUS_METADATA.action_needed.label,       color: "bg-purple-500", bg: "text-purple-700" },
+    { key: "formal_demand_ready",label: CASE_STATUS_METADATA.formal_demand_ready.label, color: "bg-orange-500", bg: "text-orange-700" },
+    { key: "payment_promise",    label: CASE_STATUS_METADATA.payment_promise.label,     color: "bg-amber-400",  bg: "text-amber-700"  },
+    { key: "partial_paid",       label: CASE_STATUS_METADATA.partial_paid.label,        color: "bg-blue-500",   bg: "text-blue-700"   },
+    { key: "paid",               label: CASE_STATUS_METADATA.paid.label,                color: "bg-emerald-500",bg: "text-emerald-700"},
   ];
 
   const byStatus = statusMeta

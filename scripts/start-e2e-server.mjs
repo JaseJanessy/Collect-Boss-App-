@@ -38,6 +38,22 @@ child.on("exit", (code, signal) => {
   process.exitCode = code ?? (signal ? 1 : 0);
 });
 
+let stopping = false;
+
+function stopServer(signal) {
+  if (stopping) {
+    return;
+  }
+
+  stopping = true;
+  child.once("exit", () => process.exit(0));
+  child.kill(signal);
+
+  // Playwright terminates webServer processes after a run. On Windows, keeping
+  // this signal handler alive after Next exits leaves the test command hanging.
+  setTimeout(() => process.exit(0), 2_000).unref();
+}
+
 for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.on(signal, () => child.kill(signal));
+  process.on(signal, () => stopServer(signal));
 }

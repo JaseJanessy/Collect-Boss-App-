@@ -21,20 +21,22 @@ export interface UsePaymentsState {
   markUnmatched: (id: string) => Promise<{ error: string | null }>;
 }
 
-export function usePayments(caseId?: string): UsePaymentsState {
+export function usePayments(caseId?: string, enabled = true): UsePaymentsState {
   const businessId = useBusinessId();
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!enabled) return;
+    setLoading(true);
     const result = await getPaymentsClient(caseId);
     if (result.error) setError(result.error);
     else              setPayments(result.data ?? []);
     setLoading(false);
-  }, [caseId]);
+  }, [caseId, enabled]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (enabled) void load(); }, [enabled, load]);
 
   function patchPayment(id: string, patch: Partial<PaymentRow>) {
     setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));

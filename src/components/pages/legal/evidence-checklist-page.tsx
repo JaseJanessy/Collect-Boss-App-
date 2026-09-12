@@ -58,7 +58,7 @@ export function EvidenceChecklistPage({ caseId }: Props) {
     ? "Upload any partial payment proof or payment deadline confirmation."
     : !uploadedTypes.has("contract")
     ? "Add a contract or purchase agreement if you have one."
-    : "Your evidence pack is strong. Consider sending a formal demand letter.";
+    : "Your factual record set is strong. Consider preparing a Formal Payment Reminder.";
 
   return (
     <div className="flex flex-col pb-6">

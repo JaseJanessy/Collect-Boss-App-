@@ -1,7 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+
+import { secureSessionStorage } from '@/lib/secure-session-storage';
 
 type SupabaseExpoConfig = {
   supabaseUrl?: string;
@@ -25,7 +26,7 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
             detectSessionInUrl: false,
           }
         : {
-            storage: AsyncStorage,
+            storage: secureSessionStorage,
             autoRefreshToken: true,
             persistSession: true,
             detectSessionInUrl: false,

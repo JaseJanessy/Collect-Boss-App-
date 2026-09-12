@@ -7,7 +7,7 @@ export function TermsPage() {
     <LegalShell
       title="Terms of Use"
       subtitle="Please read these terms carefully before using CollectBoss."
-      lastUpdated="2024-01-01"
+      lastUpdated="2026-09-01"
     >
       <LegalWarning>
         CollectBoss is a software tool for debt record management. It is not a law firm

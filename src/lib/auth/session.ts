@@ -16,6 +16,42 @@ import {
   type SignUpResult,
   type ResetPasswordResult,
 } from "./types";
+import { readUserRegistration } from "@collectboss/registration-contracts";
+import type { PlanSlug } from "@/lib/billing/types";
+
+async function provisionRegistrationSession(
+  accessToken: string,
+  user: { app_metadata?: unknown; user_metadata?: unknown },
+): Promise<string | null> {
+  if (!readUserRegistration(user)) return null;
+
+  try {
+    const response = await fetch("/api/workspace/provision", {
+      method: "POST",
+      signal: AbortSignal.timeout(10000),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    });
+    const payload = await response.json().catch(() => null) as { error?: string } | null;
+    return response.ok ? null : payload?.error ?? "Unable to prepare your CollectBoss workspace.";
+  } catch {
+    return "Unable to reach the secure CollectBoss workspace service.";
+  }
+}
+
+async function requiresProductSelection(accessToken: string): Promise<boolean> {
+    const response = await fetch("/api/workspace/context", {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+    if (response.ok) return false;
+    const payload = await response.json().catch(() => null) as { code?: string } | null;
+    if (response.status === 403 && payload?.code === "WORKSPACE_ACCESS_DENIED") return true;
+    throw new Error("You are signed in, but your workspace could not be opened. Please retry or check System Status.");
+}
 
 // ─── Get current user ─────────────────────────────────────────────────────────
 
@@ -54,14 +90,14 @@ export async function signIn(
   password: string
 ): Promise<SignInResult> {
   if (!isSupabaseConfigured) {
-    const user = mockSignIn(email, password);
+    mockSignIn(email, password);
     return { success: true, requiresProfile: false };
   }
 
   const client = getBrowserClient();
   if (!client) return { success: false, error: "Auth unavailable" };
 
-  const { error } = await client.auth.signInWithPassword({ email, password });
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
 
   if (error) {
     if (error.message.includes("Invalid login credentials")) {
@@ -73,6 +109,21 @@ export async function signIn(
     return { success: false, error: error.message };
   }
 
+  if (!data.session) return { success: false, error: "The sign-in service did not establish a session. Please try again." };
+  if (data.session) {
+    const provisioningError = await provisionRegistrationSession(
+      data.session.access_token,
+      data.user,
+    );
+    if (provisioningError) return { success: false, error: provisioningError };
+    try {
+      const needsProduct = await requiresProductSelection(data.session.access_token);
+      if (needsProduct) return { success: true, requiresProductSelection: true };
+    } catch {
+      return { success: false, error: "Your login was accepted, but workspace access is temporarily unavailable. Please retry or contact support." };
+    }
+  }
+
   return { success: true };
 }
 
@@ -81,7 +132,8 @@ export async function signIn(
 export async function signUp(
   email: string,
   password: string,
-  name?: string
+  selectedPlan?: PlanSlug,
+  preferredProduct?: "pocket",
 ): Promise<SignUpResult> {
   if (!isSupabaseConfigured) {
     mockSignUp(email, password);
@@ -91,12 +143,13 @@ export async function signUp(
   const client = getBrowserClient();
   if (!client) return { success: false, error: "Auth unavailable" };
 
-  const { error } = await client.auth.signUp({
+  const { data, error } = await client.auth.signUp({
     email,
     password,
     options: {
-      data: { name: name ?? "" },
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+        selectedPlan ? `/choose-product?plan=${selectedPlan}` : preferredProduct ? `/choose-product?product=${preferredProduct}` : "/choose-product",
+      )}`,
     },
   });
 
@@ -107,7 +160,7 @@ export async function signUp(
     return { success: false, error: error.message };
   }
 
-  return { success: true, needsConfirmation: true };
+  return { success: true, needsConfirmation: !data.session };
 }
 
 // ─── Sign out ─────────────────────────────────────────────────────────────────
@@ -120,9 +173,10 @@ export async function signOut(): Promise<void> {
   }
 
   const client = getBrowserClient();
-  if (!client) return;
+  if (!client) throw new Error("Sign-out service is unavailable. Please retry.");
 
-  await client.auth.signOut();
+  const { error } = await client.auth.signOut();
+  if (error) throw new Error("We could not complete sign out. Please retry before leaving this device.");
   window.location.href = "/login";
 }
 
@@ -140,7 +194,7 @@ export async function requestPasswordReset(
   if (!client) return { success: false, error: "Auth unavailable" };
 
   const { error } = await client.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: `${window.location.origin}/auth/callback?next=%2Freset-password`,
   });
 
   if (error) return { success: false, error: error.message };

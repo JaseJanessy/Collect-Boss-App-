@@ -19,14 +19,14 @@ export function SectionCard({
   noPadding,
 }: SectionCardProps) {
   return (
-    <div className={cn("min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm", className)}>
+    <div className={cn("cb-surface", className)}>
       {title && (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--cb-divider)] px-5 py-4">
           <h3 className="min-w-0 text-sm font-semibold text-gray-900 break-words">{title}</h3>
           {action && <div className="shrink-0 text-xs text-emerald-600 font-medium">{action}</div>}
         </div>
       )}
-      <div className={cn(noPadding ? "" : "px-4 pb-4")}>{children}</div>
+      <div className={cn(noPadding ? "" : "p-5")}>{children}</div>
     </div>
   );
 }

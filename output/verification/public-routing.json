@@ -1,0 +1,66 @@
+{
+  "checkedAt": "2026-09-06T16:30:33.710Z",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "passed": true,
+      "redirectTransport": "streamed-rsc"
+    },
+    {
+      "path": "/login",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "path": "/brand/icon.svg",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "path": "/beta-welcome",
+      "status": 308,
+      "passed": true
+    },
+    {
+      "path": "/dev/billing-debug",
+      "status": 404,
+      "passed": true
+    },
+    {
+      "path": "/dev/pocket-ux",
+      "status": 404,
+      "passed": true
+    },
+    {
+      "path": "/api/workspace/context",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/pocket/customers",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/search",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "path": "/reset-password",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "path": "/auth/callback",
+      "status": 307,
+      "passed": true
+    },
+    {
+      "path": "/cases?status=overdue",
+      "status": 307,
+      "passed": true
+    }
+  ]
+}

@@ -14,19 +14,12 @@ function inMemoryBillingEventStore() {
   return {
     markProcessed: () => { processed = true; },
     client: {
-      from(table: string) {
-        if (table !== "billing_events") throw new Error("Unexpected table");
-        const query = {
-          insert: async () => {
-            if (claimed) return { error: { code: "23505" } };
-            claimed = true;
-            return { error: null };
-          },
-          select: () => query,
-          eq: () => query,
-          maybeSingle: async () => ({ data: { processed }, error: null }),
-        };
-        return query;
+      async rpc(name: string) {
+        if (name !== "billing_claim_event") throw new Error("Unexpected RPC");
+        if (processed) return { data: "done", error: null };
+        if (claimed) return { data: "busy", error: null };
+        claimed = true;
+        return { data: "new", error: null };
       },
     },
   };
@@ -42,7 +35,7 @@ describe("billing event idempotency boundary", () => {
 
     const claims = await Promise.all(Array.from({ length: 10 }, () => claimBillingEvent(event)));
     expect(claims.filter((claim) => claim === "new")).toHaveLength(1);
-    expect(claims.filter((claim) => claim === "retry")).toHaveLength(9);
+    expect(claims.filter((claim) => claim === "busy")).toHaveLength(9);
 
     store.markProcessed();
     await expect(claimBillingEvent(event)).resolves.toBe("done");
@@ -50,7 +43,7 @@ describe("billing event idempotency boundary", () => {
 
   it("returns a retryable failure when the event store cannot accept a claim", async () => {
     mocks.getServiceClient.mockResolvedValue({
-      from: () => ({ insert: async () => ({ error: { code: "400" } }) }),
+      rpc: async () => ({ data: null, error: { code: "400" } }),
     });
 
     await expect(claimBillingEvent({ stripeEventId: "evt_unavailable", eventType: "invoice.payment_failed", stripeEventCreatedAt: 1 }))

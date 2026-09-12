@@ -10,8 +10,8 @@ export const metadata: Metadata = {
     "invoice recovery SME",
     "payment reminder Malaysia",
     "overdue payment tracking",
-    "evidence pack Malaysia",
-    "formal demand letter Malaysia",
+    "case evidence export Malaysia",
+    "formal payment reminder Malaysia",
     "CollectBoss",
   ],
   openGraph: {

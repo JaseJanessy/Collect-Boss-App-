@@ -20,7 +20,11 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@collectboss/navigation": ["./shared/navigation"],
+      "@collectboss/pocket-navigation": ["./shared/pocket-navigation"],
+      "@collectboss/registration-contracts": ["./shared/registration-contracts"],
+      "@collectboss/workspace-contracts": ["./shared/workspace-contracts"]
     }
   },
   "include": [

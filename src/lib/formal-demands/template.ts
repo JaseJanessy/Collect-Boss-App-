@@ -1,7 +1,7 @@
 import type { DemandPdfData } from "@/lib/pdf/demand-generator";
 
-export const FORMAL_DEMAND_TEMPLATE_VERSION = 1;
-export const FORMAL_DEMAND_DISCLAIMER = "CollectBoss helps prepare document drafts based on your case records. This is not legal advice. Please consult a qualified lawyer before taking legal action.";
+export const FORMAL_DEMAND_TEMPLATE_VERSION = 2;
+export const FORMAL_DEMAND_DISCLAIMER = "CollectBoss prepares a factual payment-notice draft from the creditor's case records. CollectBoss is not a law firm, does not provide legal advice, and does not issue this document with lawyer or court authority. Obtain qualified legal review before relying on escalation language or taking legal action.";
 
 export type FormalDemandTone = "standard" | "firm" | "final";
 
@@ -21,6 +21,8 @@ export interface FormalDemandSnapshot {
   paymentInstructionsIncluded: boolean;
   paymentInstructions: { bankName: string; accountHolder: string; accountNumber: string; duitnowId: string | null } | null;
   evidenceReferenceIncluded: boolean;
+  legalReviewRequired: boolean;
+  legalReviewReason: string | null;
   disclaimer: string;
   pdf: DemandPdfData;
 }
@@ -54,12 +56,21 @@ export function buildFormalDemandText(snapshot: FormalDemandSnapshot): string {
   const evidenceReference = snapshot.evidenceReferenceIncluded
     ? "\nWe maintain records supporting this matter, including relevant invoices, delivery records, and prior communications.\n"
     : "";
-  const finalLine = snapshot.tone === "final"
-    ? "If payment is not received by the deadline, we may refer the matter for legal review and recovery options."
-    : snapshot.tone === "firm"
-      ? "Failure to settle this amount within the stated period may require further recovery action."
-      : "We hope to resolve this matter amicably and ask that you contact us promptly if you need to discuss payment arrangements.";
-  const heading = snapshot.tone === "final" ? "FINAL NOTICE OF OUTSTANDING PAYMENT" : snapshot.tone === "firm" ? "FORMAL DEMAND NOTICE" : "NOTICE OF OUTSTANDING PAYMENT";
+  const legacyTemplate = snapshot.templateVersion < 2;
+  const finalLine = legacyTemplate
+    ? snapshot.tone === "final"
+      ? "If payment is not received by the deadline, we may refer the matter for legal review and recovery options."
+      : snapshot.tone === "firm"
+        ? "Failure to settle this amount within the stated period may require further recovery action."
+        : "We hope to resolve this matter amicably and ask that you contact us promptly if you need to discuss payment arrangements."
+    : snapshot.tone === "final"
+      ? "If payment is not received by the deadline, the creditor may request external legal review before deciding whether any further action is appropriate."
+      : snapshot.tone === "firm"
+        ? "If the amount remains unpaid, the creditor may continue factual payment follow-up or request external legal review."
+        : "We hope to resolve this matter amicably and ask that you contact us promptly if you need to discuss payment arrangements.";
+  const heading = legacyTemplate
+    ? snapshot.tone === "final" ? "FINAL NOTICE OF OUTSTANDING PAYMENT" : snapshot.tone === "firm" ? "FORMAL DEMAND NOTICE" : "NOTICE OF OUTSTANDING PAYMENT"
+    : snapshot.tone === "final" ? "FINAL PAYMENT NOTICE" : snapshot.tone === "firm" ? "FIRM PAYMENT REMINDER" : "FORMAL PAYMENT REMINDER";
 
   return `${heading}\n\nDate: ${snapshot.pdf.today}\nDocument No.: ${snapshot.documentNumber ?? "Draft"}\nCase Reference: ${snapshot.pdf.caseId}\n\nTo:\n${recipient(snapshot)}\n\n${subject}\n\nDear ${snapshot.debtor.name},\n\nThis notice concerns ${debt.reference}, which was due on ${debt.dueDate}. The outstanding balance is ${amount}.${payment}${itemSummary}\n${reminders}\nPlease arrange payment of the full outstanding amount within ${snapshot.deadlineDays} days, by ${snapshot.deadlineDate}.\n\n${finalLine}${paymentDetails}${evidenceReference}\nYours faithfully,\n\n${snapshot.creditor.legalName}\n\n---\n${snapshot.disclaimer}`;
 }

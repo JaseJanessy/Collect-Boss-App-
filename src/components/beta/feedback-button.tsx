@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * FeedbackButton — floating bottom-right button for beta feedback & bug reports.
- * Stores submissions in localStorage (no backend required for beta).
+ * FeedbackButton — floating bottom-right button for feedback and bug reports.
+ * Submissions are delivered to the configured support inbox by the server.
  */
 
 import { useState } from "react";
@@ -19,25 +19,6 @@ import { useAuth } from "@/hooks/use-auth";
 
 type Tab = "feedback" | "bug";
 
-interface Submission {
-  type:      string;
-  message:   string;
-  page?:     string;
-  steps?:    string;
-  email:     string;
-  timestamp: string;
-}
-
-const LS_KEY = "cb_beta_feedback";
-
-function saveFeedback(s: Submission) {
-  try {
-    const existing: Submission[] = JSON.parse(localStorage.getItem(LS_KEY) ?? "[]");
-    existing.push(s);
-    localStorage.setItem(LS_KEY, JSON.stringify(existing));
-  } catch { /* noop */ }
-}
-
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function FeedbackButton() {
@@ -46,6 +27,8 @@ export function FeedbackButton() {
   const [open, setOpen]       = useState(false);
   const [tab,  setTab]        = useState<Tab>("feedback");
   const [done, setDone]       = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   // Feedback form
   const [fbType,    setFbType]    = useState("suggestion");
@@ -56,10 +39,9 @@ export function FeedbackButton() {
   const [bugPage,   setBugPage]   = useState("");
   const [bugSteps,  setBugSteps]  = useState("");
 
-  const email = user?.email ?? "";
-
-  // Capability-token debtor journeys must not include account-owner beta UI.
-  if (pathname.startsWith("/pay/") || pathname.startsWith("/acknowledge/")) return null;
+  // Public, capability-token, and Pocket journeys must not include the
+  // account-owner feedback control.
+  if (!user || pathname.startsWith("/pay/") || pathname.startsWith("/acknowledge/") || pathname.startsWith("/pocket") || pathname.startsWith("/dev/pocket-ux")) return null;
 
   function reset() {
     setFbType("suggestion");
@@ -68,6 +50,8 @@ export function FeedbackButton() {
     setBugPage("");
     setBugSteps("");
     setDone(false);
+    setSubmitError("");
+    setSubmitting(false);
     setTab("feedback");
   }
 
@@ -76,19 +60,31 @@ export function FeedbackButton() {
     setTimeout(reset, 300);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (tab === "feedback" && !fbMessage.trim()) return;
     if (tab === "bug"      && !bugWhat.trim())   return;
 
-    saveFeedback({
-      type:      tab === "feedback" ? fbType : "bug",
-      message:   tab === "feedback" ? fbMessage : bugWhat,
-      page:      tab === "bug" ? bugPage  : undefined,
-      steps:     tab === "bug" ? bugSteps : undefined,
-      email,
-      timestamp: new Date().toISOString(),
-    });
-    setDone(true);
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({
+          type: tab === "feedback" ? fbType : "bug",
+          message: tab === "feedback" ? fbMessage : bugWhat,
+          page: tab === "bug" ? bugPage || pathname : pathname,
+          steps: tab === "bug" ? bugSteps : undefined,
+        }),
+      });
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error ?? "Feedback could not be delivered.");
+      setDone(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Feedback could not be delivered.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -106,7 +102,7 @@ export function FeedbackButton() {
         )}
       >
         <MessageSquarePlus className="w-4 h-4" />
-        <span className="hidden sm:inline">Beta Feedback</span>
+        <span className="hidden sm:inline">Feedback</span>
       </button>
 
       {/* ── Backdrop ────────────────────────────────────────────────────── */}
@@ -263,11 +259,12 @@ export function FeedbackButton() {
 
               <button
                 onClick={handleSubmit}
-                disabled={tab === "feedback" ? !fbMessage.trim() : !bugWhat.trim()}
+                disabled={submitting || (tab === "feedback" ? !fbMessage.trim() : !bugWhat.trim())}
                 className="flex items-center justify-center gap-1.5 w-full bg-[#009966] hover:bg-[#00B377] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold py-2.5 rounded-xl transition-colors"
               >
-                Submit <ChevronRight className="w-4 h-4" />
+                {submitting ? "Sending…" : "Submit"} <ChevronRight className="w-4 h-4" />
               </button>
+              {submitError && <p role="alert" className="text-xs font-semibold text-red-600">{submitError}</p>}
             </div>
           )}
         </div>

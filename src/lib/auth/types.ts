@@ -16,6 +16,7 @@ export interface SignInResult {
   success: boolean;
   error?: string;
   requiresProfile?: boolean;
+  requiresProductSelection?: boolean;
 }
 
 export interface SignUpResult {

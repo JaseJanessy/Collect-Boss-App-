@@ -12,6 +12,7 @@ test("only open cases with a positive balance are eligible for legal-review requ
 test("withdrawal is unavailable after provider acceptance or terminal states", () => {
   assert.equal(canWithdrawReferral("ready_for_review"), true);
   assert.equal(canWithdrawReferral("handoff_failed"), true);
+  assert.equal(canWithdrawReferral("additional_documents_requested"), true);
   assert.equal(canWithdrawReferral("accepted"), false);
   assert.equal(canWithdrawReferral("withdrawn"), false);
   assert.equal(LAWYER_REFERRAL_CONSENT_VERSION, "lawyer-referral-data-sharing-v1");

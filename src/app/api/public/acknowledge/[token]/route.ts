@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { enforcePublicRateLimit, publicRateLimitResponse } from "@/lib/api/public-rate-limit";
 import { getPublicActionContext } from "@/lib/public-access/service";
 import { getServiceClient } from "@/lib/supabase/service-client";
 
@@ -29,6 +30,8 @@ export async function POST(
   context: { params: Promise<{ token: string }> },
 ) {
   const { token } = await context.params;
+  const rateLimit = await enforcePublicRateLimit({ headers: request.headers, rawToken: token, action: "acknowledgement", limit: 8, windowSeconds: 300 });
+  if (!rateLimit.allowed) return publicRateLimitResponse(rateLimit);
   const access = await getPublicActionContext(token, "acknowledgement");
   if (access.state !== "valid") return tokenError(access.state);
   if (access.caseScope.status === "closed" || access.caseScope.status === "paid" || access.caseScope.archived_at || Number(access.caseScope.outstanding_minor ?? 0) <= 0) return tokenError("invalid");

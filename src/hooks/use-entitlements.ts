@@ -4,15 +4,15 @@
  * useEntitlements — loads the logged-in business's entitlement row and
  * exposes convenience flag functions.
  *
- * Falls back to the free-tier mock when Supabase is not configured or
- * while loading.
+ * Grants no capabilities while loading or on failure. Sample entitlements
+ * are available only through the explicitly enabled development data layer.
  */
 
 import { useEffect, useState } from "react";
 import type { EntitlementRow } from "@/lib/billing/types";
 import type { EntitlementFlags } from "@/lib/billing/types";
 import { getMyEntitlementClient } from "@/lib/billing/client";
-import { getEntitlementFlags, getMockEntitlementFlags } from "@/lib/billing/entitlements";
+import { getEntitlementFlags } from "@/lib/billing/entitlements";
 
 interface UseEntitlementsResult {
   entitlement: EntitlementRow | null;
@@ -48,7 +48,7 @@ export function useEntitlements(): UseEntitlementsResult {
 
   const flags = entitlement
     ? getEntitlementFlags(entitlement)
-    : getMockEntitlementFlags();
+    : { canCreateCase: () => false, canExportEvidencePack: () => false, canUsePaymentLock: false, canUseFormalDemand: false, canUseLawyerReferral: false, canViewReports: false };
 
   return { entitlement, flags, loading, error };
 }

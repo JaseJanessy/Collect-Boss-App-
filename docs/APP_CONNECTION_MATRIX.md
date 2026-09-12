@@ -1,5 +1,7 @@
 # CollectBoss production connection matrix
 
+> Historical baseline: this matrix predates the implemented tenant membership/role, document-intake, compliance, and integration-recovery work. It must not be used as current Commercial V1 release evidence. Use `docs/COMMERCIAL_V1_RELEASE_VALIDATION.md` and `release/v1.0.0-rc.1/RELEASE_CHECKLIST.md`.
+
 **Scope:** current implementation, verified against `src/app`, `src/lib`, and the Supabase SQL files on 2026-07-13. This is an as-built production reference; it does not describe planned application logic.
 
 ## Role model and access boundary

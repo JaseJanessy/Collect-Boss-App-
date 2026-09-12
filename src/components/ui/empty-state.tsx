@@ -9,6 +9,8 @@ interface EmptyStateProps {
   description?: string;
   action?: ReactNode;
   className?: string;
+  /** Announces a newly loaded empty result without interrupting the user. */
+  announce?: boolean;
 }
 
 export function EmptyState({
@@ -17,22 +19,25 @@ export function EmptyState({
   description,
   action,
   className,
+  announce = false,
 }: EmptyStateProps) {
   return (
     <div
+      data-slot="empty-state"
+      role={announce ? "status" : undefined}
       className={cn(
-        "flex flex-col items-center justify-center text-center py-12 px-6",
+        "flex min-h-56 flex-col items-center justify-center px-6 py-12 text-center",
         className
       )}
     >
       {icon && (
-        <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4 text-gray-400">
+        <div aria-hidden="true" className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
           {icon}
         </div>
       )}
-      <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
+      <h3 className="text-base font-bold text-slate-800">{title}</h3>
       {description && (
-        <p className="text-xs text-gray-400 mt-1 max-w-xs">{description}</p>
+        <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-slate-600">{description}</p>
       )}
       {action && <div className="mt-4">{action}</div>}
     </div>

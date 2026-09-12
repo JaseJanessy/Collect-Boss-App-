@@ -14,20 +14,22 @@ export interface UseEvidenceState {
   removeFile: (id: string) => void;
 }
 
-export function useEvidence(caseId: string): UseEvidenceState {
+export function useEvidence(caseId: string, enabled = true): UseEvidenceState {
   const [files,   setFiles]   = useState<EvidenceFileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!enabled) return;
+    setLoading(true);
     if (!caseId) { setLoading(false); return; }
     const result = await getEvidenceFilesClient(caseId);
     if (result.error) setError(result.error);
     else              setFiles(result.data ?? []);
     setLoading(false);
-  }, [caseId]);
+  }, [caseId, enabled]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (enabled) void load(); }, [enabled, load]);
 
   const refresh = useCallback(() => {
     setLoading(true);

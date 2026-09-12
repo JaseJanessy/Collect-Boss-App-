@@ -1,0 +1,99 @@
+
+> collectboss@1.0.0-rc.1 lint
+> node ./node_modules/eslint/bin/eslint.js
+
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\components\pages\case-detail-page.tsx
+    39:3   warning  'updateCaseLockModeClient' is defined but never used  @typescript-eslint/no-unused-vars
+    90:3   warning  'MessageCircle' is defined but never used             @typescript-eslint/no-unused-vars
+  1081:3   warning  'businessId' is defined but never used                @typescript-eslint/no-unused-vars
+  1083:3   warning  'onUpdate' is defined but never used                  @typescript-eslint/no-unused-vars
+  1141:11  warning  'caseStatus' is defined but never used                @typescript-eslint/no-unused-vars
+  1141:43  warning  'businessId' is defined but never used                @typescript-eslint/no-unused-vars
+  1141:55  warning  'onApprove' is defined but never used                 @typescript-eslint/no-unused-vars
+  1141:66  warning  'onUpdateCase' is defined but never used              @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\components\pages\legal\debt-acknowledgement-page.tsx
+  16:16  warning  'ShieldCheck' is defined but never used   @typescript-eslint/no-unused-vars
+  17:31  warning  'ExternalLink' is defined but never used  @typescript-eslint/no-unused-vars
+  17:45  warning  'Copy' is defined but never used          @typescript-eslint/no-unused-vars
+  17:51  warning  'Check' is defined but never used         @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\components\pages\legal\documents-index-page.tsx
+  59:6  warning  React Hook useEffect has a missing dependency: 'activeCases'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\components\pages\legal\evidence-pack-page.tsx
+  596:27  warning  Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images  jsx-a11y/alt-text
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\components\pages\legal\evidence-upload-page.tsx
+   15:3   warning  'getFileTypeLabel' is defined but never used                                                                 @typescript-eslint/no-unused-vars
+   16:3   warning  'ALLOWED_EXTENSIONS' is defined but never used                                                               @typescript-eslint/no-unused-vars
+   17:3   warning  'MAX_FILE_SIZE' is defined but never used                                                                    @typescript-eslint/no-unused-vars
+   27:3   warning  'X' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   33:3   warning  'File' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   93:9   warning  'uploadedTypes' is assigned a value but never used                                                           @typescript-eslint/no-unused-vars
+  240:3   warning  'onFileRemoved' is defined but never used                                                                    @typescript-eslint/no-unused-vars
+  439:11  warning  Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images  jsx-a11y/alt-text
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\components\pages\legal\lawyer-referral-page.tsx
+   29:37  warning  'ShieldCheck' is defined but never used        @typescript-eslint/no-unused-vars
+   29:50  warning  'ArrowRight' is defined but never used         @typescript-eslint/no-unused-vars
+   30:3   warning  'FileText' is defined but never used           @typescript-eslint/no-unused-vars
+  363:3   warning  'caseId' is defined but never used             @typescript-eslint/no-unused-vars
+  363:57  warning  'existingReferrals' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\components\pages\payments\debtor-payment-page.tsx
+  145:48  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\components\pages\payments\payment-requests-page.tsx
+  12:10  warning  'formatRM' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\components\pages\payments\receiving-account-page.tsx
+   6:10  warning  'SectionCard' is defined but never used    @typescript-eslint/no-unused-vars
+   7:10  warning  'PrimaryButton' is defined but never used  @typescript-eslint/no-unused-vars
+  20:30  warning  'X' is defined but never used              @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\components\pages\reports-page.tsx
+  21:26  warning  '_compact' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\hooks\use-legal-documents.ts
+  8:3  warning  'saveEvidencePackClient' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\hooks\use-receiving-accounts.ts
+   8:3  warning  'updateReceivingAccountClient' is defined but never used  @typescript-eslint/no-unused-vars
+   9:3  warning  'deleteReceivingAccountClient' is defined but never used  @typescript-eslint/no-unused-vars
+  10:3  warning  'saveReceivingAccountClient' is defined but never used    @typescript-eslint/no-unused-vars
+  11:3  warning  'setPrimaryAccountClient' is defined but never used       @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\lib\auth\mock-session.ts
+  37:43  warning  '_password' is defined but never used  @typescript-eslint/no-unused-vars
+  43:43  warning  '_password' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\lib\compliance\service.ts
+  5:3  warning  'ComplianceCaseHoldRow' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\lib\db\audit-logs.ts
+  3:54  warning  'Json' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\lib\db\cases.ts
+  13:3  warning  'mockCaseActivities' is defined but never used  @typescript-eslint/no-unused-vars
+  14:3  warning  'mockCaseEvidence' is defined but never used    @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\lib\db\payment-access.ts
+  5:8  warning  'PaymentAccessRequestInsert' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\lib\db\payments-client.ts
+  178:3  warning  '_businessId' is defined but never used  @typescript-eslint/no-unused-vars
+  205:3  warning  '_businessId' is defined but never used  @typescript-eslint/no-unused-vars
+  222:3  warning  '_businessId' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Web App and phone app\COMPLETED & RUN\Completed Collectboss\collectboss\src\lib\db\receiving-accounts-client.ts
+  74:3  warning  '_businessId' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 49 problems (0 errors, 49 warnings)
+
+npm notice
+npm notice New major version of npm available! 11.16.0 -> 12.0.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+npm notice To update run: npm install -g npm@12.0.2
+npm notice

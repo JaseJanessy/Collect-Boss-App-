@@ -37,10 +37,14 @@ import { useCases } from "@/hooks/use-cases";
 import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { UsageMeter } from "@/components/billing/usage-meter";
 import { formatLimit } from "@/lib/billing/plans";
+import { useRegion } from "@/contexts/region-context";
+import { formatCurrency } from "@/lib/international/formatting";
+import { getCurrencyMetadata } from "@/lib/financial/money";
 
 // ─── Form state type ───────────────────────────────────────────────────────────
 
 type FormValues = {
+  currency:          string;
   debtor_type:       DebtorType;
   debtor_name:       string;
   debtor_phone:      string;
@@ -57,6 +61,7 @@ type FormValues = {
 };
 
 const defaultValues: FormValues = {
+  currency:          "MYR",
   debtor_type:       "individual",
   debtor_name:       "",
   debtor_phone:      "",
@@ -105,12 +110,16 @@ const lockModes: Array<{
 export function AddCasePage() {
   const router     = useRouter();
   const businessId = useBusinessId();
+  const { configuration } = useRegion();
 
   const { cases, loading: casesLoading }         = useCases();
-  const { entitlement, flags, loading: entLoading } = useEntitlements();
+  const { entitlement, flags, loading: entLoading, error: entitlementError } = useEntitlements();
 
   const [step,      setStep]      = useState(1);
-  const [values,    setValues]    = useState<FormValues>(defaultValues);
+  const [values,    setValues]    = useState<FormValues>(() => ({
+    ...defaultValues,
+    currency: configuration.settings.defaultCurrency,
+  }));
   const [errors,    setErrors]    = useState<Partial<Record<keyof FormValues, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -171,6 +180,7 @@ export function AddCasePage() {
 
     const bId = businessId ?? "mock-business-id";
     const input: CreateCaseInput = {
+      currency:          values.currency,
       debtor_type:       values.debtor_type,
       debtor_name:       values.debtor_name,
       debtor_phone:      values.debtor_phone || undefined,
@@ -221,6 +231,8 @@ export function AddCasePage() {
   const caseCount = cases.length;
   const caseLimit = entitlement?.case_limit ?? 3;
   const atCaseLimit = !entLoading && !casesLoading && !flags.canCreateCase(caseCount);
+
+  if (entitlementError) return <section role="alert" className="cb-surface mx-auto my-6 max-w-xl p-6"><h1 className="cb-page-title">Plan access unavailable</h1><p className="cb-page-description">We could not verify your case allowance. This is not a confirmed plan limit.</p><button onClick={() => window.location.reload()} className="cb-button-secondary mt-5">Try again</button></section>;
 
   if (atCaseLimit) {
     return (
@@ -392,7 +404,7 @@ export function AddCasePage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-semibold text-gray-700">
-            Amount Owed (RM)
+            Amount Owed
             <RequiredDot />
           </label>
           <div className="relative">
@@ -400,13 +412,13 @@ export function AddCasePage() {
               <DollarSign className="w-4 h-4" />
             </div>
             <div className="absolute left-9 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500 pointer-events-none">
-              RM
+              {values.currency}
             </div>
             <input
               type="number"
               min="0"
-              step="0.01"
-              placeholder="0.00"
+              step={10 ** -getCurrencyMetadata(values.currency).minorUnit}
+              placeholder={getCurrencyMetadata(values.currency).minorUnit === 0 ? "0" : `0.${"0".repeat(getCurrencyMetadata(values.currency).minorUnit)}`}
               value={values.amount_owed}
               onChange={(e) => setValue("amount_owed", e.target.value)}
               className={cn(
@@ -418,6 +430,17 @@ export function AddCasePage() {
           {errors.amount_owed && (
             <p className="text-[11px] text-red-500 ml-1">{errors.amount_owed}</p>
           )}
+          <label className="text-xs font-semibold text-gray-500 mt-1" htmlFor="currency">Currency</label>
+          <select
+            id="currency"
+            value={values.currency}
+            onChange={(event) => setValue("currency", event.target.value)}
+            className="w-full px-3.5 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300"
+          >
+            {["MYR", "SGD", "USD", "GBP", "AUD", "CAD", "EUR", "NZD", "AED"].map((currency) => (
+              <option key={currency} value={currency}>{currency}</option>
+            ))}
+          </select>
         </div>
 
         <FormField
@@ -504,6 +527,8 @@ function StepTwo({
   submitError: string | null;
 }) {
   const amount = parseFloat(values.amount_owed) || 0;
+  const { configuration } = useRegion();
+  const formattedAmount = amount > 0 ? formatCurrency(amount, configuration.settings, values.currency) : "—";
   const { entitlement } = useEntitlements();
   const paymentLockEnabled = entitlement?.payment_lock_enabled ?? false;
 
@@ -528,8 +553,9 @@ function StepTwo({
             { label: "Phone Number",       value: values.debtor_phone       || "Not provided" },
             { label: "Email",              value: values.debtor_email       || "Not provided" },
             { label: "Company",            value: values.debtor_company     || "Not provided" },
-            { label: "Amount Owed",        value: amount > 0 ? `RM ${amount.toLocaleString("en-MY", { minimumFractionDigits: 2 })}` : "—" },
-            { label: "Balance",            value: amount > 0 ? `RM ${amount.toLocaleString("en-MY", { minimumFractionDigits: 2 })}` : "—" },
+            { label: "Amount Owed",        value: formattedAmount },
+            { label: "Balance",            value: formattedAmount },
+            { label: "Currency",           value: values.currency },
             { label: "Due Date",           value: values.due_date           || "—" },
             { label: "Invoice Number",     value: values.invoice_no         || "Not provided" },
           ].map((row) => (

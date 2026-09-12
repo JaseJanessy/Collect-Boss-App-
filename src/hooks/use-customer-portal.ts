@@ -24,6 +24,7 @@ export function useCustomerPortal(): UseCustomerPortalResult {
     try {
       const res = await fetch("/api/billing/create-customer-portal-session", {
         method: "POST",
+        headers: { "Idempotency-Key": crypto.randomUUID() },
       });
 
       const data: { url?: string; error?: string } = await res.json();

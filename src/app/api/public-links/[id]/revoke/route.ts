@@ -1,28 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnedCaseScope } from "@/lib/public-access/service";
-import { getServerClient } from "@/lib/supabase/server-client";
-import { getServiceClient } from "@/lib/supabase/service-client";
+import { appendSensitiveAudit, requireTenantPermission } from "@/lib/auth/tenant-access";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
-  const ownerClient = await getServerClient();
-  const { data: { user } } = ownerClient ? await ownerClient.auth.getUser() : { data: { user: null } };
-  if (!user) return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+  const access = await requireTenantPermission("public_link.manage");
+  if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const { id } = await context.params;
-  const service = await getServiceClient();
-  if (!service) return NextResponse.json({ error: "Public link service is unavailable." }, { status: 503 });
+  const service = access.service;
 
   const { data: token } = await service
     .from("public_access_tokens")
     .select("id, case_id")
     .eq("id", id)
+    .eq("business_id", access.businessId)
     .maybeSingle();
-  if (!token || !(await getOwnedCaseScope((token as { case_id: string }).case_id, user.id))) {
+  if (!token) {
     return NextResponse.json({ error: "Public link not found." }, { status: 404 });
   }
 
@@ -30,8 +27,11 @@ export async function POST(
     .from("public_access_tokens")
     .update({ revoked_at: new Date().toISOString() })
     .eq("id", id)
+    .eq("business_id", access.businessId)
     .is("revoked_at", null);
   if (error) return NextResponse.json({ error: "Unable to revoke public link." }, { status: 500 });
 
+  await appendSensitiveAudit({ access, request, action: "public_link.revoked", entityType: "public_access_token",
+    entityId: id, caseId: (token as { case_id: string }).case_id });
   return NextResponse.json({ revoked: true }, { headers: { "Cache-Control": "no-store" } });
 }

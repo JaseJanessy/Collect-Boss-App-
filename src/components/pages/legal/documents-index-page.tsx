@@ -19,9 +19,9 @@ import {
 
 const DEMAND_DOC_TYPES = new Set(["demand_standard", "demand_firm", "demand_final"]);
 const TONE_LABELS: Record<string, string> = {
-  demand_standard: "Friendly Formal",
-  demand_firm:     "Strict Formal",
-  demand_final:    "Final Notice",
+  demand_standard: "Formal Payment Reminder",
+  demand_firm:     "Firm Payment Reminder",
+  demand_final:    "Final Payment Notice",
 };
 
 export function DocumentsIndexPage() {
@@ -62,9 +62,9 @@ export function DocumentsIndexPage() {
     <div className="flex flex-col pb-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-4">
-        <h1 className="text-lg font-bold text-[#0D1B3D]">Documents & Legal</h1>
+        <h1 className="text-lg font-bold text-[#0D1B3D]">Documents & External Review</h1>
         <p className="text-xs text-gray-400 mt-0.5">
-          Evidence, demand letters, and legal tools for each case.
+          Factual records, payment notices, evidence exports, and external-review preparation.
         </p>
       </div>
 
@@ -73,11 +73,11 @@ export function DocumentsIndexPage() {
         <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex gap-3">
           <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-bold text-blue-800">About evidence &amp; legal documents</p>
+            <p className="text-xs font-bold text-blue-800">About notices and case preparation</p>
             <p className="text-[11px] text-blue-700 mt-0.5 leading-relaxed">
-              Upload invoices and proof for each case, then generate formal demand letters or
-              small claim packs when you need to escalate. Strong evidence improves your
-              chances in court.
+              Upload invoices and proof, prepare creditor payment notices, and export factual
+              case evidence for external review. CollectBoss does not provide legal advice,
+              determine court eligibility, or issue documents with lawyer or court authority.
             </p>
           </div>
         </div>
@@ -150,21 +150,21 @@ export function DocumentsIndexPage() {
                     {
                       href:   `/evidence/${c.id}/pack`,
                       icon:   <FileText className="w-3.5 h-3.5" />,
-                      label:  "Evidence Pack / Export",
+                      label:  "Case Evidence Export",
                       sub:    packs.length > 0 ? `${packs.length} PDF exported` : "Preview & export PDF",
                       accent: packs.length > 0,
                     },
                     {
                       href:   `/legal/${c.id}/demand`,
                       icon:   <FileText className="w-3.5 h-3.5" />,
-                      label:  "Formal Demand Draft",
-                      sub:    demands.length > 0 ? `${demands.length} draft${demands.length > 1 ? "s" : ""} saved` : "Create demand letter",
+                      label:  "Formal Payment Reminder",
+                      sub:    demands.length > 0 ? `${demands.length} notice draft${demands.length > 1 ? "s" : ""} saved` : "Create payment notice",
                       accent: demands.length > 0,
                     },
                     {
                       href:   `/legal/${c.id}/smallclaim`,
                       icon:   <FileText className="w-3.5 h-3.5" />,
-                       label:  "Case-Record Pack",
+                       label:  "Small Claim Readiness",
                       sub:    latestSC
                         ? `${scMeta.readiness_pct ?? "?"}% ready · ${SMALL_CLAIM_STATUS_CONFIG[scMeta.readiness_status as keyof typeof SMALL_CLAIM_STATUS_CONFIG]?.label ?? ""}`
                          : "Prepare factual pack for external legal review",
@@ -173,10 +173,10 @@ export function DocumentsIndexPage() {
                     {
                       href:   `/legal/${c.id}/lawyer`,
                       icon:   <Gavel className="w-3.5 h-3.5" />,
-                      label:  "Lawyer Referral",
+                      label:  "Professional Legal Handoff",
                       sub:    latestRef
                         ? `${REFERRAL_STATUS_CONFIG[latestRef.referral_status]?.label ?? latestRef.referral_status}`
-                        : "Submit case for legal review",
+                        : "Request external legal review",
                       accent: !!latestRef,
                     },
                   ].map((item) => (
@@ -209,7 +209,7 @@ export function DocumentsIndexPage() {
                 {demands.length > 0 && (
                   <div className="px-4 py-3 border-t border-gray-50 bg-[#F2F4F7]">
                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2">
-                      Saved Demand Drafts
+                      Saved Payment Notice Drafts
                     </p>
                     {demands.slice(0, 2).map((d) => {
                       let meta: { generated_at?: string; deadline_days?: number } = {};
@@ -245,7 +245,7 @@ export function DocumentsIndexPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <FileText className="w-3.5 h-3.5 text-blue-600" />
-                         <p className="text-[11px] font-bold text-gray-700">Case-Record Pack</p>
+                         <p className="text-[11px] font-bold text-gray-700">Case Evidence Export</p>
                       </div>
                       {(() => {
                         const cfg = scMeta.readiness_status
@@ -271,7 +271,7 @@ export function DocumentsIndexPage() {
                       <div className="flex items-center gap-2">
                         <Send className="w-3.5 h-3.5 text-[#009966]" />
                         <p className="text-[11px] font-bold text-gray-700">
-                          Referral: {latestRef.partner_name ?? "Legal Partner"}
+                          Legal handoff: {latestRef.partner_name ?? "External professional not assigned"}
                         </p>
                       </div>
                       {(() => {

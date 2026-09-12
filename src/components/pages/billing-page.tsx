@@ -30,6 +30,7 @@ import {
 import { useSubscription } from "@/hooks/use-subscription";
 import { useCustomerPortal } from "@/hooks/use-customer-portal";
 import type { SubscriptionStatus } from "@/lib/billing/types";
+import { appEnvironment } from "@/lib/supabase/client";
 
 // ─── Feature rows shown on every plan card ────────────────────────────────────
 
@@ -61,12 +62,12 @@ const FEATURE_ROWS: FeatureRow[] = [
     getValue: (p) => p.payment_lock_enabled,
   },
   {
-    label:    "Formal Demand",
+    label:    "Formal Payment Notice",
     icon:     <FileText className="w-3.5 h-3.5" />,
     getValue: (p) => p.formal_demand_enabled,
   },
   {
-    label:    "Lawyer Referral",
+    label:    "Request Legal Review",
     icon:     <Gavel className="w-3.5 h-3.5" />,
     getValue: (p) => p.lawyer_referral_enabled,
   },
@@ -90,7 +91,7 @@ function useCheckout() {
     try {
       const res = await fetch("/api/billing/create-checkout-session", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
         body:    JSON.stringify({ plan_slug: slug }),
       });
 
@@ -118,11 +119,12 @@ function useCheckout() {
 
 interface BillingPageProps {
   dashboard?: boolean;
+  selectedPlan?: PlanSlug;
 }
 
-export function BillingPage({ dashboard }: BillingPageProps) {
-  const { entitlement, loading: entLoading }              = useEntitlements();
-  const { subscription, loading: subLoading, refresh }    = useSubscription();
+export function BillingPage({ dashboard, selectedPlan }: BillingPageProps) {
+  const { entitlement, loading: entLoading, error: entitlementError } = useEntitlements();
+  const { subscription, loading: subLoading, refresh, error: subscriptionError } = useSubscription();
   const { loading: checkoutLoading, error: checkoutError, subscribe } = useCheckout();
 
   const currentSlug: PlanSlug         = entitlement?.plan_slug ?? "free";
@@ -136,6 +138,8 @@ export function BillingPage({ dashboard }: BillingPageProps) {
     subscription?.status === "active" &&
     subscription?.plan_slug !== "free" &&
     entitlement?.plan_slug === "free";
+
+  if (entitlementError || subscriptionError) return <section role="alert" className="cb-surface mx-auto max-w-xl p-6"><h1 className="cb-page-title">Billing information unavailable</h1><p className="cb-page-description">We could not confirm your current plan or subscription. Please retry before making billing changes.</p><button onClick={() => window.location.reload()} className="cb-button-secondary mt-5">Try again</button></section>;
 
   return (
     <div className={cn("flex flex-col pb-8", !dashboard && "")}>
@@ -159,7 +163,13 @@ export function BillingPage({ dashboard }: BillingPageProps) {
         </div>
       )}
 
-      <div className={cn("flex flex-col gap-6", !dashboard && "px-4 pt-4")}>
+      <div className={cn("flex flex-col gap-6", !dashboard && "px-4 pt-4")}> 
+        {selectedPlan && selectedPlan !== currentSlug && (
+          <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-sm font-bold text-emerald-900">Your {PLANS[selectedPlan].name} selection is ready</p>
+            <p className="mt-1 text-xs text-emerald-800">Review the highlighted plan and continue when you are ready. You have not been charged.</p>
+          </div>
+        )}
         {/* ── Activation pending banner ────────────────────────────────── */}
         {activationPending && (
           <ActivationPendingBanner onRefresh={refresh} />
@@ -169,7 +179,6 @@ export function BillingPage({ dashboard }: BillingPageProps) {
         {!subLoading && subscription && !activationPending && (
           <SubscriptionStatusAlert
             status={subStatus}
-            planSlug={subscription.plan_slug}
             periodEnd={subscription.current_period_end}
             cancelAtPeriodEnd={subscription.cancel_at_period_end}
           />
@@ -220,11 +229,10 @@ export function BillingPage({ dashboard }: BillingPageProps) {
           ))}
         </div>
 
-        {/* ── Beta notice ──────────────────────────────────────────────── */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
+        {appEnvironment !== "production" && <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
           <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-bold text-amber-800">Beta — Stripe Test Mode</p>
+            <p className="text-xs font-bold text-amber-800">{appEnvironment === "staging" ? "Staging" : "Development"} — Stripe Test Mode</p>
             <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
               Payments are in test mode. Use Stripe test card{" "}
               <span className="font-mono font-bold">4242 4242 4242 4242</span> with any
@@ -232,7 +240,7 @@ export function BillingPage({ dashboard }: BillingPageProps) {
               No real charges will be made.
             </p>
           </div>
-        </div>
+        </div>}
 
         {/* ── Legal ────────────────────────────────────────────────────── */}
         <p className="text-[11px] text-gray-400 text-center leading-relaxed">
@@ -463,12 +471,10 @@ const STATUS_ALERT: Partial<Record<SubscriptionStatus, {
 
 function SubscriptionStatusAlert({
   status,
-  planSlug: _planSlug,
   periodEnd,
   cancelAtPeriodEnd,
 }: {
   status:             SubscriptionStatus;
-  planSlug:           PlanSlug;
   periodEnd:          string | null;
   cancelAtPeriodEnd:  boolean;
 }) {

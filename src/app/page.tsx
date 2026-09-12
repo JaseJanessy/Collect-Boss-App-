@@ -2,8 +2,31 @@ import { MobileShell } from "@/components/shells/mobile-shell";
 import { DashboardShell } from "@/components/shells/dashboard-shell";
 import { HomeMobile } from "@/components/pages/home-mobile";
 import { HomeDashboard } from "@/components/pages/home-dashboard";
+import { requireWorkspaceContext } from "@/lib/workspace/context";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getServerClient, hasServerAuthCookie } from "@/lib/supabase/server-client";
+import { redirect } from "next/navigation";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  if (isSupabaseConfigured && await hasServerAuthCookie()) {
+    const client = await getServerClient();
+    const { data: { user } } = client
+      ? await client.auth.getUser()
+      : { data: { user: null } };
+    if (!user) redirect("/landing");
+  } else if (isSupabaseConfigured) {
+    redirect("/landing");
+  }
+
+  const workspaceResult = await requireWorkspaceContext();
+  if ("error" in workspaceResult) {
+    if (workspaceResult.code === "WORKSPACE_ACCESS_DENIED") redirect("/choose-product");
+    redirect("/workspace-unavailable");
+  }
+  if (workspaceResult.context.workspace.productType === "pocket") redirect("/pocket");
+
   return (
     <>
       <MobileShell>

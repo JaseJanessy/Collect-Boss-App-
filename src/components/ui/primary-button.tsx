@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import type { ReactNode, ButtonHTMLAttributes } from "react";
+import { buttonVariants } from "@/components/ui/button";
 
 interface PrimaryButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
@@ -20,27 +21,23 @@ export function PrimaryButton({
   className,
   ...props
 }: PrimaryButtonProps) {
-  const base =
-    "inline-flex min-h-11 max-w-full items-center justify-center gap-2 text-center leading-snug whitespace-normal font-semibold rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed";
-
   const variants = {
-    primary: "bg-[#55DDB4] text-[#0B1B3A] hover:bg-[#8BE4CA] shadow-sm shadow-[#55DDB4]/20",
-    secondary:
-      "bg-[#173361] text-white border border-[#244777] hover:bg-[#244777] shadow-sm",
-    ghost: "bg-transparent text-[#8BE4CA] hover:bg-[#173361]",
-    danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm",
+    primary: buttonVariants({ variant: "default" }),
+    secondary: buttonVariants({ variant: "secondary" }),
+    ghost: buttonVariants({ variant: "ghost" }),
+    danger: buttonVariants({ variant: "destructive" }),
   };
 
   const sizes = {
-    sm: "text-xs px-3 py-2",
-    md: "text-sm px-4 py-3",
-    lg: "text-base px-6 py-4",
+    sm: "min-h-9 px-3 py-2 text-xs",
+    md: "min-h-11 px-4 py-2.5 text-sm",
+    lg: "min-h-12 px-5 py-3 text-base",
   };
 
   return (
     <button
       className={cn(
-        base,
+        "max-w-full whitespace-normal text-center leading-snug",
         variants[variant],
         sizes[size],
         fullWidth && "w-full",

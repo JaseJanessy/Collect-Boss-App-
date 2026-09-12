@@ -18,6 +18,7 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { PLANS } from "./plans";
 import type { PlanSlug, SubscriptionStatus } from "./types";
+export { isConfiguredPlanPriceId, planSlugFromPriceId } from "./catalog-server";
 
 // ─── Status → entitlement decision ───────────────────────────────────────────
 
@@ -76,35 +77,9 @@ export function resolveEntitlementPayload(
  * Maps a Stripe price ID to a plan slug using env vars.
  * Falls back to the metadata value, then to "free" as a last resort.
  */
-export function planSlugFromPriceId(
-  priceId: string | null | undefined,
-  metaSlug?: string | null,
-): PlanSlug {
-  if (priceId) {
-    const map: Partial<Record<string, PlanSlug>> = {
-      [process.env.STRIPE_PRICE_STARTER ?? "___"]: "starter",
-      [process.env.STRIPE_PRICE_BOSS    ?? "___"]: "boss",
-      [process.env.STRIPE_PRICE_PRO     ?? "___"]: "pro",
-    };
-    if (map[priceId]) return map[priceId]!;
-  }
-  // Fallback: use metadata slug if it's a known plan
-  const knownSlugs: PlanSlug[] = ["starter", "boss", "pro", "free"];
-  if (metaSlug && knownSlugs.includes(metaSlug as PlanSlug)) {
-    return metaSlug as PlanSlug;
-  }
-  return "free";
-}
+// Stripe price resolution is centralized in catalog-server.ts.
 
 /** True only when a price ID is explicitly configured on this server. */
-export function isConfiguredPlanPriceId(priceId: string | null | undefined): boolean {
-  if (!priceId) return false;
-  return [
-    process.env.STRIPE_PRICE_STARTER,
-    process.env.STRIPE_PRICE_BOSS,
-    process.env.STRIPE_PRICE_PRO,
-  ].some((configuredPriceId) => Boolean(configuredPriceId) && configuredPriceId === priceId);
-}
 
 // ─── Idempotency ──────────────────────────────────────────────────────────────
 
@@ -112,7 +87,7 @@ export function isConfiguredPlanPriceId(priceId: string | null | undefined): boo
  * Returns true if a billing event with this Stripe event ID has already
  * been fully processed. Safe to call with a missing service client.
  */
-export type BillingEventClaim = "new" | "retry" | "done";
+export type BillingEventClaim = "new" | "retry" | "done" | "busy";
 
 /**
  * Atomically claims a Stripe event by inserting its unique event ID.
@@ -128,34 +103,13 @@ export async function claimBillingEvent(params: {
 }): Promise<BillingEventClaim> {
   const client = await getServiceClient();
   if (!client) throw new Error("Billing event store unavailable");
-
-  const { error: insertError } = await client.from("billing_events").insert({
-    stripe_event_id: params.stripeEventId,
-    event_type: params.eventType,
-    processed: false,
-    // Keep only operational metadata; never persist a webhook payload.
-    metadata: {
-      received_at: new Date().toISOString(),
-      stripe_event_created_at: params.stripeEventCreatedAt,
-    },
+  const { data, error } = await client.rpc("billing_claim_event", {
+    p_stripe_event_id: params.stripeEventId,
+    p_event_type: params.eventType,
+    p_event_created_at: params.stripeEventCreatedAt ? new Date(params.stripeEventCreatedAt * 1000).toISOString() : null,
   });
-
-  if (!insertError) return "new";
-  if (insertError.code !== "23505") {
-    throw new Error("Unable to claim billing event");
-  }
-
-  const { data, error: readError } = await client
-    .from("billing_events")
-    .select("processed")
-    .eq("stripe_event_id", params.stripeEventId)
-    .maybeSingle();
-
-  if (readError || !data) {
-    throw new Error("Unable to read claimed billing event");
-  }
-
-  return (data as { processed: boolean }).processed ? "done" : "retry";
+  if (error || !data || !["new", "retry", "done", "busy"].includes(data)) throw new Error("Unable to claim billing event");
+  return data as BillingEventClaim;
 }
 
 // ─── Billing event persistence ────────────────────────────────────────────────
@@ -176,6 +130,10 @@ export async function completeBillingEvent(params: {
       business_id:     params.businessId,
       event_type:      params.eventType,
       processed:       true,
+      status:          "succeeded",
+      processed_at:    new Date().toISOString(),
+      last_error_code: null,
+      last_error_message: null,
       metadata: {
         outcome: params.outcome,
         processed_at: new Date().toISOString(),
@@ -184,6 +142,29 @@ export async function completeBillingEvent(params: {
   ).eq("stripe_event_id", params.stripeEventId).select("stripe_event_id").maybeSingle();
 
   if (error || !data) throw new Error("Unable to complete billing event");
+}
+
+export async function failBillingEvent(params: {
+  stripeEventId: string;
+  errorCode: string;
+  errorMessage: string;
+}): Promise<"retry_scheduled" | "dead_letter"> {
+  const client = await getServiceClient();
+  if (!client) throw new Error("Billing event store unavailable");
+  const { data: existing, error: readError } = await client.from("billing_events")
+    .select("attempts").eq("stripe_event_id", params.stripeEventId).maybeSingle();
+  if (readError || !existing) throw new Error("Unable to load failed billing event");
+  const attempts = Number(existing.attempts ?? 1);
+  const status = attempts >= 8 ? "dead_letter" as const : "retry_scheduled" as const;
+  const retryMinutes = Math.min(24 * 60, 2 ** Math.min(attempts, 10));
+  const { error } = await client.from("billing_events").update({
+    status,
+    next_attempt_at: new Date(Date.now() + retryMinutes * 60_000).toISOString(),
+    last_error_code: params.errorCode.slice(0, 100),
+    last_error_message: params.errorMessage.slice(0, 1000),
+  }).eq("stripe_event_id", params.stripeEventId).eq("processed", false);
+  if (error) throw new Error("Unable to persist failed billing event");
+  return status;
 }
 
 // ─── Subscription upsert ──────────────────────────────────────────────────────
@@ -198,6 +179,23 @@ export interface SubscriptionUpsertParams {
   currentPeriodStart:    number | null; // Unix timestamp from Stripe
   currentPeriodEnd:      number | null; // Unix timestamp from Stripe
   cancelAtPeriodEnd:     boolean;
+}
+
+export async function applySubscriptionState(params: SubscriptionUpsertParams): Promise<void> {
+  const client = await getServiceClient();
+  if (!client) throw new Error("Billing state store unavailable");
+  const { error } = await client.rpc("billing_apply_subscription_state", {
+    p_business_id: params.businessId,
+    p_customer_id: params.stripeCustomerId,
+    p_subscription_id: params.stripeSubscriptionId,
+    p_price_id: params.stripePriceId,
+    p_plan_slug: params.planSlug,
+    p_status: params.status,
+    p_period_start: params.currentPeriodStart ? new Date(params.currentPeriodStart * 1000).toISOString() : null,
+    p_period_end: params.currentPeriodEnd ? new Date(params.currentPeriodEnd * 1000).toISOString() : null,
+    p_cancel_at_period_end: params.cancelAtPeriodEnd,
+  });
+  if (error) throw new Error("Unable to synchronize subscription and entitlement state atomically");
 }
 
 export async function upsertSubscription(
@@ -268,15 +266,14 @@ export async function getBusinessIdByCustomer(
   const client = await getServiceClient();
   if (!client) return null;
 
-  const { data, error } = await client
-    .from("subscriptions")
-    .select("business_id")
-    .eq("stripe_customer_id", stripeCustomerId)
-    .maybeSingle();
-
-  if (error) throw new Error("Unable to resolve Stripe customer mapping");
-
-  return (data as { business_id: string } | null)?.business_id ?? null;
+  const [main, pocket] = await Promise.all([
+    client.from("subscriptions").select("business_id").eq("stripe_customer_id", stripeCustomerId).maybeSingle(),
+    client.from("workspace_commercial_states").select("business_id").eq("stripe_customer_id", stripeCustomerId).maybeSingle(),
+  ]);
+  if (main.error || pocket.error) throw new Error("Unable to resolve Stripe customer mapping");
+  const candidates = [main.data?.business_id, pocket.data?.business_id].filter((value): value is string => Boolean(value));
+  if (new Set(candidates).size > 1) throw new Error("Stripe customer mapping is ambiguous");
+  return candidates[0] ?? null;
 }
 
 /** Returns the canonical business/owner mapping used to validate Stripe metadata. */

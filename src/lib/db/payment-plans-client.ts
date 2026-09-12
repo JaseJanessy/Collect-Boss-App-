@@ -9,6 +9,8 @@ import {
   type PaymentPlanInsert,
   type PaymentPlanUpdate,
   type PaymentPlanStatus,
+  type PaymentPlanInstallmentRow,
+  type PaymentPlanEventRow,
 } from "@/lib/supabase/types";
 import { ok, fail, type DbResult } from "./result";
 
@@ -51,24 +53,21 @@ function mockId(): string {
 
 // ─── getPaymentPlansClient ────────────────────────────────────────────────────
 
+export type PaymentPlanDetails = PaymentPlanRow & {
+  installments: PaymentPlanInstallmentRow[];
+  events: PaymentPlanEventRow[];
+};
+
 export async function getPaymentPlansClient(
   caseId: string
-): Promise<DbResult<PaymentPlanRow[]>> {
+): Promise<DbResult<PaymentPlanDetails[]>> {
   if (!isSupabaseConfigured) {
-    return ok(_mockStore.filter((p) => p.case_id === caseId));
+    return ok(_mockStore.filter((p) => p.case_id === caseId).map((plan) => ({ ...plan, installments: [], events: [] })));
   }
-
-  const client = getBrowserClient();
-  if (!client) return fail("Supabase client unavailable");
-
-  const { data, error } = await client
-    .from("payment_plans")
-    .select("*")
-    .eq("case_id", caseId)
-    .order("created_at", { ascending: false });
-
-  if (error) return fail(error.message);
-  return ok((data as PaymentPlanRow[]) ?? []);
+  const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/payment-plans`, { cache: "no-store" });
+  const payload = await response.json().catch(() => ({})) as { plans?: PaymentPlanDetails[]; error?: string };
+  if (!response.ok || !payload.plans) return fail(payload.error ?? "Unable to load payment plans.");
+  return ok(payload.plans);
 }
 
 // ─── getActivePlanClient ──────────────────────────────────────────────────────

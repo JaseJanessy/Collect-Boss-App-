@@ -26,3 +26,15 @@ export async function getServerClient(): Promise<AppSupabaseClient | null> {
     },
   });
 }
+
+/**
+ * Avoid a network-backed auth lookup for public visitors who cannot have a
+ * Supabase session. Supabase may split large session cookies into numbered
+ * chunks, so accept both the base cookie and its `.0`, `.1`, ... variants.
+ */
+export async function hasServerAuthCookie(): Promise<boolean> {
+  const cookieStore = await cookies();
+  return cookieStore
+    .getAll()
+    .some(({ name }) => /^sb-.+-auth-token(?:\.\d+)?$/.test(name));
+}

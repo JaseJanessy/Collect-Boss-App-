@@ -8,9 +8,10 @@ import { SectionCard } from "@/components/ui/section-card";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import { LoadingSpinner, InlineSpinner } from "@/components/ui/loading-spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { type ReceivingAccountRow } from "@/lib/supabase/types";
+import { type ContactGuardEvaluation, type ReceivingAccountRow } from "@/lib/supabase/types";
 import { useCase } from "@/hooks/use-case";
 import { useReminders } from "@/hooks/use-reminders";
+import { useCommunicationActivities } from "@/hooks/use-communication-activities";
 import { formatRM } from "@/lib/mock-data";
 import { getPrimaryAccountClient } from "@/lib/db/receiving-accounts-client";
 import { confirmReminderSentClient, generateReminderClient, recordReminderHandoffClient } from "@/lib/db/reminders-client";
@@ -18,7 +19,6 @@ import {
   generateReminderMessage,
   buildEmailLink,
   buildWhatsAppLink,
-  checkReminderFrequency,
   REMINDER_TYPES,
   REMINDER_STATUS_LABELS,
   REMINDER_STATUS_COLORS,
@@ -44,6 +44,17 @@ interface Props {
   caseId: string;
 }
 
+function promptForContactOverride(guardrail: ContactGuardEvaluation | undefined): string | undefined | null {
+  if (!guardrail?.warnings.length) return undefined;
+  const reason = window.prompt(
+    `${guardrail.warnings.join("\n")}\n\n${guardrail.recommended_action}\n\n` +
+    "To continue, enter a short operational reason. Cancel to follow the recommendation.",
+  );
+  if (reason === null) return null;
+  if (reason.trim().length < 3) return null;
+  return reason.trim();
+}
+
 // ─── Status options users can choose ─────────────────────────────────────────
 
 // ─── Main component ────────────────────────────────────────────────────────────
@@ -51,6 +62,7 @@ interface Props {
 export function ReminderGeneratorPage({ caseId }: Props) {
   const { caseData, loading: caseLoading } = useCase(caseId);
   const { reminders, loading: remLoading, refresh: refreshReminders } = useReminders(caseId);
+  const communications = useCommunicationActivities(caseId);
 
   const [account,         setAccount]         = useState<ReceivingAccountRow | null>(null);
   const [reminderType,    setReminderType]     = useState<ReminderType>("friendly");
@@ -65,8 +77,9 @@ export function ReminderGeneratorPage({ caseId }: Props) {
 
   // Load primary receiving account
   useEffect(() => {
-    getPrimaryAccountClient().then(setAccount);
-  }, []);
+    if (!caseData) return;
+    getPrimaryAccountClient(caseData.currency).then(setAccount);
+  }, [caseData]);
 
   // Generate message whenever case/type/account changes
   useEffect(() => {
@@ -96,7 +109,7 @@ export function ReminderGeneratorPage({ caseId }: Props) {
   }
 
   const c = caseData;
-  const freq = checkReminderFrequency(reminders);
+  const contactGuard = communications.guardrails[channel];
   const waLink = buildWhatsAppLink(c.debtor_phone, messageBody);
   const emailLink = buildEmailLink(c.debtor_email, `Payment reminder${c.invoice_no ? ` — ${c.invoice_no}` : ""}`, messageBody);
 
@@ -140,19 +153,30 @@ export function ReminderGeneratorPage({ caseId }: Props) {
 
   async function handleComposer(handoff: "whatsapp" | "email", href: string) {
     if (!savedId || !href) return;
+    const overrideReason = promptForContactOverride(communications.guardrails[handoff]);
+    if (overrideReason === null) return;
     setSaving(true);
     setSaveError(null);
-    const result = await recordReminderHandoffClient(c.id, savedId, handoff);
+    const result = await recordReminderHandoffClient(c.id, savedId, handoff, overrideReason);
     if (result.error) setSaveError(result.error);
-    else window.open(href, "_blank", "noopener,noreferrer");
+    else {
+      await refreshReminders();
+      await communications.refresh();
+      window.open(href, "_blank", "noopener,noreferrer");
+    }
     setSaving(false);
   }
 
   async function handleConfirmSent() {
     if (!savedId) return;
+    const savedReminder = reminders.find((reminder) => reminder.id === savedId);
+    const overrideReason = savedReminder?.composer_opened_at
+      ? undefined
+      : promptForContactOverride(contactGuard);
+    if (overrideReason === null) return;
     setSaving(true);
     setSaveError(null);
-    const result = await confirmReminderSentClient(c.id, savedId);
+    const result = await confirmReminderSentClient(c.id, savedId, undefined, overrideReason);
     if (result.error) setSaveError(result.error);
     else await refreshReminders();
     setSaving(false);
@@ -208,10 +232,13 @@ export function ReminderGeneratorPage({ caseId }: Props) {
         </div>
 
         {/* Frequency warning */}
-        {freq.tooFrequent && (
+        {contactGuard?.warnings.length > 0 && (
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
             <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700 leading-relaxed">{freq.warningMessage}</p>
+            <div>
+              {contactGuard.warnings.map((warning) => <p key={warning} className="text-xs text-amber-700 leading-relaxed">{warning}</p>)}
+              <p className="mt-1 text-xs font-bold text-amber-800">{contactGuard.recommended_action}</p>
+            </div>
           </div>
         )}
 

@@ -21,6 +21,8 @@ function activityToReminder(caseId: string, act: { id: string; description: stri
     manually_confirmed_at: null,
     next_action_at: null,
     request_key: act.id,
+    dispute_snapshot_minor: null,
+    collectable_snapshot_minor: null,
   };
 }
 

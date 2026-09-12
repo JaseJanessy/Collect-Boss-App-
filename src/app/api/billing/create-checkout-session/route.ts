@@ -13,8 +13,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAppUrl } from "@/lib/app-url";
+import { requireTenantPermission } from "@/lib/auth/tenant-access";
 import { getStripeServer, getPriceId, isCheckoutSlug, isStripeConfigured } from "@/lib/stripe/server";
-import { getServerClient } from "@/lib/supabase/server-client";
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
@@ -72,32 +72,11 @@ export async function POST(request: NextRequest) {
   }
 
   // 4. Verify the logged-in user
-  const supabase = await getServerClient();
-  if (!supabase) {
-    return err("Auth service unavailable", 503);
-  }
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return err("Authentication required", 401);
-  }
-
-  // 5. Resolve the business_id for this user
-  const { data: business, error: bizError } = await supabase
-    .from("businesses")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  if (bizError || !business) {
-    return err("Business profile not found. Complete onboarding first.", 404);
-  }
-
-  const businessId = (business as { id: string }).id;
+  const access = await requireTenantPermission("billing.manage");
+  if ("error" in access) return err(access.error ?? "Billing access denied.", access.status ?? 403);
+  const { client: supabase, user, businessId } = access;
+  const requestKey = request.headers.get("idempotency-key")?.trim() ?? "";
+  if (!/^[A-Za-z0-9._:-]{8,200}$/.test(requestKey)) return err("A valid Idempotency-Key header is required.", 400);
 
   // 6. Reuse or create a Stripe Customer
   // Look for an existing customer ID stored in subscriptions table
@@ -124,7 +103,7 @@ export async function POST(request: NextRequest) {
         business_id: businessId,
         user_id:     user.id,
       },
-    });
+    }, { idempotencyKey: `customer:${businessId}:${requestKey}` });
     customerId = customer.id;
   }
 
@@ -153,7 +132,7 @@ export async function POST(request: NextRequest) {
           plan_slug,
         },
       },
-    });
+    }, { idempotencyKey: `checkout:${businessId}:${plan_slug}:${requestKey}` });
 
     if (!session.url) {
       return err("Stripe did not return a checkout URL", 500);

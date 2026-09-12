@@ -66,3 +66,9 @@ create index if not exists lawyer_referral_events_referral_idx
   on public.lawyer_referral_events(referral_id, created_at asc);
 
 commit;
+
+-- Rollback: disable new lawyer handoffs and restore the previous application
+-- before changing database access. Retain referrals, events, consent snapshots
+-- and shared-package metadata for audit. Policies, indexes and unused additive
+-- columns may be removed only after retention and downstream references have
+-- been reviewed; no referral history is deleted by routine rollback.

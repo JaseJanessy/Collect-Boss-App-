@@ -8,12 +8,12 @@ import { AuthShell, AuthCard, AuthField, AuthError } from "./auth-shell";
 import { signIn } from "@/lib/auth/session";
 import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 
-export function LoginPage() {
+export function LoginPage({ initialError = "" }: { initialError?: string }) {
   const router = useRouter();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const [error, setError]       = useState(initialError);
 
   // Per-field errors
   const [emailErr, setEmailErr]     = useState("");
@@ -44,7 +44,8 @@ export function LoginPage() {
     setLoading(true);
     setError("");
 
-    const result = await signIn(email, password);
+    try {
+    const result = await signIn(email.trim(), password);
 
     if (!result.success) {
       setError(result.error ?? "Login failed. Please try again.");
@@ -53,8 +54,19 @@ export function LoginPage() {
     }
 
     // Redirect — proxy will handle if business profile is missing
-    router.push("/");
+    const candidate = new URLSearchParams(window.location.search).get("redirect");
+    const nextPath = result.requiresProductSelection
+      ? "/choose-product"
+      : candidate && candidate.startsWith("/") && !candidate.startsWith("//") && !candidate.includes("\\")
+        ? candidate
+        : "/";
+    router.push(nextPath);
     router.refresh();
+    } catch {
+      setError("We could not reach the sign-in service. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -62,7 +74,7 @@ export function LoginPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-black text-[#0D1B3D]">Welcome Back</h1>
         <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-          Sign in to manage your collection cases.
+          Sign in to your Main or Pocket workspace.
         </p>
       </div>
 

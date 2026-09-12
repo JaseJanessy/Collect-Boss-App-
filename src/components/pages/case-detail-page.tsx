@@ -8,17 +8,22 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { SectionCard } from "@/components/ui/section-card";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import { LoadingSpinner, InlineSpinner } from "@/components/ui/loading-spinner";
-import { type CaseRow, type PaymentPlanRow, type LegalDocumentRow, type LawyerReferralRow } from "@/lib/supabase/types";
+import {
+  type CaseRow, type CustomerAccountRow, type LegalDocumentRow,
+  type LawyerReferralRow, type ObligationRow,
+} from "@/lib/supabase/types";
 import {
   STATUS_LABELS,
   caseStatusSchema,
   type CaseStatusValue,
   recordPaymentAmountSchema,
 } from "@/lib/validations/case";
-import { formatRM, getInitials, getAvatarColor } from "@/lib/mock-data";
+import { canTransitionCase } from "@/lib/domain/workflows";
+import { getInitials, getAvatarColor } from "@/lib/mock-data";
 import { useCase } from "@/hooks/use-case";
+import { useCasePrioritySummary } from "@/hooks/use-case-priority-summary";
+import type { CasePrioritySummary } from "@/lib/cases/priority-summary";
 import { useEvidence } from "@/hooks/use-evidence";
-import { useReminders } from "@/hooks/use-reminders";
 import { getRequestsByCaseClient } from "@/lib/db/payment-access-client";
 import { usePayments } from "@/hooks/use-payments";
 import { PAYMENT_METHOD_LABELS, REVIEW_STATUS_CONFIG } from "@/lib/db/payments-client";
@@ -36,23 +41,52 @@ import {
 import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
 import { useBusinessId } from "@/hooks/use-business-id";
 import { usePaymentPlans } from "@/hooks/use-payment-plans";
-import { formatDate, getNextDueDate } from "@/lib/db/payment-plans-client";
+import { usePaymentPromises } from "@/hooks/use-payment-promises";
+import { PaymentPromiseCard } from "@/components/cases/payment-promise-card";
+import { useCommunicationActivities } from "@/hooks/use-communication-activities";
+import { CommunicationActivityPanel } from "@/components/cases/communication-activity";
+import { useDisputes } from "@/hooks/use-disputes";
+import { DisputeCard } from "@/components/cases/dispute-card";
+import { useCaseTimeline } from "@/hooks/use-case-timeline";
+import { UnifiedCaseTimeline } from "@/components/cases/unified-case-timeline";
+// R12 folds the legacy CommunicationTimeline, PaymentPromiseTimeline and
+// DisputeTimeline projections into UnifiedCaseTimeline without deleting their
+// source components or records.
+import { useFinancialAdjustments } from "@/hooks/use-financial-adjustments";
+import { FinancialAdjustmentsCard } from "@/components/cases/financial-adjustments-card";
+import { useDebtTruth } from "@/hooks/use-debt-truth";
+import { DebtTruthCard } from "@/components/cases/debt-truth-card";
+import { useDiscrepancies } from "@/hooks/use-discrepancies";
+import { DiscrepancyCard } from "@/components/cases/discrepancy-card";
+import { type PaymentPlanDetails } from "@/lib/db/payment-plans-client";
+import { useRegion } from "@/contexts/region-context";
+import { formatCalendarDate, formatCurrency, formatDateTime, formatMinorCurrency } from "@/lib/international/formatting";
+import { getCurrencyMetadata } from "@/lib/financial/money";
 import { useLegalDocuments } from "@/hooks/use-legal-documents";
 import { useLawyerReferrals } from "@/hooks/use-lawyer-referrals";
 import { REFERRAL_STATUS_CONFIG } from "@/lib/lawyer-referrals/status";
 import { SMALL_CLAIM_STATUS_CONFIG } from "@/components/pages/legal/small-claim-page";
 import { evidenceTypes } from "@/lib/mock-legal-data";
 import { type EvidenceType as DbEvidenceType } from "@/lib/supabase/types";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  canAccessCaseWorkspaceSection,
+  caseWorkspaceHref,
+  caseWorkspaceSections,
+  resolveCaseWorkspaceSection,
+  type CaseWorkspaceSectionId,
+} from "@/lib/cases/workspace";
 import {
   ChevronLeft,
+  ChevronRight,
   Phone,
   Mail,
   MapPin,
   Calendar,
   FileText,
   Send,
-  Clock,
   CheckCircle2,
+  Clock,
   MessageCircle,
   DollarSign,
   AlertCircle,
@@ -79,22 +113,70 @@ interface CaseDetailPageProps {
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
-  const { caseData, loading, error, update } = useCase(caseId);
-  const { files: evidenceFiles } = useEvidence(caseId);
-  const { reminders } = useReminders(caseId);
-  const { payments, approve: approvePayment, refresh: refreshPayments } = usePayments(caseId);
-  const { activePlan, plans: allPlans } = usePaymentPlans(caseId);
-  const { docs: legalDocs }            = useLegalDocuments(caseId);
-  const { latest: latestReferral }     = useLawyerReferrals(caseId);
+  const { configuration } = useRegion();
+  const { permissions, accessLoading, hasPermission } = useAuth();
+  const searchParams = useSearchParams();
+  const justCreated = searchParams?.get("created") === "1";
+  const activeSection = resolveCaseWorkspaceSection(
+    searchParams?.get("section"),
+    searchParams?.get("tab"),
+  );
+  const [visitedSections, setVisitedSections] = useState<Set<CaseWorkspaceSectionId>>(
+    () => new Set([activeSection]),
+  );
+  const hasSectionAccess = (sectionId: CaseWorkspaceSectionId) => {
+    const section = caseWorkspaceSections.find((item) => item.id === sectionId);
+    return Boolean(section && canAccessCaseWorkspaceSection(section, permissions));
+  };
+  const sectionEnabled = (sectionId: CaseWorkspaceSectionId) =>
+    visitedSections.has(sectionId) && hasSectionAccess(sectionId);
+  const openSection = (sectionId: CaseWorkspaceSectionId) => {
+    setVisitedSections((current) => new Set(current).add(sectionId));
+    window.history.pushState(null, "", caseWorkspaceHref(caseId, sectionId));
+  };
+
+  const { caseData, loading, error, update, refresh: refreshCase } = useCase(caseId);
+  const casePriority = useCasePrioritySummary(caseId);
+  const financialsEnabled = sectionEnabled("financials");
+  const communicationsEnabled = sectionEnabled("communications");
+  const resolutionEnabled = sectionEnabled("resolution");
+  const evidenceEnabled = sectionEnabled("evidence");
+  const legalEnabled = sectionEnabled("legal");
+  const activityEnabled = sectionEnabled("activity");
+  const receivablesEnabled = visitedSections.has("overview") || financialsEnabled || resolutionEnabled;
+  const { files: evidenceFiles } = useEvidence(caseId, evidenceEnabled);
+  const { payments, approve: approvePayment, refresh: refreshPayments } = usePayments(caseId, financialsEnabled);
+  const { activePlan, plans: allPlans } = usePaymentPlans(caseId, resolutionEnabled);
+  const paymentPromises = usePaymentPromises(caseId, resolutionEnabled);
+  const communications = useCommunicationActivities(caseId, communicationsEnabled);
+  const disputes = useDisputes(caseId, resolutionEnabled);
+  const timeline = useCaseTimeline(caseId, activityEnabled);
+  const financialAdjustments = useFinancialAdjustments(caseId, financialsEnabled);
+  const debtTruth = useDebtTruth(caseId, financialsEnabled);
+  const discrepancies = useDiscrepancies(caseId, financialsEnabled);
+  const { docs: legalDocs } = useLegalDocuments(caseId, evidenceEnabled || legalEnabled);
+  const { latest: latestReferral } = useLawyerReferrals(caseId, legalEnabled);
   const businessId = useBusinessId();
+  const [receivableContext, setReceivableContext] = useState<{
+    account: CustomerAccountRow | null;
+    obligations: ObligationRow[];
+  } | null>(null);
+  useEffect(() => {
+    if (!receivablesEnabled) return;
+    let active = true;
+    fetch(`/api/cases/${caseId}/receivables`, { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<{ account: CustomerAccountRow | null; obligations: ObligationRow[] }> : null)
+      .then((result) => { if (active && result) setReceivableContext(result); })
+      .catch(() => { /* The additive migration may not be deployed yet. */ });
+    return () => { active = false; };
+  }, [caseId, receivablesEnabled]);
   const [pendingCount, setPendingCount] = useState(0);
   useEffect(() => {
+    if (!financialsEnabled) return;
     getRequestsByCaseClient(caseId).then((r) => {
       if (r.data) setPendingCount(r.data.filter((x) => x.status === "pending").length);
     });
-  }, [caseId]);
-  const searchParams = useSearchParams();
-  const justCreated  = searchParams?.get("created") === "1";
+  }, [caseId, financialsEnabled]);
 
   const [showCreatedBanner, setShowCreatedBanner] = useState(justCreated);
   useEffect(() => {
@@ -121,9 +203,46 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
   }
 
   const c = caseData;
+  const caseCurrency = c.currency ?? configuration.settings.defaultCurrency;
+  const money = (amount: number) => formatCurrency(amount, configuration.settings, caseCurrency);
+  const calendarDate = (value: string) => formatCalendarDate(value, configuration.settings);
+  const stateAction = c.status === "paid"
+    ? { label: "View Financials", section: "financials" as const, icon: <Banknote className="w-4 h-4" /> }
+    : c.status === "closed"
+      ? { label: "View Legal", section: "legal" as const, icon: <FileText className="w-4 h-4" /> }
+      : c.status === "payment_promise"
+    ? { label: "Review Resolution", section: "resolution" as const, icon: <ClipboardList className="w-4 h-4" /> }
+    : c.status === "formal_demand_ready"
+      ? { label: "Prepare Handoff", section: "legal" as const, icon: <ShieldCheck className="w-4 h-4" /> }
+      : { label: "Follow Up", section: "communications" as const, icon: <Send className="w-4 h-4" /> };
+  const primaryCaseAction = hasSectionAccess(stateAction.section)
+    ? stateAction
+    : { label: "View Activity", section: "activity" as const, icon: <Clock className="w-4 h-4" /> };
+  const visibleSections = caseWorkspaceSections.filter((section) =>
+    canAccessCaseWorkspaceSection(section, permissions),
+  );
+  const activeSectionAllowed = hasSectionAccess(activeSection);
+  const fallbackRiskFlags = [
+    c.days_overdue >= 90 ? "90+ days overdue" : c.days_overdue >= 30 ? "30+ days overdue" : null,
+    c.priority === "urgent" || c.priority === "high" ? `${c.priority} priority` : null,
+    c.status === "payment_promise" ? "Promise active" : null,
+  ].filter((flag): flag is string => Boolean(flag));
+  const riskFlags = casePriority.summary?.riskFlags ?? fallbackRiskFlags;
+  const balanceStatus = casePriority.summary?.balanceVerification === "ledger_verified" || c.financial_version > 0
+    ? "Ledger verified"
+    : "Legacy balance · verify records";
+  const caseOwner = c.assigned_to ? "Assigned team member" : "Business owner";
+  const summaryAction = casePriority.summary?.nextAction;
+  const summaryActionAllowed = !summaryAction
+    || ((!summaryAction.href.includes("section=resolution") || hasSectionAccess("resolution"))
+      && (!summaryAction.href.startsWith("/payments") || hasPermission("payment.approve"))
+      && (!summaryAction.href.startsWith("/evidence") || hasPermission("case.manage")));
+  const nextAction = summaryAction && summaryActionAllowed
+    ? summaryAction
+    : { label: c.next_best_action?.trim() || primaryCaseAction.label, href: caseWorkspaceHref(c.id, primaryCaseAction.section) };
 
   return (
-    <div className="flex flex-col pb-24">
+    <div className="cb-analytics-light flex flex-col bg-[#F6F8FC] pb-24 text-slate-900">
       {/* Success banner (after creation) */}
       {showCreatedBanner && (
         <div className="mx-4 mt-3 flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
@@ -146,11 +265,13 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
           <ChevronLeft className="w-5 h-5" />
           Back to Cases
         </Link>
-        <StatusSelector
-          caseId={c.id}
-          caseData={c}
-          onUpdate={(updated) => update(updated)}
-        />
+        {hasPermission("case.manage") ? (
+          <StatusSelector
+            caseId={c.id}
+            caseData={c}
+            onUpdate={(updated) => update(updated)}
+          />
+        ) : <StatusBadge status={c.status} />}
       </div>
 
       {/* Hero: Debtor summary */}
@@ -168,7 +289,7 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h1 className="text-base font-black text-[#0D1B3D] leading-tight">
+                <h1 className="break-words text-base font-black leading-tight text-[#0D1B3D]">
                   {c.debtor_name}
                 </h1>
                 {c.debtor_reg_no && (
@@ -180,9 +301,9 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
 
             <div className="flex flex-col gap-1 mt-2">
               {c.debtor_location && (
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <div className="flex min-w-0 items-start gap-1.5 text-xs text-gray-500">
                   <MapPin className="w-3 h-3 shrink-0 text-gray-400" />
-                  {c.debtor_location}
+                  <span className="min-w-0 break-words">{c.debtor_location}</span>
                 </div>
               )}
               {c.debtor_phone && (
@@ -192,9 +313,9 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
                 </div>
               )}
               {c.debtor_email && (
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <div className="flex min-w-0 items-start gap-1.5 text-xs text-gray-500">
                   <Mail className="w-3 h-3 shrink-0 text-gray-400" />
-                  {c.debtor_email}
+                  <span className="min-w-0 break-all">{c.debtor_email}</span>
                 </div>
               )}
             </div>
@@ -205,7 +326,7 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
           <AmountChip
             label="Due Date"
-            value={c.due_date}
+            value={calendarDate(c.due_date)}
             sub={c.days_overdue > 0 ? `${c.days_overdue} days overdue` : undefined}
             subColor="text-red-500"
             icon={<Calendar className="w-3.5 h-3.5" />}
@@ -223,35 +344,35 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
         </div>
       </div>
 
-      {/* Amount hero */}
+      {/* Money-first mobile case summary */}
       <div
         className={cn(
-          "mx-4 mt-4 rounded-2xl p-4",
+          "mx-4 mt-4 rounded-2xl border p-4 shadow-sm",
           c.status === "paid"
             ? "bg-emerald-50 border border-emerald-100"
-            : "bg-[#0D1B3D]"
+            : "border-blue-200 bg-white"
         )}
       >
-        <p className={cn("text-xs font-semibold mb-1", c.status === "paid" ? "text-emerald-600" : "text-blue-200")}>
-          {c.status === "paid" ? "Amount Paid" : "Balance Due"}
+        <p className={cn("text-xs font-semibold mb-1", c.status === "paid" ? "text-emerald-700" : "text-blue-700")}>
+          {c.status === "paid" ? "Amount Paid" : "Outstanding"}
         </p>
-        <p className={cn("text-3xl font-black tracking-tight", c.status === "paid" ? "text-emerald-700" : "text-white")}>
-          {formatRM(c.status === "paid" ? c.amount_paid : c.balance)}
+        <p className={cn("text-3xl font-black tracking-tight", c.status === "paid" ? "text-emerald-700" : "text-[#0D1B3D]")}>
+          {money(c.status === "paid" ? c.amount_paid : c.balance)}
         </p>
 
-        {c.status === "partial_paid" && c.amount_owed > 0 && (
+        {c.amount_owed > 0 && (
           <div className="mt-3">
             <div className="flex justify-between text-[11px] mb-1.5">
-              <span className="text-blue-200">Paid: {formatRM(c.amount_paid)}</span>
-              <span className="text-blue-200">Remaining: {formatRM(c.balance)}</span>
+              <span className="text-slate-600">Paid: {money(c.amount_paid)}</span>
+              <span className="text-slate-600">Remaining: {money(c.balance)}</span>
             </div>
-            <div className="w-full bg-white/20 rounded-full h-2">
+            <div className="w-full bg-slate-100 rounded-full h-2">
               <div
-                className="bg-[#009966] h-2 rounded-full transition-all"
+                className="bg-emerald-600 h-2 rounded-full transition-all"
                 style={{ width: `${Math.min(100, Math.round((c.amount_paid / c.amount_owed) * 100))}%` }}
               />
             </div>
-            <p className="text-[11px] text-blue-200 mt-1.5">
+            <p className="text-[11px] text-slate-500 mt-1.5">
               {Math.min(100, Math.round((c.amount_paid / c.amount_owed) * 100))}% paid
             </p>
           </div>
@@ -260,71 +381,190 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
         {c.days_overdue > 0 && c.status !== "paid" && (
           <div className="flex items-center gap-1.5 mt-2">
             <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-            <p className="text-xs text-red-300 font-semibold">
+            <p className="text-xs text-red-700 font-semibold">
               {c.days_overdue} days overdue
             </p>
           </div>
         )}
-      </div>
 
-      <div className="px-4 flex flex-col gap-4 mt-4">
-        {/* Next best action */}
-        <NextActionSection
-          caseId={c.id}
-          nextAction={c.next_best_action}
-          businessId={businessId ?? "mock-business-id"}
-          onUpdate={(updated) => update(updated)}
+        <div className="mt-3 rounded-xl bg-slate-50 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Next action</p>
+          <Link href={nextAction.href} className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800">
+            {nextAction.label}<ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        <CasePrioritySnapshot
+          summary={casePriority.summary}
+          loading={casePriority.loading}
+          error={casePriority.error}
+          currency={caseCurrency}
+          moneyMinor={(minor, currency) => formatMinorCurrency(minor, configuration.settings, currency)}
+          dateTime={(value) => formatDateTime(value, configuration.settings, { dateStyle: "medium", timeStyle: "short" })}
+          calendarDate={calendarDate}
         />
 
+        <dl className="mt-2 grid gap-2 sm:grid-cols-3" aria-label="Persistent case summary">
+          <div className="rounded-xl border border-slate-100 bg-white p-2.5">
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Balance status</dt>
+            <dd className="mt-1 text-xs font-bold text-slate-700">{balanceStatus}</dd>
+          </div>
+          <div className="rounded-xl border border-slate-100 bg-white p-2.5" title={c.assigned_to ?? undefined}>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Case owner</dt>
+            <dd className="mt-1 text-xs font-bold text-slate-700">{caseOwner}</dd>
+          </div>
+          <div className="rounded-xl border border-slate-100 bg-white p-2.5">
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Risk flags</dt>
+            <dd className="mt-1 text-xs font-bold text-slate-700">{riskFlags.length ? riskFlags.join(" · ") : "No current flags"}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="px-4 mt-4">
+        <div className="flex flex-wrap items-center gap-2" aria-label="Case actions">
+          <button type="button" onClick={() => openSection(primaryCaseAction.section)} className="inline-flex items-center gap-2 rounded-xl bg-[#009966] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#00B377]">
+            {primaryCaseAction.icon}
+            {primaryCaseAction.label}
+          </button>
+          {hasSectionAccess("financials") && c.status !== "paid" && c.status !== "closed" && (
+            <button type="button" onClick={() => openSection("financials")} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-bold text-[#0D1B3D] hover:bg-gray-50">
+              <Banknote className="w-4 h-4" /> Record Payment
+            </button>
+          )}
+          <button type="button" onClick={() => openSection("activity")} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-[#0D1B3D] hover:bg-slate-50">
+            <Clock className="w-4 h-4" /> Activity
+          </button>
+          <details className="relative ml-auto">
+            <summary className="list-none cursor-pointer inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
+              More Actions <ChevronDown className="w-3.5 h-3.5" />
+            </summary>
+            <div className="absolute right-0 z-30 mt-2 w-64 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl">
+              {[
+                { label: "Payment Access", href: `/payments/access/${c.id}` },
+                { label: activePlan ? "View Payment Plan" : "Offer Payment Plan", href: `/legal/${c.id}/plan` },
+                { label: "Upload Evidence", href: `/evidence/${c.id}` },
+                { label: "Prepare Payment Notice", href: `/legal/${c.id}/demand` },
+                { label: "Small Claim Readiness", href: `/legal/${c.id}/smallclaim` },
+                { label: "Prepare Professional Handoff", href: `/legal/${c.id}/lawyer` },
+                { label: "Debt Acknowledgement", href: `/legal/${c.id}/acknowledge` },
+              ].map((action) => (
+                <Link key={action.href} href={action.href} className="block rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-[#009966]">
+                  {action.label}
+                </Link>
+              ))}
+            </div>
+          </details>
+        </div>
+
+        <div className="mt-4 flex gap-1 overflow-x-auto rounded-xl bg-gray-100 p-1" role="tablist" aria-label="Case workspace sections">
+          {visibleSections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              role="tab"
+              aria-selected={activeSection === section.id}
+              aria-controls={`case-panel-${section.id}`}
+              onClick={() => openSection(section.id)}
+              className={cn(
+                "min-w-max flex-1 rounded-lg px-3 py-2 text-[11px] font-bold transition-colors sm:text-xs",
+                activeSection === section.id ? "bg-white text-[#0D1B3D] shadow-sm" : "text-gray-500 hover:text-gray-800",
+              )}
+            >
+              {section.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div id={`case-panel-${activeSection}`} role="tabpanel" className="px-4 flex flex-col gap-4 mt-4">
+        {!accessLoading && !activeSectionAllowed && (
+          <SectionCard title="Section unavailable">
+            <p className="mt-2 text-sm text-gray-600">Your role does not have permission to open this case section.</p>
+          </SectionCard>
+        )}
+        {/* Next best action */}
+        {activeSectionAllowed && activeSection === "overview" && (
+          <NextActionSection
+            caseId={c.id}
+            nextAction={c.next_best_action}
+            businessId={businessId ?? "mock-business-id"}
+            canEdit={hasPermission("case.manage")}
+            onUpdate={(updated) => update(updated)}
+          />
+        )}
+
         {/* Record payment */}
-        {c.status !== "paid" && (
+        {activeSectionAllowed && activeSection === "financials" && c.status !== "paid" && (
           <RecordPaymentSection
             caseId={c.id}
             businessId={businessId ?? "mock-business-id"}
             balance={c.balance}
+            currency={caseCurrency}
             onUpdate={(updated) => update(updated)}
           />
         )}
 
         {/* Payment lock */}
-        <PaymentLockSection
-          caseId={c.id}
-          lockMode={c.payment_lock_mode}
-          businessId={businessId ?? "mock-business-id"}
-          pendingCount={pendingCount}
-          onUpdate={(updated) => update(updated)}
-        />
+        {activeSectionAllowed && activeSection === "financials" && (
+          <PaymentLockSection
+            caseId={c.id}
+            lockMode={c.payment_lock_mode}
+            businessId={businessId ?? "mock-business-id"}
+            pendingCount={pendingCount}
+            onUpdate={(updated) => update(updated)}
+          />
+        )}
 
         {/* Evidence completeness */}
-        <EvidenceCompletenessSection caseId={c.id} evidenceFiles={evidenceFiles} />
+        {activeSectionAllowed && activeSection === "evidence" && <EvidenceCompletenessSection caseId={c.id} evidenceFiles={evidenceFiles} />}
 
         {/* Evidence pack export */}
-        <CaseEvidencePackSection caseId={c.id} legalDocs={legalDocs} />
+        {activeSectionAllowed && activeSection === "evidence" && <CaseEvidencePackSection caseId={c.id} legalDocs={legalDocs} />}
 
         {/* Formal demands */}
-        <CaseFormalDemandsSection caseId={c.id} legalDocs={legalDocs} />
+        {activeSectionAllowed && activeSection === "legal" && <CaseFormalDemandsSection caseId={c.id} legalDocs={legalDocs} />}
 
         {/* Lawyer referral */}
-        <CaseLawyerReferralSection
+        {activeSectionAllowed && activeSection === "legal" && <CaseLawyerReferralSection
           caseId={c.id}
           latestReferral={latestReferral}
-        />
+        />}
 
         {/* Small claim */}
-        <CaseSmallClaimSection
+        {activeSectionAllowed && activeSection === "legal" && <CaseSmallClaimSection
           caseId={c.id}
           legalDocs={legalDocs}
-        />
+        />}
 
         {/* Overview */}
-        <SectionCard title="Overview">
+        {activeSectionAllowed && activeSection === "communications" && <CommunicationActivityPanel
+          debtorName={c.debtor_name}
+          caseId={c.id}
+          phone={c.debtor_phone}
+          email={c.debtor_email}
+          activities={communications.activities}
+          caseCounters={communications.case_counters}
+          customerCounters={communications.customer_counters}
+          preferences={communications.preferences}
+          policy={communications.policy}
+          guardrails={communications.guardrails}
+          loading={communications.loading}
+          error={communications.error}
+          initiate={communications.initiate}
+          recordCallOutcome={communications.recordCallOutcome}
+          savePreferences={communications.savePreferences}
+          savePolicy={communications.savePolicy}
+          refresh={communications.refresh}
+        />}
+
+        {activeSectionAllowed && activeSection === "overview" && <SectionCard title="Account Overview">
           <div className="flex flex-col gap-2 mt-2">
             {[
-              { label: "Amount Owed",  value: formatRM(c.amount_owed) },
-              { label: "Amount Paid",  value: formatRM(c.amount_paid) },
-              { label: "Balance Due",  value: formatRM(c.balance) },
+              { label: "Amount Owed",  value: money(c.amount_owed) },
+              { label: "Amount Paid",  value: money(c.amount_paid) },
+              { label: "Balance Due",  value: money(c.balance) },
               { label: "Invoice No.",  value: c.invoice_no ?? "—" },
-              { label: "Due Date",     value: c.due_date },
+              { label: "Due Date",     value: calendarDate(c.due_date) },
               { label: "Days Overdue", value: c.days_overdue > 0 ? `${c.days_overdue} days` : "Not overdue" },
             ].map((row) => (
               <div
@@ -336,19 +576,90 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
               </div>
             ))}
           </div>
-        </SectionCard>
+        </SectionCard>}
+
+        {activeSectionAllowed && activeSection === "overview" && (receivableContext?.account || receivableContext?.obligations.length) && (
+          <SectionCard title="Receivable Coverage">
+            <div className="mt-2 flex flex-col gap-2">
+              {receivableContext.account && (
+                <div className="rounded-xl bg-[#F2F4F7] px-3 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Customer Account</p>
+                  <p className="mt-0.5 break-words text-sm font-bold text-gray-800">{receivableContext.account.display_name}</p>
+                  <p className="text-[11px] text-gray-500">{receivableContext.account.account_type.replaceAll("_", " ")}</p>
+                </div>
+              )}
+              {receivableContext.obligations.map((obligation) => (
+                <div key={obligation.id} className="flex items-center justify-between gap-3 border-b border-gray-50 py-2 last:border-0">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-bold text-gray-800">{obligation.reference}</p>
+                    <p className="text-[10px] text-gray-400">Due {calendarDate(obligation.due_date)} · {obligation.status}</p>
+                  </div>
+                  <p className="shrink-0 text-sm font-black text-[#0D1B3D]">{formatMinorCurrency(obligation.outstanding_minor, configuration.settings, obligation.currency ?? caseCurrency)}</p>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        )}
+
+        {activeSectionAllowed && activeSection === "resolution" && hasPermission("dispute.resolve") && <DisputeCard
+          currency={caseCurrency}
+          balance={c.balance}
+          obligations={receivableContext?.obligations ?? []}
+          disputes={disputes.disputes}
+          evidence={disputes.evidence}
+          recovery={disputes.recovery}
+          loading={disputes.loading}
+          create={disputes.create}
+          transition={disputes.transition}
+        />}
+
+        {/* Promise to Pay */}
+        {activeSectionAllowed && activeSection === "resolution" && hasPermission("promise.manage") && <div id="promise-to-pay">
+          <PaymentPromiseCard
+            currency={caseCurrency}
+            balance={c.balance}
+            legacyDueDate={c.promise_due_date}
+            promises={paymentPromises.promises}
+            payments={paymentPromises.payments}
+            allocations={paymentPromises.allocations}
+            loading={paymentPromises.loading}
+            requestCreate={paymentPromises.create}
+            requestUpdate={paymentPromises.update}
+          />
+        </div>}
 
         {/* Payment plan */}
-        <CasePaymentPlanSection
+        {activeSectionAllowed && activeSection === "resolution" && hasPermission("promise.manage") && <CasePaymentPlanSection
           caseId={c.id}
+          currency={caseCurrency}
           activePlan={activePlan}
           allPlans={allPlans}
-        />
+        />}
+
+        {activeSectionAllowed && activeSection === "financials" && <DebtTruthCard
+          currency={caseCurrency}
+          data={debtTruth.data}
+          loading={debtTruth.loading}
+          error={debtTruth.error}
+        />}
+
+        {activeSectionAllowed && activeSection === "financials" && <DiscrepancyCard
+          caseId={caseId}
+          currency={caseCurrency}
+          canManage={hasPermission("case.manage")}
+          data={discrepancies.data}
+          loading={discrepancies.loading}
+          busy={discrepancies.busy}
+          error={discrepancies.error}
+          onScan={discrepancies.scan}
+          onTransition={discrepancies.transition}
+        />}
 
         {/* Payment history */}
-        <CasePaymentHistory
+        {activeSectionAllowed && activeSection === "financials" && <CasePaymentHistory
           caseId={c.id}
           caseStatus={c.status}
+          currency={caseCurrency}
           payments={payments}
           businessId={businessId ?? "mock-business-id"}
           onApprove={async (id) => {
@@ -356,15 +667,48 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
             if (!r.error) refreshPayments();
           }}
           onUpdateCase={update}
-        />
+        />}
+        {activeSectionAllowed && activeSection === "financials" && <FinancialAdjustmentsCard
+          currency={caseCurrency}
+          caseStatus={c.status}
+          outstandingMinor={c.outstanding_minor}
+          contractualDueMinor={c.contractual_due_minor}
+          statusVersion={c.status_version}
+          obligations={receivableContext?.obligations ?? []}
+          adjustments={financialAdjustments.adjustments}
+          events={financialAdjustments.events}
+          loading={financialAdjustments.loading}
+          canManageCase={hasPermission("case.manage")}
+          canSettle={hasPermission("settlement.approve")}
+          canReviewWriteOff={hasPermission("write_off.approve")}
+          submit={async (input) => {
+            const result = await financialAdjustments.submit(input);
+            if (!result.error) {
+              refreshCase();
+              refreshPayments();
+              debtTruth.refresh();
+            }
+            return result;
+          }}
+        />}
 
-        {/* Reminder history */}
-        {reminders.length > 0 && (
-          <CaseReminderHistory caseId={c.id} reminders={reminders} />
+        {activeSectionAllowed && activeSection === "activity" && <UnifiedCaseTimeline
+          currency={caseCurrency}
+          events={timeline.events}
+          loading={timeline.loading}
+          error={timeline.error}
+        />}
+        {activeSectionAllowed && activeSection === "activity" && !timeline.loading && !timeline.error && timeline.events.length === 0 && (
+          <SectionCard title="Timeline">
+            <div className="mt-2 rounded-xl bg-[#F2F4F7] p-4 text-center">
+              <p className="text-sm font-semibold text-gray-700">No timeline activity yet</p>
+              <Link href={`/reminders/${c.id}`} className="mt-2 inline-block text-xs font-bold text-[#009966]">Follow Up →</Link>
+            </div>
+          </SectionCard>
         )}
 
         {/* Notes */}
-        {c.notes && (
+        {activeSectionAllowed && activeSection === "overview" && c.notes && (
           <SectionCard title="Notes">
             <p className="text-sm text-gray-600 leading-relaxed mt-1">{c.notes}</p>
           </SectionCard>
@@ -373,14 +717,16 @@ export function CaseDetailPage({ caseId }: CaseDetailPageProps) {
 
       {/* Sticky bottom action bar */}
       <div className="cb-phone-landscape-mobile fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-2 md:hidden">
-        <Link href={`/reminders/${c.id}`} className="flex-1">
-          <PrimaryButton variant="secondary" size="md" fullWidth icon={<Send className="w-4 h-4" />}>
-            Send Reminder
+        <div className="flex-1">
+          <PrimaryButton onClick={() => openSection(primaryCaseAction.section)} variant="secondary" size="md" fullWidth icon={<Send className="w-4 h-4" />}>
+            {primaryCaseAction.label}
           </PrimaryButton>
-        </Link>
-        <PrimaryButton size="md" className="flex-1" icon={<Clock className="w-4 h-4" />}>
-          Add Promise
-        </PrimaryButton>
+        </div>
+        {hasSectionAccess("financials") && c.status !== "paid" && c.status !== "closed" && (
+          <PrimaryButton onClick={() => openSection("financials")} size="md" className="flex-1" icon={<Banknote className="w-4 h-4" />}>
+            Record Payment
+          </PrimaryButton>
+        )}
       </div>
     </div>
   );
@@ -404,11 +750,10 @@ function StatusSelector({
   const statuses = caseStatusSchema.options.filter((status) => {
     if (caseData.archived_at || currentStatus === "closed") return false;
     if (status === currentStatus) return true;
-    if (currentStatus === "paid") return status === "closed";
+    if (!canTransitionCase(currentStatus, status)) return false;
     if (status === "paid") return caseData.balance === 0;
     if (status === "partial_paid") return caseData.amount_paid > 0 && caseData.balance > 0;
     if (status === "formal_demand_ready") return caseData.balance > 0;
-    if (status === "closed") return false;
     return true;
   });
 
@@ -478,11 +823,13 @@ function NextActionSection({
   caseId,
   nextAction,
   businessId,
+  canEdit,
   onUpdate,
 }: {
   caseId:     string;
   nextAction: string | null;
   businessId: string;
+  canEdit:    boolean;
   onUpdate:   (c: CaseRow) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -516,13 +863,15 @@ function NextActionSection({
         <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wide">
           Next Best Action
         </span>
-        <button
-          onClick={() => { setEditing((v) => !v); setValue(nextAction ?? ""); }}
-          className="flex items-center gap-1 text-[11px] text-blue-300 hover:text-white transition-colors"
-        >
-          <Edit3 className="w-3 h-3" />
-          {editing ? "Cancel" : "Edit"}
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => { setEditing((v) => !v); setValue(nextAction ?? ""); }}
+            className="flex items-center gap-1 text-[11px] text-blue-300 hover:text-white transition-colors"
+          >
+            <Edit3 className="w-3 h-3" />
+            {editing ? "Cancel" : "Edit"}
+          </button>
+        )}
       </div>
 
       {editing ? (
@@ -564,13 +913,18 @@ function RecordPaymentSection({
   caseId,
   businessId,
   balance,
+  currency,
   onUpdate,
 }: {
   caseId:     string;
   businessId: string;
   balance:    number;
+  currency:   string;
   onUpdate:   (c: CaseRow) => void;
 }) {
+  const { configuration } = useRegion();
+  const currencyMetadata = getCurrencyMetadata(currency);
+  const money = (value: number) => formatCurrency(value, configuration.settings, currency);
   const [open,    setOpen]    = useState(false);
   const [amount,  setAmount]  = useState("");
   const [notes,   setNotes]   = useState("");
@@ -625,7 +979,7 @@ function RecordPaymentSection({
     >
       <div className="mt-1">
         <p className="text-xs text-gray-500">
-          Remaining balance: <span className="font-bold text-gray-800">{formatRM(balance)}</span>
+          Remaining balance: <span className="font-bold text-gray-800">{money(balance)}</span>
         </p>
 
         {open && (
@@ -639,17 +993,17 @@ function RecordPaymentSection({
               <>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-gray-600">
-                    Amount Paid (RM) <span className="text-red-400">*</span>
+                    Amount Paid ({currency}) <span className="text-red-400">*</span>
                   </label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500 pointer-events-none">
-                      RM
+                      {currency}
                     </div>
                     <input
                       type="number"
-                      min="0.01"
-                      step="0.01"
-                      placeholder="0.00"
+                      min={10 ** -currencyMetadata.minorUnit}
+                      step={10 ** -currencyMetadata.minorUnit}
+                      placeholder={currencyMetadata.minorUnit === 0 ? "0" : `0.${"0".repeat(currencyMetadata.minorUnit)}`}
                       value={amount}
                       onChange={(e) => { setAmount(e.target.value); setError(null); }}
                       className={cn(
@@ -784,15 +1138,18 @@ function PaymentLockSection({
 import { type PaymentRow } from "@/lib/supabase/types";
 
 function CasePaymentHistory({
-  caseId, caseStatus, payments, businessId, onApprove, onUpdateCase,
+  caseId, caseStatus, currency, payments, businessId, onApprove, onUpdateCase,
 }: {
   caseId:      string;
   caseStatus:  CaseRow["status"];
+  currency:    string;
   payments:    PaymentRow[];
   businessId:  string;
   onApprove:   (id: string) => void;
   onUpdateCase: (c: CaseRow) => void;
 }) {
+  const { configuration } = useRegion();
+  const money = (value: number, itemCurrency = currency) => formatCurrency(value, configuration.settings, itemCurrency);
   const pendingCount = payments.filter((p) => p.review_status === "pending_review").length;
   const totalApproved = payments
     .filter((p) => p.review_status === "approved")
@@ -835,19 +1192,19 @@ function CasePaymentHistory({
       <div className="mt-2 flex flex-col gap-1">
         {totalApproved > 0 && (
           <p className="text-[11px] text-gray-500 mb-1">
-            Approved: <span className="font-bold text-emerald-700">{formatRM(totalApproved)}</span>
+            Approved: <span className="font-bold text-emerald-700">{money(totalApproved)}</span>
           </p>
         )}
         {payments.slice(0, 5).map((p, i) => {
           const cfg = REVIEW_STATUS_CONFIG[p.review_status];
-          const date = new Date(p.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
+          const date = formatDateTime(p.created_at, configuration.settings, { dateStyle: "medium", timeStyle: undefined });
           return (
             <div key={p.id} className={cn("flex items-center justify-between py-2",
               i < Math.min(payments.length, 5) - 1 && "border-b border-gray-50")}>
               <div className="flex items-center gap-2 min-w-0">
                 <div className={cn("w-2 h-2 rounded-full shrink-0", cfg.dot)} />
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-800">{formatRM(p.amount)}</p>
+                  <p className="text-xs font-semibold text-gray-800">{money(p.amount, p.currency ?? currency)}</p>
                   <p className="text-[10px] text-gray-400">{PAYMENT_METHOD_LABELS[p.payment_method]} · {date}</p>
                 </div>
               </div>
@@ -869,13 +1226,14 @@ function CasePaymentHistory({
 
 // ─── Reminder history (compact, in case detail) ──────────────────────────────
 
-function CaseReminderHistory({
+export function CaseReminderHistory({
   caseId,
   reminders,
 }: {
   caseId:    string;
   reminders: import("@/lib/supabase/types").ReminderRow[];
 }) {
+  const { configuration } = useRegion();
   return (
     <SectionCard
       title={`Reminder History (${reminders.length})`}
@@ -891,9 +1249,7 @@ function CaseReminderHistory({
       <div className="flex flex-col mt-1">
         {reminders.slice(0, 5).map((r, i) => {
           const typeDef = REMINDER_TYPES.find((t) => t.id === r.message_type);
-          const sentDate = new Date(r.sent_at).toLocaleDateString("en-MY", {
-            day: "numeric", month: "short",
-          });
+          const sentDate = formatDateTime(r.sent_at, configuration.settings, { dateStyle: "medium", timeStyle: undefined });
           return (
             <div
               key={r.id}
@@ -1023,6 +1379,7 @@ function CaseSmallClaimSection({
   caseId:    string;
   legalDocs: LegalDocumentRow[];
 }) {
+  const { configuration } = useRegion();
   const savedPacks    = legalDocs.filter((d) => d.document_type === "small_claim_pack");
   const latestPack    = savedPacks[0] ?? null;
 
@@ -1037,7 +1394,7 @@ function CaseSmallClaimSection({
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-bold text-gray-800">Case-Record Pack</p>
+        <p className="text-sm font-bold text-gray-800">Small Claim Readiness</p>
         <Link
           href={`/legal/${caseId}/smallclaim`}
           className={cn(
@@ -1045,7 +1402,7 @@ function CaseSmallClaimSection({
             "text-[#009966]"
           )}
         >
-          {savedPacks.length > 0 ? "View Pack" : "+ Prepare Pack"}
+          {savedPacks.length > 0 ? "View Export" : "+ Check Readiness"}
         </Link>
       </div>
 
@@ -1056,8 +1413,8 @@ function CaseSmallClaimSection({
               <FileText className="w-4 h-4 text-gray-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-700">No case-record pack yet</p>
-              <p className="text-xs text-gray-400">Tap to check record completeness and prepare a review pack</p>
+              <p className="text-sm font-semibold text-gray-700">No readiness snapshot yet</p>
+              <p className="text-xs text-gray-400">Check factual completeness and prepare a Case Evidence Export</p>
             </div>
           </div>
         </Link>
@@ -1066,7 +1423,7 @@ function CaseSmallClaimSection({
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-[#009966]" />
-              <p className="text-sm font-bold text-gray-900">Case-Record Pack</p>
+              <p className="text-sm font-bold text-gray-900">Case Evidence Export</p>
             </div>
             {statusCfg && (
               <span className={cn(
@@ -1090,7 +1447,7 @@ function CaseSmallClaimSection({
               </div>
             )}
             <p className="text-[10px] text-gray-400">
-              {latestPack && new Date(latestPack.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
+              {latestPack && formatDateTime(latestPack.created_at, configuration.settings, { dateStyle: "medium", timeStyle: undefined })}
               {savedPacks.length > 1 && ` · ${savedPacks.length} packs saved`}
             </p>
           </div>
@@ -1100,7 +1457,7 @@ function CaseSmallClaimSection({
               className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-[#009966] hover:bg-emerald-50 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              View & Update Pack
+              View Small Claim Readiness
             </Link>
           </div>
         </div>
@@ -1118,6 +1475,7 @@ function CaseLawyerReferralSection({
   caseId:         string;
   latestReferral: LawyerReferralRow | null;
 }) {
+  const { configuration } = useRegion();
   const cfg = latestReferral
     ? REFERRAL_STATUS_CONFIG[latestReferral.referral_status]
     : null;
@@ -1125,12 +1483,12 @@ function CaseLawyerReferralSection({
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-bold text-gray-800">Lawyer Referral</p>
+        <p className="text-sm font-bold text-gray-800">Professional Legal Handoff</p>
         <Link
           href={`/legal/${caseId}/lawyer`}
           className="text-xs font-semibold text-[#009966] hover:text-emerald-700"
         >
-          {latestReferral ? "View / Update" : "+ Refer Case"}
+          {latestReferral ? "View / Update" : "Request Legal Review"}
         </Link>
       </div>
 
@@ -1141,8 +1499,8 @@ function CaseLawyerReferralSection({
               <Send className="w-4 h-4 text-gray-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-700">No referral submitted</p>
-              <p className="text-xs text-gray-400">Tap to submit case for legal review</p>
+              <p className="text-sm font-semibold text-gray-700">No professional handoff prepared</p>
+              <p className="text-xs text-gray-400">Prepare the case for external legal review</p>
             </div>
           </div>
         </Link>
@@ -1151,7 +1509,7 @@ function CaseLawyerReferralSection({
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
             <div className="flex items-center gap-2">
               <Send className="w-4 h-4 text-[#009966]" />
-              <p className="text-sm font-bold text-gray-900">Referral</p>
+              <p className="text-sm font-bold text-gray-900">Legal Handoff</p>
             </div>
             {cfg && (
               <span className={cn(
@@ -1165,7 +1523,7 @@ function CaseLawyerReferralSection({
           <div className="px-4 py-3 flex flex-col gap-2">
             {latestReferral.partner_name && (
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">Partner</span>
+                <span className="text-xs text-gray-400">External professional</span>
                 <span className="text-xs font-semibold text-gray-800">{latestReferral.partner_name}</span>
               </div>
             )}
@@ -1178,7 +1536,7 @@ function CaseLawyerReferralSection({
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">Submitted</span>
               <span className="text-xs font-semibold text-gray-800">
-                {new Date(latestReferral.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
+                {formatDateTime(latestReferral.created_at, configuration.settings, { dateStyle: "medium", timeStyle: undefined })}
               </span>
             </div>
           </div>
@@ -1188,7 +1546,7 @@ function CaseLawyerReferralSection({
               className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-[#009966] hover:bg-emerald-50 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              View Referral Details
+              View Handoff Details
             </Link>
           </div>
         </div>
@@ -1206,20 +1564,21 @@ function CaseFormalDemandsSection({
   caseId:    string;
   legalDocs: LegalDocumentRow[];
 }) {
+  const { configuration } = useRegion();
   const demands = legalDocs.filter((d) =>
     ["demand_standard", "demand_firm", "demand_final"].includes(d.document_type)
   );
 
   const TONE_LABELS: Record<string, string> = {
-    demand_standard: "Friendly Formal",
-    demand_firm:     "Strict Formal",
-    demand_final:    "Final Notice",
+    demand_standard: "Formal Payment Reminder",
+    demand_firm:     "Firm Payment Reminder",
+    demand_final:    "Final Payment Notice",
   };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-bold text-gray-800">Formal Demand</p>
+        <p className="text-sm font-bold text-gray-800">Formal Payment Reminder</p>
         <Link
           href={`/legal/${caseId}/demand`}
           className="text-xs font-semibold text-[#009966] hover:text-emerald-700"
@@ -1235,8 +1594,8 @@ function CaseFormalDemandsSection({
               <FileText className="w-4 h-4 text-gray-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-700">No demand draft yet</p>
-              <p className="text-xs text-gray-400">Tap to create a formal demand letter</p>
+              <p className="text-sm font-semibold text-gray-700">No payment notice draft yet</p>
+              <p className="text-xs text-gray-400">Prepare a factual creditor payment reminder</p>
             </div>
           </div>
         </Link>
@@ -1245,7 +1604,7 @@ function CaseFormalDemandsSection({
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-[#009966]" />
-              <p className="text-sm font-bold text-gray-900">{demands.length} Demand Draft{demands.length > 1 ? "s" : ""}</p>
+              <p className="text-sm font-bold text-gray-900">{demands.length} Payment Notice Draft{demands.length > 1 ? "s" : ""}</p>
             </div>
             <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
               Saved
@@ -1264,8 +1623,8 @@ function CaseFormalDemandsSection({
                     </p>
                     <p className="text-[10px] text-gray-400">
                       {meta.generated_at
-                        ? new Date(meta.generated_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })
-                        : new Date(d.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
+                        ? formatDateTime(meta.generated_at, configuration.settings, { dateStyle: "medium", timeStyle: undefined })
+                        : formatDateTime(d.created_at, configuration.settings, { dateStyle: "medium", timeStyle: undefined })}
                       {meta.deadline_days ? ` · ${meta.deadline_days}-day deadline` : ""}
                     </p>
                   </div>
@@ -1279,7 +1638,7 @@ function CaseFormalDemandsSection({
               className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-[#009966] hover:bg-emerald-50 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              View & Create Demand
+              View & Create Payment Notice
             </Link>
           </div>
         </div>
@@ -1297,12 +1656,13 @@ function CaseEvidencePackSection({
   caseId:    string;
   legalDocs: LegalDocumentRow[];
 }) {
+  const { configuration } = useRegion();
   const packs = legalDocs.filter((d) => d.document_type === "evidence_pack");
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-bold text-gray-800">Evidence Pack</p>
+        <p className="text-sm font-bold text-gray-800">Case Evidence Export</p>
         <Link
           href={`/evidence/${caseId}/pack`}
           className="text-xs font-semibold text-[#009966] hover:text-emerald-700"
@@ -1319,7 +1679,7 @@ function CaseEvidencePackSection({
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-700">No PDF exported yet</p>
-              <p className="text-xs text-gray-400">Tap to preview and export evidence pack</p>
+              <p className="text-xs text-gray-400">Preview and export factual case evidence</p>
             </div>
           </div>
         </Link>
@@ -1328,7 +1688,7 @@ function CaseEvidencePackSection({
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-[#009966]" />
-              <p className="text-sm font-bold text-gray-900">{packs.length} Evidence Pack{packs.length > 1 ? "s" : ""}</p>
+              <p className="text-sm font-bold text-gray-900">{packs.length} Case Evidence Export{packs.length > 1 ? "s" : ""}</p>
             </div>
             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
               Exported
@@ -1345,8 +1705,8 @@ function CaseEvidencePackSection({
                     <p className="text-xs font-semibold text-gray-700 truncate">{pack.title}</p>
                     <p className="text-[10px] text-gray-400">
                       {meta.generated_at
-                        ? new Date(meta.generated_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })
-                        : new Date(pack.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })}
+                        ? formatDateTime(meta.generated_at, configuration.settings, { dateStyle: "medium", timeStyle: undefined })
+                        : formatDateTime(pack.created_at, configuration.settings, { dateStyle: "medium", timeStyle: undefined })}
                       {meta.evidence_score != null ? ` · ${meta.evidence_score}% complete` : ""}
                       {meta.file_count != null ? ` · ${meta.file_count} files` : ""}
                     </p>
@@ -1374,16 +1734,32 @@ function CaseEvidencePackSection({
 
 function CasePaymentPlanSection({
   caseId,
+  currency,
   activePlan,
   allPlans,
 }: {
   caseId:     string;
-  activePlan: PaymentPlanRow | null;
-  allPlans:   PaymentPlanRow[];
+  currency:   string;
+  activePlan: PaymentPlanDetails | null;
+  allPlans:   PaymentPlanDetails[];
 }) {
-  const completedCount = activePlan
-    ? activePlan.due_dates.filter((d) => d < new Date().toISOString().split("T")[0]).length
-    : 0;
+  const { configuration } = useRegion();
+  const planMoney = (value: number, itemCurrency = activePlan?.currency ?? currency) => formatCurrency(value, configuration.settings, itemCurrency);
+  const minorMoney = (value: number, itemCurrency = activePlan?.currency ?? currency) => formatMinorCurrency(value, configuration.settings, itemCurrency);
+  const planDate = (value: string) => formatCalendarDate(value, configuration.settings);
+  const completedCount = activePlan?.installments.filter((item) => item.status === "paid").length ?? 0;
+  const paidMinor = activePlan?.installments.reduce((sum, item) => sum + Number(item.paid_minor), 0) ?? 0;
+  const scheduledMinor = activePlan?.installments.reduce((sum, item) => sum + Number(item.amount_minor), 0) ?? 0;
+  const progress = scheduledMinor > 0 ? Math.min(100, Math.round((paidMinor / scheduledMinor) * 100)) : 0;
+  const nextInstallment = activePlan?.installments.find((item) => Number(item.paid_minor) < Number(item.amount_minor)) ?? null;
+  const eventLabels: Record<string, string> = {
+    due_soon: "Installment due soon",
+    due_today: "Installment due today",
+    missed: "Installment missed",
+    partial_payment: "Partial payment allocated",
+    paid: "Installment paid",
+    plan_completed: "Payment plan completed",
+  };
 
   return (
     <div>
@@ -1431,27 +1807,41 @@ function CasePaymentPlanSection({
           <div className="px-4 py-3 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">Total Amount</span>
-              <span className="text-sm font-bold text-gray-800">{formatRM(activePlan.total_amount)}</span>
+              <span className="text-sm font-bold text-gray-800">{planMoney(activePlan.total_amount)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">Instalments</span>
               <span className="text-sm font-bold text-gray-800">
-                {completedCount}/{activePlan.installment_count} done · {formatRM(activePlan.installment_amount)} each
+                {completedCount}/{activePlan.installment_count} done · {planMoney(activePlan.installment_amount)} each
               </span>
             </div>
             {/* Progress bar */}
             <div className="w-full bg-gray-100 rounded-full h-1.5 mt-0.5">
               <div
                 className="bg-[#009966] h-1.5 rounded-full transition-all"
-                style={{ width: `${Math.round((completedCount / activePlan.installment_count) * 100)}%` }}
+                style={{ width: `${progress}%` }}
               />
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">Next Due</span>
               <span className="text-sm font-bold text-gray-800">
-                {getNextDueDate(activePlan) ? formatDate(getNextDueDate(activePlan)!) : "All done"}
+                {nextInstallment
+                  ? `${planDate(nextInstallment.due_date)} · ${minorMoney(Number(nextInstallment.amount_minor) - Number(nextInstallment.paid_minor), nextInstallment.currency ?? activePlan.currency ?? currency)} remaining`
+                  : "All done"}
               </span>
             </div>
+            {activePlan.events.length > 0 && (
+              <ol className="mt-1 border-t border-gray-50 pt-2" aria-label="Payment-plan timeline">
+                {activePlan.events.slice(0, 3).map((event) => (
+                  <li key={event.id} className="flex items-center justify-between gap-3 py-1 text-[11px]">
+                    <span className={event.event_type === "missed" ? "font-semibold text-red-600" : "text-gray-600"}>
+                      {eventLabels[event.event_type]}
+                    </span>
+                    <time className="shrink-0 text-gray-400">{planDate(event.event_date)}</time>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
 
           {/* Footer links */}
@@ -1484,9 +1874,9 @@ function CasePaymentPlanSection({
               <div key={p.id} className="flex items-center justify-between bg-[#F2F4F7] rounded-xl px-3 py-2">
                 <div>
                   <p className="text-xs font-semibold text-gray-700">
-                    {p.installment_count}× {formatRM(p.installment_amount)}
+                    {p.installment_count}× {planMoney(p.installment_amount, p.currency ?? currency)}
                   </p>
-                  <p className="text-[10px] text-gray-400">{formatDate(p.start_date)}</p>
+                  <p className="text-[10px] text-gray-400">{planDate(p.start_date)}</p>
                 </div>
                 <span className={cn(
                   "text-[10px] font-bold px-2 py-0.5 rounded-full",
@@ -1506,6 +1896,38 @@ function CasePaymentPlanSection({
 }
 
 // ─── Amount chip ──────────────────────────────────────────────────────────────
+
+function CasePrioritySnapshot({ summary, loading, error, currency, moneyMinor, dateTime, calendarDate }: {
+  summary: CasePrioritySummary | null;
+  loading: boolean;
+  error: string | null;
+  currency: string;
+  moneyMinor: (minor: number, currency: string) => string;
+  dateTime: (value: string) => string;
+  calendarDate: (value: string) => string;
+}) {
+  if (loading) return <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Loading case priority summary">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-16 animate-pulse rounded-xl bg-slate-100" />)}</div>;
+  if (error || !summary) return <div role="status" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">The reconciled case summary is unavailable. Balance categories are hidden rather than estimated.</div>;
+  const amountCards = [
+    { label: "Verified outstanding", value: summary.amounts.verifiedOutstandingMinor, tone: "text-blue-800", detail: "Ledger-backed and not actively disputed" },
+    { label: "Disputed", value: summary.amounts.disputedMinor, tone: "text-red-800", detail: "Active structured disputes" },
+    { label: "Unverified", value: summary.amounts.unverifiedProofMinor, tone: "text-amber-800", detail: "Submitted proof awaiting review" },
+    { label: "Settled / adjusted", value: summary.amounts.settledOrAdjustedMinor, tone: "text-emerald-800", detail: "Reduction from original principal" },
+  ];
+  return <div className="mt-3 space-y-2">
+    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Reconciled amount status">
+      {amountCards.map((item) => <div key={item.label} className="rounded-xl border border-slate-100 bg-white p-2.5"><dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{item.label}</dt><dd className={cn("mt-1 text-sm font-black", item.tone)}>{moneyMinor(item.value, currency)}</dd><p className="mt-0.5 text-[9px] leading-tight text-slate-400">{item.detail}</p></div>)}
+    </dl>
+    <dl className="grid gap-2 sm:grid-cols-3" aria-label="Case decision status">
+      <div className="rounded-xl border border-slate-100 bg-white p-2.5"><dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Verification status</dt><dd className="mt-1 text-xs font-bold text-slate-700">{summary.balanceVerification === "ledger_verified" ? "Ledger verified" : "Legacy balance · verify records"}</dd><p className="mt-0.5 text-[9px] text-slate-400">Receiving account: {summary.receivingAccountVerification.replaceAll("_", " ")}</p></div>
+      <div className="rounded-xl border border-slate-100 bg-white p-2.5"><dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Latest approved payment</dt><dd className="mt-1 text-xs font-bold text-slate-700">{summary.latestPayment ? moneyMinor(summary.latestPayment.amountMinor, summary.latestPayment.currency) : "No approved payment"}</dd>{summary.latestPayment && <p className="mt-0.5 text-[9px] text-slate-400">{dateTime(summary.latestPayment.createdAt)}</p>}</div>
+      <div className="rounded-xl border border-slate-100 bg-white p-2.5"><dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Open dispute</dt><dd className="mt-1 text-xs font-bold text-slate-700">{summary.openDispute ? moneyMinor(summary.openDispute.disputedMinor, currency) : "None"}</dd>{summary.openDispute && <p className="mt-0.5 text-[9px] capitalize text-slate-400">{summary.openDispute.status.replaceAll("_", " ")}</p>}</div>
+      <div className="rounded-xl border border-slate-100 bg-white p-2.5"><dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Promise status</dt><dd className="mt-1 text-xs font-bold capitalize text-slate-700">{summary.promise ? summary.promise.status.replaceAll("_", " ") : "No active promise"}</dd>{summary.promise && <p className="mt-0.5 text-[9px] text-slate-400">{moneyMinor(summary.promise.promisedMinor, currency)} due {calendarDate(summary.promise.promiseDate)}</p>}</div>
+      <div className="rounded-xl border border-slate-100 bg-white p-2.5"><dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Evidence status</dt><dd className="mt-1 text-xs font-bold text-slate-700">{summary.evidenceCount > 0 ? `${summary.evidenceCount} file${summary.evidenceCount === 1 ? "" : "s"}` : "Missing"}</dd></div>
+      <div className="rounded-xl border border-slate-100 bg-white p-2.5"><dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Payment proofs</dt><dd className="mt-1 text-xs font-bold text-slate-700">{summary.pendingProofCount > 0 ? `${summary.pendingProofCount} awaiting review` : "None awaiting review"}</dd></div>
+    </dl>
+  </div>;
+}
 
 function AmountChip({
   label,

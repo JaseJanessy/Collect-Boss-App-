@@ -6,7 +6,7 @@
 
 import { type CaseRow, type ReceivingAccountRow } from "@/lib/supabase/types";
 import { type ReminderStatus } from "@/lib/supabase/types";
-import { formatRM } from "@/lib/mock-data";
+import { formatCurrencyMinor } from "@/lib/financial/money";
 export { buildEmailLink, buildWhatsAppLink } from "./handoff-links";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -86,9 +86,10 @@ export const REMINDER_STATUS_COLORS: Record<ReminderStatus, string> = {
 
 function buildPaymentSection(
   lockMode: CaseRow["payment_lock_mode"],
-  account: ReceivingAccountRow | null
+  account: ReceivingAccountRow | null,
+  currency: string,
 ): string {
-  if (lockMode === "immediate" && account) {
+  if (lockMode === "immediate" && account?.currency === currency) {
     const duitnow = account.duitnow_id
       ? `DuitNow ID: ${account.duitnow_id}\n`
       : "";
@@ -116,6 +117,8 @@ export interface GenerateParams {
   caseData:      CaseRow;
   account:       ReceivingAccountRow | null;
   businessName?: string;
+  collectableMinor?: number | bigint;
+  disputedPortion?: boolean;
 }
 
 export function generateReminderMessage({
@@ -123,11 +126,15 @@ export function generateReminderMessage({
   caseData: c,
   account,
   businessName = "kami / our company",
+  collectableMinor,
+  disputedPortion = false,
 }: GenerateParams): string {
   const name    = c.debtor_company ?? c.debtor_name;
-  const amount  = formatRM(c.balance > 0 ? c.balance : c.amount_owed);
+  const amount  = formatCurrencyMinor(collectableMinor ?? c.outstanding_minor, c.currency, { explicitCode: true });
   const ref     = c.invoice_no ? `No. Invois / Invoice No: ${c.invoice_no}\n` : "";
-  const payment = buildPaymentSection(c.payment_lock_mode, account);
+  const payment = buildPaymentSection(c.payment_lock_mode, account, c.currency) + (disputedPortion
+    ? `\n\nPeringatan ini hanya merujuk kepada jumlah yang tidak dipertikaikan.\nThis reminder concerns only the undisputed amount.`
+    : "");
   const overdue = c.days_overdue > 0
     ? `\nTempoh Tertunggak / Overdue By: ${c.days_overdue} hari / days`
     : "";

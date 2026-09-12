@@ -1,0 +1,18 @@
+
+> collectboss@1.0.0-rc.1 test:unit
+> node ./node_modules/vitest/vitest.mjs run --config vitest.config.mts --pool=forks --maxWorkers=1
+
+
+ RUN  v4.1.10 D:/Web App and phone app/COMPLETED & RUN/Completed Collectboss/collectboss
+
+
+ Test Files  65 passed (65)
+      Tests  290 passed (290)
+   Start at  20:30:12
+   Duration  65.15s (transform 2.39s, setup 17.72s, import 9.45s, tests 4.60s, environment 11.92s)
+
+npm notice
+npm notice New major version of npm available! 11.16.0 -> 12.0.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+npm notice To update run: npm install -g npm@12.0.2
+npm notice

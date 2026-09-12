@@ -28,7 +28,7 @@ export function ActionCard({
       className={cn(
         "flex flex-col items-center gap-2 rounded-xl p-4 border text-center transition-all hover:shadow-md active:scale-95",
         variant === "primary"
-          ? "bg-[#55DDB4] text-[#0B1B3A] border-[#55DDB4] hover:bg-[#8BE4CA]"
+          ? "border-[var(--cb-action-primary)] bg-[var(--cb-action-primary)] text-white hover:bg-[var(--cb-action-primary-hover)] active:bg-[var(--cb-action-primary-pressed)]"
           : "bg-white text-gray-800 border-gray-100 shadow-sm hover:border-emerald-200",
         className
       )}
@@ -36,10 +36,10 @@ export function ActionCard({
       <div
         className={cn(
           "w-11 h-11 rounded-xl flex items-center justify-center",
-          variant === "primary" ? "bg-[#0B1B3A]/10" : "bg-emerald-50"
+          variant === "primary" ? "bg-white/15" : "bg-[var(--cb-selected-surface)]"
         )}
       >
-        <span className={variant === "primary" ? "text-[#0B1B3A]" : "text-emerald-600"}>
+        <span className={variant === "primary" ? "text-white" : "text-[var(--cb-selected-text)]"}>
           {icon}
         </span>
       </div>
@@ -48,7 +48,7 @@ export function ActionCard({
         <p
           className={cn(
             "text-xs mt-0.5",
-            variant === "primary" ? "text-[#0B1B3A]/70" : "text-gray-400"
+            variant === "primary" ? "text-white/80" : "text-[var(--cb-text-secondary)]"
           )}
         >
           {description}
@@ -57,7 +57,7 @@ export function ActionCard({
           <p
             className={cn(
               "text-xs font-semibold mt-1",
-              variant === "primary" ? "text-[#0B1B3A]/80" : "text-emerald-600"
+              variant === "primary" ? "text-white/90" : "text-[var(--cb-selected-text)]"
             )}
           >
             {successRate} Success Rate

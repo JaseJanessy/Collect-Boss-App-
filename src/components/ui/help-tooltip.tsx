@@ -25,20 +25,20 @@ export function HelpTooltip({ text, className }: HelpTooltipProps) {
       onBlur={() => setVisible(false)}
       onClick={() => setVisible((v) => !v)}
     >
-      <HelpCircle className="w-3.5 h-3.5 text-gray-400 hover:text-[#009966] cursor-pointer transition-colors shrink-0" />
+      <HelpCircle className="w-3.5 h-3.5 text-gray-400 hover:text-[var(--cb-text-link)] cursor-pointer transition-colors shrink-0" />
 
       {visible && (
         <span
           role="tooltip"
           className={cn(
             "absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2",
-            "w-56 rounded-xl bg-[#0D1B3D] text-white text-[11px] leading-relaxed",
+            "w-56 rounded-xl bg-[var(--cb-surface-inverse)] text-white text-[11px] leading-relaxed",
             "px-3 py-2 shadow-lg pointer-events-none",
           )}
         >
           {text}
           {/* Arrow */}
-          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#0D1B3D]" />
+          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[var(--cb-surface-inverse)]" />
         </span>
       )}
     </span>

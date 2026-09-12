@@ -9,6 +9,8 @@ import {
   type LawyerReferralInsert,
   type LawyerReferralUpdate,
   type ReferralStatus,
+  type LawyerReferralEventRow,
+  type LegalHandoffDocumentRequestRow,
 } from "@/lib/supabase/types";
 import { ok, fail, type DbResult } from "./result";
 
@@ -22,24 +24,22 @@ function mockId(): string {
 
 // ─── getReferralsByCaseClient ─────────────────────────────────────────────────
 
+export type LegalHandoffDocumentRequestDetails = LegalHandoffDocumentRequestRow & { evidenceIds: string[] };
+export type ProfessionalLegalHandoff = LawyerReferralRow & {
+  events: LawyerReferralEventRow[];
+  documentRequests: LegalHandoffDocumentRequestDetails[];
+};
+
 export async function getReferralsByCaseClient(
   caseId: string
-): Promise<DbResult<LawyerReferralRow[]>> {
+): Promise<DbResult<ProfessionalLegalHandoff[]>> {
   if (!isSupabaseConfigured) {
-    return ok(_mockStore.filter((r) => r.case_id === caseId));
+    return ok(_mockStore.filter((r) => r.case_id === caseId).map((referral) => ({ ...referral, events: [], documentRequests: [] })));
   }
-
-  const client = getBrowserClient();
-  if (!client) return fail("Supabase client unavailable");
-
-  const { data, error } = await client
-    .from("lawyer_referrals")
-    .select("*")
-    .eq("case_id", caseId)
-    .order("created_at", { ascending: false });
-
-  if (error) return fail(error.message);
-  return ok((data as LawyerReferralRow[]) ?? []);
+  const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/lawyer-referrals`, { cache: "no-store" });
+  const payload = await response.json().catch(() => ({})) as { referrals?: ProfessionalLegalHandoff[]; error?: string };
+  if (!response.ok || !payload.referrals) return fail(payload.error ?? "Unable to load professional legal handoffs.");
+  return ok(payload.referrals);
 }
 
 // ─── createReferralClient ─────────────────────────────────────────────────────

@@ -57,6 +57,8 @@ export async function saveReminderClient(
       manually_confirmed_at: input.manually_confirmed_at ?? null,
       next_action_at: input.next_action_at ?? null,
       request_key: input.request_key ?? crypto.randomUUID(),
+      dispute_snapshot_minor: input.dispute_snapshot_minor ?? null,
+      collectable_snapshot_minor: input.collectable_snapshot_minor ?? null,
     };
     getMockList(input.case_id).unshift(newRow);
     return ok(newRow);
@@ -103,17 +105,17 @@ export async function generateReminderClient(input: { caseId: string; messageTyp
   return ok(payload.reminder);
 }
 
-export async function recordReminderHandoffClient(caseId: string, reminderId: string, handoff: "copy" | "whatsapp" | "email"): Promise<DbResult<ReminderRow>> {
+export async function recordReminderHandoffClient(caseId: string, reminderId: string, handoff: "copy" | "whatsapp" | "email", overrideReason?: string): Promise<DbResult<ReminderRow>> {
   if (!isSupabaseConfigured) return updateMockReminder(reminderId, handoff === "copy" ? { status: "copied" } : { composer_opened_at: new Date().toISOString() });
-  return reminderAction(caseId, { action: "handoff", reminderId, handoff });
+  return reminderAction(caseId, { action: "handoff", reminderId, handoff, overrideReason });
 }
 
-export async function confirmReminderSentClient(caseId: string, reminderId: string, nextActionAt?: string): Promise<DbResult<ReminderRow>> {
+export async function confirmReminderSentClient(caseId: string, reminderId: string, nextActionAt?: string, overrideReason?: string): Promise<DbResult<ReminderRow>> {
   if (!isSupabaseConfigured) return updateMockReminder(reminderId, {
     status: "sent_manually", manually_confirmed_at: new Date().toISOString(),
     next_action_at: nextActionAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   });
-  return reminderAction(caseId, { action: "confirm_sent", reminderId, nextActionAt });
+  return reminderAction(caseId, { action: "confirm_sent", reminderId, nextActionAt, overrideReason });
 }
 
 function updateMockReminder(id: string, patch: Partial<ReminderRow>): DbResult<ReminderRow> {

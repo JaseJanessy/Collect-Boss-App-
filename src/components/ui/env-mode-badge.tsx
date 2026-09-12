@@ -32,12 +32,16 @@ export function SidebarEnvBadge() {
   const label = appEnv === "staging" ? "STAGING" : "STRIPE TEST MODE";
 
   return (
-    <div className="mx-3 mt-2 mb-1 px-3 py-2 rounded-xl bg-amber-900/20 border border-amber-700/30">
-      <div className="flex items-center gap-1.5">
+    <div
+      aria-label={`${label}. Using Stripe test keys. Real payments are not processed.`}
+      title={label}
+      className="mx-2 mt-2 mb-1 rounded-xl border border-amber-700/30 bg-amber-900/20 px-1.5 py-2 lg:mx-3 lg:px-3"
+    >
+      <div className="flex items-center justify-center gap-1.5 lg:justify-start">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
-        <span className="text-[10px] font-bold text-amber-300 tracking-wide">{label}</span>
+        <span className="hidden text-[10px] font-bold tracking-wide text-amber-300 lg:inline">{label}</span>
       </div>
-      <p className="text-[9px] text-amber-400/70 mt-0.5 leading-relaxed">
+      <p className="mt-0.5 hidden text-[9px] leading-relaxed text-amber-400/70 lg:block">
         Using Stripe test keys. Real payments are not processed.
       </p>
     </div>

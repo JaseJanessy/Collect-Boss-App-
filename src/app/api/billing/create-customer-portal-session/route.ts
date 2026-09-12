@@ -21,15 +21,15 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAppUrl } from "@/lib/app-url";
+import { requireTenantPermission } from "@/lib/auth/tenant-access";
 import { getStripeServer, isStripeConfigured } from "@/lib/stripe/server";
-import { getServerClient } from "@/lib/supabase/server-client";
 
 export const dynamic = "force-dynamic";
 
 const err = (msg: string, status = 400) =>
   NextResponse.json({ error: msg }, { status });
 
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   // ── Guard: Stripe must be configured ──────────────────────────────────────
   if (!isStripeConfigured) {
     return err("Stripe is not configured on this server.", 503);
@@ -45,22 +45,13 @@ export async function POST(_request: NextRequest) {
   const stripe = getStripeServer()!;
 
   // ── Verify auth ───────────────────────────────────────────────────────────
-  const supabase = await getServerClient();
-  if (!supabase) return err("Auth service unavailable", 503);
-
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) return err("Authentication required", 401);
+  const access = await requireTenantPermission("billing.manage");
+  if ("error" in access) return err(access.error ?? "Billing access denied.", access.status ?? 403);
+  const { client: supabase, businessId } = access;
+  const requestKey = request.headers.get("idempotency-key")?.trim() ?? "";
+  if (!/^[A-Za-z0-9._:-]{8,200}$/.test(requestKey)) return err("A valid Idempotency-Key header is required.", 400);
 
   // ── Get business_id ───────────────────────────────────────────────────────
-  const { data: biz } = await supabase
-    .from("businesses")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  const businessId = (biz as { id: string } | null)?.id ?? null;
-  if (!businessId) return err("Business profile not found. Complete onboarding first.", 404);
-
   // ── Get stripe_customer_id from DB (never from client) ───────────────────
   const { data: sub } = await supabase
     .from("subscriptions")
@@ -86,7 +77,7 @@ export async function POST(_request: NextRequest) {
     const session = await stripe.billingPortal.sessions.create({
       customer:   stripeCustomerId,
       return_url: returnUrl,
-    });
+    }, { idempotencyKey: `portal:${businessId}:${requestKey}` });
 
     return NextResponse.json({ url: session.url }, { status: 200 });
   } catch (stripeErr: unknown) {

@@ -1,0 +1,2 @@
+import { PocketCustomerEdit } from "@/components/pocket/pocket-ledger";
+export default async function EditPocketCustomerPage({params}:{params:Promise<{customerId:string}>}){const{customerId}=await params;return <section aria-labelledby="edit-customer-title"><p className="text-sm font-bold text-[#087F5B]">Customer Profiles</p><h1 id="edit-customer-title" className="mt-2 text-3xl font-black text-[#092F2A]">Edit Customer</h1><PocketCustomerEdit customerId={customerId}/></section>}

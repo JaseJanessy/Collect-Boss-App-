@@ -8,6 +8,10 @@ export const businessProfileSchema = z
     legalName: z.string().trim().min(1, "Enter a legal name.").max(160),
     contactName: z.string().trim().min(1, "Enter a contact name.").max(160),
     registrationNo: z.string().trim().max(80).nullable(),
+    industry: z.enum([
+      "general", "professional_services", "retail", "construction", "property",
+      "education", "healthcare", "financial_services", "financing_money_lending", "other",
+    ]),
     phone: z.string().trim().min(1, "Enter a phone number.").max(50),
     email: z.string().trim().email("Enter a valid email address.").max(254),
     address: z.string().trim().max(500).nullable(),
@@ -23,3 +27,7 @@ export const businessProfileSchema = z
   });
 
 export type BusinessProfileInput = z.infer<typeof businessProfileSchema>;
+
+export const creditLimitPolicySchema = z.object({
+  creditLimitEnforcementEnabled: z.boolean(),
+});

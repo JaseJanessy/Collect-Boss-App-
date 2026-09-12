@@ -1,10 +1,10 @@
-import { BetaWelcomePage } from "@/components/pages/beta-welcome-page";
+import { permanentRedirect } from "next/navigation";
 
 export const metadata = {
-  title: "Welcome to CollectBoss Beta",
-  description: "You are in the private beta. Get started with CollectBoss.",
+  title: "CollectBoss",
+  robots: { index: false, follow: false },
 };
 
 export default function BetaWelcomeRoute() {
-  return <BetaWelcomePage />;
+  permanentRedirect("/");
 }

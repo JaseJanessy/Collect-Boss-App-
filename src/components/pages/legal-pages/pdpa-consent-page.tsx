@@ -7,7 +7,7 @@ export function PdpaConsentPage() {
     <LegalShell
       title="PDPA Consent Notice"
       subtitle="Personal Data Protection Notice under the Personal Data Protection Act 2010 (Malaysia)."
-      lastUpdated="2025-01-01"
+      lastUpdated="2026-09-01"
     >
       <LegalHighlight>
         This notice is issued pursuant to Section 7 of the Personal Data Protection Act 2010

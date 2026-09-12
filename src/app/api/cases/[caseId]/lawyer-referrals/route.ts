@@ -3,8 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedBusiness } from "@/lib/debtors/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import type { BusinessRow, CaseRow, EvidenceFileRow, Json, LegalDocumentRow } from "@/lib/supabase/types";
+import type { BusinessRow, CaseRow, EvidenceFileRow, Json, LegalDocumentRow, LawyerReferralEventRow, LawyerReferralRow, LegalHandoffDocumentRequestEvidenceRow, LegalHandoffDocumentRequestRow } from "@/lib/supabase/types";
 import { canWithdrawReferral, isReferralEligible, LAWYER_REFERRAL_CONSENT_VERSION } from "@/lib/lawyer-referrals/controlled-handoff";
+import { buildProfessionalHandoffPackage } from "@/lib/lawyer-referrals/package";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -25,23 +26,44 @@ function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-function referralPackage(caseData: CaseRow, business: BusinessRow, evidence: EvidenceFileRow[], formalDemand: LegalDocumentRow | null): Json {
-  return {
-    version: 1,
-    created_at: new Date().toISOString(),
-    purpose: "internal legal-review referral request; no external provider has received this package",
-    creditor: { legal_name: business.legal_name, account_type: business.account_type, registration_no: business.account_type === "business" ? business.registration_no : null, contact_name: business.contact_name, phone: business.phone, email: business.email },
-    case: { id: caseData.id, debtor_type: caseData.debtor_type, debtor_name: caseData.debtor_name, debtor_company: caseData.debtor_company, debtor_registration_no: caseData.debtor_reg_no, debtor_address: caseData.debtor_location, invoice_no: caseData.invoice_no, balance: caseData.balance, due_date: caseData.due_date, days_overdue: caseData.days_overdue },
-    evidence: evidence.map((file) => ({ id: file.id, name: file.file_name, type: file.file_type, evidence_type: file.evidence_type, uploaded_at: file.uploaded_at, content_sha256: file.content_sha256 })),
-    formal_demand: formalDemand ? { id: formalDemand.id, document_number: formalDemand.document_number, issued_at: formalDemand.issued_at, template_version: formalDemand.template_version } : null,
-  };
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ caseId: string }> }) {
+  const { caseId } = await params;
+  const auth = await getAuthenticatedBusiness("case.read");
+  if ("error" in auth) return json({ error: auth.error ?? "Professional legal handoff is unavailable." }, 401);
+  const { data: ownedCase } = await auth.client.from("cases").select("id").eq("id", caseId).eq("business_id", auth.businessId).maybeSingle();
+  if (!ownedCase) return json({ error: "Case not found." }, 404);
+  const { data: referralData, error: referralError } = await auth.client.from("lawyer_referrals").select("*").eq("case_id", caseId).eq("business_id", auth.businessId).order("created_at", { ascending: false });
+  if (referralError) return json({ error: "Unable to load professional legal handoffs." }, 500);
+  const referrals = (referralData ?? []) as LawyerReferralRow[];
+  const referralIds = referrals.map((item) => item.id);
+  if (referralIds.length === 0) return json({ referrals: [] });
+  const [eventResult, requestResult] = await Promise.all([
+    auth.client.from("lawyer_referral_events").select("*").in("referral_id", referralIds).order("created_at", { ascending: true }),
+    auth.client.from("legal_handoff_document_requests").select("*").in("referral_id", referralIds).order("created_at", { ascending: false }),
+  ]);
+  if (eventResult.error || requestResult.error) return json({ error: "Unable to load handoff activity." }, 500);
+  const events = (eventResult.data ?? []) as LawyerReferralEventRow[];
+  const requests = (requestResult.data ?? []) as LegalHandoffDocumentRequestRow[];
+  const requestIds = requests.map((item) => item.id);
+  const linkResult = requestIds.length
+    ? await auth.client.from("legal_handoff_document_request_evidence").select("*").in("request_id", requestIds)
+    : { data: [] as LegalHandoffDocumentRequestEvidenceRow[], error: null };
+  if (linkResult.error) return json({ error: "Unable to load document responses." }, 500);
+  const links = (linkResult.data ?? []) as LegalHandoffDocumentRequestEvidenceRow[];
+  return json({ referrals: referrals.map((referral) => ({
+    ...referral,
+    events: events.filter((event) => event.referral_id === referral.id),
+    documentRequests: requests.filter((request) => request.referral_id === referral.id).map((request) => ({
+      ...request, evidenceIds: links.filter((link) => link.request_id === request.id).map((link) => link.evidence_id),
+    })),
+  })) });
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ caseId: string }> }) {
   const { caseId } = await params;
   const input = createSchema.safeParse(await request.json().catch(() => null));
   if (!input.success) return json({ error: "Explicit data-sharing confirmation is required." }, 400);
-  const auth = await getAuthenticatedBusiness();
+  const auth = await getAuthenticatedBusiness("case.manage");
   if ("error" in auth) return json({ error: auth.error ?? "Referral service is unavailable." }, 401);
   const service = await getServiceClient();
   if (!service) return json({ error: "Referral service is unavailable." }, 503);
@@ -59,7 +81,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { data: replay } = await service.from("lawyer_referrals").select("*").eq("business_id", auth.businessId).eq("idempotency_key", input.data.idempotencyKey).maybeSingle();
   if (replay) return json({ referral: replay, replayed: true });
-  const { data: openReferral } = await service.from("lawyer_referrals").select("id").eq("case_id", caseId).in("referral_status", ["ready_for_review", "handoff_pending", "submitted", "under_review", "lawyer_contacted", "accepted"]).maybeSingle();
+  const { data: openReferral } = await service.from("lawyer_referrals").select("id").eq("case_id", caseId).eq("business_id", auth.businessId).in("referral_status", ["ready_for_review", "handoff_pending", "handoff_failed", "submitted", "under_review", "additional_documents_requested", "lawyer_contacted", "accepted"]).maybeSingle();
   if (openReferral) return json({ error: "An active legal-review referral already exists for this case." }, 409);
 
   const { data: selectedEvidence, error: evidenceError } = await auth.client.from("evidence_files").select("*").eq("case_id", caseId).is("archived_at", null).in("id", input.data.selectedEvidenceIds);
@@ -71,11 +93,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     formalDemand = demand as LegalDocumentRow;
   }
 
+  const [financialResult, historyResult, reminderResult, paymentResult, documentResult] = await Promise.all([
+    auth.client.from("case_financial_events").select("id, event_type, amount_minor, created_at").eq("case_id", caseId).order("created_at"),
+    auth.client.from("case_status_history").select("id, from_status, to_status, created_at").eq("case_id", caseId).order("created_at"),
+    auth.client.from("reminders").select("id, message_type, sent_channel, status, sent_at, generated_at").eq("case_id", caseId).order("generated_at"),
+    auth.client.from("payments").select("id, amount, payment_method, reference_no, reviewed_at, created_at").eq("case_id", caseId).eq("review_status", "approved").order("created_at"),
+    auth.client.from("legal_documents").select("id, document_type, title, status, document_number, template_version, issued_at").eq("case_id", caseId).order("created_at"),
+  ]);
+  if (financialResult.error || historyResult.error || reminderResult.error || paymentResult.error || documentResult.error) return json({ error: "Unable to assemble the professional handoff package." }, 500);
   const evidenceRows = (selectedEvidence ?? []) as EvidenceFileRow[];
   const now = new Date().toISOString();
   const id = randomUUID();
-  const dataPackage = referralPackage(currentCase, currentBusiness, evidenceRows, formalDemand);
-  const consentSnapshot: Json = { version: CONSENT_VERSION, accepted_at: now, statement: "I confirm that I am authorised to request legal review and consent to the selected case data being prepared for a future lawyer/provider handoff. I understand that no lawyer has accepted this matter and no legal representation is created." };
+  const documents = (documentResult.data ?? []) as Parameters<typeof buildProfessionalHandoffPackage>[0]["documents"];
+  const dataPackage = buildProfessionalHandoffPackage({
+    caseData: currentCase, business: currentBusiness, evidence: evidenceRows, documents,
+    financialEvents: (financialResult.data ?? []) as Parameters<typeof buildProfessionalHandoffPackage>[0]["financialEvents"],
+    statusHistory: historyResult.data ?? [], reminders: reminderResult.data ?? [], payments: paymentResult.data ?? [], createdAt: now,
+  });
+  const consentSnapshot: Json = { version: CONSENT_VERSION, accepted_at: now, statement: "I confirm that I am authorised to request external legal review and consent to the selected case data being prepared for a professional handoff. I understand that CollectBoss does not provide legal advice, no professional has accepted this matter, and no legal representation is created." };
   const summary = `${currentCase.debtor_name}: RM ${currentCase.balance.toFixed(2)} outstanding; due ${currentCase.due_date}.`;
   const { data: referral, error: referralError } = await service.from("lawyer_referrals").insert({ id, case_id: caseId, business_id: auth.businessId, referral_status: "ready_for_review", partner_id: null, partner_name: null, partner_firm: null, preferred_contact_method: input.data.preferredContactMethod, case_summary: summary, evidence_pack_id: null, formal_demand_id: formalDemand?.id ?? null, notes: input.data.notes || null, consent_version: CONSENT_VERSION, consented_at: now, consent_snapshot: consentSnapshot, data_package_snapshot: dataPackage, data_package_created_at: now, shared_at: null, handoff_channel: null, provider_reference: null, withdrawn_at: null, withdrawal_reason: null, idempotency_key: input.data.idempotencyKey, last_handoff_error: null, updated_at: now }).select("*").single();
   if (referralError || !referral) return json({ error: "Unable to create the legal-review referral." }, 500);
@@ -96,7 +131,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { caseId } = await params;
   const input = withdrawSchema.safeParse(await request.json().catch(() => null));
   if (!input.success) return json({ error: "A withdrawal reason is required." }, 400);
-  const auth = await getAuthenticatedBusiness();
+  const auth = await getAuthenticatedBusiness("case.manage");
   if ("error" in auth) return json({ error: auth.error ?? "Referral service is unavailable." }, 401);
   const service = await getServiceClient();
   if (!service) return json({ error: "Referral service is unavailable." }, 503);

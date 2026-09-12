@@ -7,25 +7,46 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-sans: var(--font-corporate-sans), "Segoe UI", Arial, sans-serif;
+  --font-mono: var(--font-corporate-mono), "SFMono-Regular", Consolas, monospace;
+  --font-heading: var(--font-corporate-sans), "Segoe UI", Arial, sans-serif;
+
+  /* Corporate weight hierarchy: decisive without promotional extra-black text. */
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 700;
+  --font-weight-black: 700;
+
+  /* Type scale */
+  --text-display: 2rem;
+  --text-title: 1.5rem;
+  --text-heading: 1.125rem;
+  --text-body: 0.875rem;
+  --text-caption: 0.75rem;
 
   /* CollectBoss brand tokens */
-  --color-navy: #0B1B3A;
-  --color-emerald: #55DDB4;
-  --color-emerald-light: #8BE4CA;
-  --color-slate: #AFC0DE;
-  --color-light-gray: #10284E;
-  --color-white: #ffffff;
+  --color-navy: var(--cb-brand-navy);
+  --color-emerald: var(--cb-action-primary);
+  --color-emerald-light: var(--cb-selected-surface);
+  --color-slate: var(--cb-text-secondary);
+  --color-light-gray: var(--cb-surface-muted);
+  --color-white: var(--cb-surface);
 
   /* Status colors */
-  --color-status-overdue: #EF4444;
-  --color-status-promise: #F59E0B;
-  --color-status-partial: #3B82F6;
-  --color-status-paid: #10B981;
-  --color-status-action: #8B5CF6;
-  --color-status-demand: #F97316;
+  --color-status-overdue: var(--cb-danger-strong);
+  --color-status-promise: var(--cb-warning);
+  --color-status-partial: var(--cb-information);
+  --color-status-paid: var(--cb-success);
+  --color-status-action: var(--cb-high-risk);
+  --color-status-demand: var(--cb-high-risk);
+  --color-status-verified: var(--status-verified);
+  --color-status-pending: var(--status-pending);
+  --color-status-disputed: var(--status-disputed);
+  --color-status-failed: var(--status-failed);
+  --color-status-closed: var(--status-closed);
+  --color-status-warning: var(--status-warning);
+  --color-status-high-risk: var(--status-high-risk);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -66,38 +87,51 @@
 }
 
 :root {
-  --background: #0B1B3A;
-  --foreground: #F8FAFC;
-  --card: #10284E;
-  --card-foreground: #F8FAFC;
-  --popover: #10284E;
-  --popover-foreground: #F8FAFC;
-  --primary: #55DDB4;
-  --primary-foreground: #0B1B3A;
-  --secondary: #173361;
-  --secondary-foreground: #F8FAFC;
-  --muted: #10284E;
-  --muted-foreground: #AFC0DE;
-  --accent: #173361;
-  --accent-foreground: #F8FAFC;
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: #244777;
-  --input: #173361;
-  --ring: #22C99A;
-  --chart-1: #22C99A;
-  --chart-2: #4D7CFF;
-  --chart-3: #AFC0DE;
-  --chart-4: #F59E0B;
-  --chart-5: #EF4444;
-  --radius: 0.75rem;
-  --sidebar: #0B1B3A;
-  --sidebar-foreground: #F8FAFC;
-  --sidebar-primary: #22C99A;
-  --sidebar-primary-foreground: #0B1B3A;
-  --sidebar-accent: #173361;
-  --sidebar-accent-foreground: #F8FAFC;
-  --sidebar-border: #244777;
-  --sidebar-ring: #22C99A;
+  --background: var(--cb-background);
+  --foreground: var(--cb-text-primary);
+  --card: var(--cb-surface);
+  --card-foreground: var(--cb-text-primary);
+  --popover: var(--cb-surface-raised);
+  --popover-foreground: var(--cb-text-primary);
+  --primary: var(--cb-action-primary);
+  --primary-foreground: var(--cb-text-inverse);
+  --secondary: var(--cb-surface-muted);
+  --secondary-foreground: var(--cb-text-primary);
+  --muted: var(--cb-surface-muted);
+  --muted-foreground: var(--cb-text-secondary);
+  --accent: var(--cb-selected-surface);
+  --accent-foreground: var(--cb-selected-text);
+  --destructive: var(--cb-danger);
+  --border: var(--cb-border);
+  --input: var(--cb-border);
+  --ring: var(--cb-focus);
+  --chart-1: var(--cb-chart-1);
+  --chart-2: var(--cb-chart-2);
+  --chart-3: var(--cb-chart-3);
+  --chart-4: var(--cb-chart-4);
+  --chart-5: var(--cb-chart-5);
+  --radius: var(--cb-radius-control, 8px);
+  --radius-control: var(--cb-radius-control, 8px);
+  --radius-surface: var(--cb-radius-surface, 12px);
+  --border-subtle: var(--cb-divider);
+  --shadow-surface: 0 1px 3px rgb(13 27 61 / 0.05);
+  --shadow-overlay: 0 24px 64px rgb(2 12 27 / 0.4);
+  --focus-ring: var(--cb-focus);
+  --status-verified: var(--cb-success);
+  --status-pending: var(--cb-warning);
+  --status-disputed: var(--cb-information);
+  --status-failed: var(--cb-danger-strong);
+  --status-closed: var(--cb-neutral);
+  --status-warning: var(--cb-warning);
+  --status-high-risk: var(--cb-high-risk);
+  --sidebar: var(--cb-surface-inverse);
+  --sidebar-foreground: var(--cb-text-inverse);
+  --sidebar-primary: var(--cb-action-primary);
+  --sidebar-primary-foreground: var(--cb-text-inverse);
+  --sidebar-accent: var(--cb-surface-inverse-raised);
+  --sidebar-accent-foreground: var(--cb-text-inverse);
+  --sidebar-border: var(--cb-border-inverse);
+  --sidebar-ring: var(--cb-focus);
 }
 
 @layer base {
@@ -115,9 +149,26 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.55;
+    letter-spacing: -0.005em;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    font-variant-numeric: tabular-nums;
   }
   html {
     @apply font-sans;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-corporate-sans), "Segoe UI", Arial, sans-serif;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
   }
 
   button,
@@ -125,6 +176,8 @@
   select,
   textarea {
     max-width: 100%;
+    font: inherit;
+    letter-spacing: inherit;
   }
 
   img,
@@ -154,19 +207,116 @@
   }
 
   :focus-visible {
-    outline: 2px solid #22C99A;
-    outline-offset: 2px;
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: var(--cb-selected-surface);
+    color: var(--cb-text-primary);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
 }
 
 /* CollectBoss utility classes */
 @layer utilities {
+  /* Breakpoints: compact < 640px, tablet 640-1023px, desktop >= 1024px. */
+  .cb-page-stack {
+    @apply mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6;
+  }
+  .cb-page-title {
+    @apply text-2xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-3xl;
+  }
+  .cb-page-description {
+    @apply mt-1 max-w-3xl text-sm leading-relaxed text-slate-600;
+  }
+  .cb-surface {
+    @apply min-w-0 border border-slate-200 bg-white;
+    border-radius: var(--radius-surface);
+    box-shadow: var(--shadow-surface);
+  }
+  .cb-field {
+    @apply min-h-11 w-full border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
+    border-radius: var(--radius-control);
+  }
+  .cb-field-with-icon {
+    padding-left: 3rem;
+  }
+  .cb-field[aria-invalid="true"] {
+    @apply border-red-500;
+  }
+  .cb-field-label {
+    @apply mb-1.5 block text-sm font-semibold text-slate-700;
+  }
+  .cb-field-help {
+    @apply mt-1.5 text-xs leading-relaxed text-slate-500;
+  }
+  .cb-field-error {
+    @apply mt-1.5 text-xs font-medium leading-relaxed text-red-700;
+  }
+  .cb-table-wrap {
+    @apply max-w-full overflow-x-auto overscroll-x-contain rounded-2xl border border-slate-200 bg-white shadow-sm;
+    scrollbar-gutter: stable;
+  }
+  .cb-table {
+    @apply w-full min-w-[44rem] border-collapse text-left text-sm text-slate-700;
+  }
+  .cb-table th {
+    @apply border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-600;
+  }
+  .cb-table td {
+    @apply border-b border-slate-100 px-4 py-3 align-top;
+  }
+  .cb-table tbody tr:last-child td {
+    border-bottom-width: 0;
+  }
+  .cb-table tbody tr:hover {
+    @apply bg-slate-50;
+  }
+  .cb-skeleton {
+    @apply animate-pulse rounded-lg bg-slate-200;
+  }
+  .cb-status-dot {
+    @apply size-1.5 shrink-0 rounded-full bg-current;
+  }
   .cb-nav-item {
     @apply flex flex-col items-center gap-0.5 text-xs font-medium transition-colors;
   }
   .cb-card {
-    @apply bg-card rounded-xl border border-border shadow-sm;
+    @apply border border-border bg-card;
+    border-radius: var(--radius-surface);
+    box-shadow: var(--shadow-surface);
+  }
+  .cb-sidebar-label {
+    @apply mb-2 hidden px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 lg:block;
+  }
+  .cb-sidebar-link {
+    @apply relative flex min-h-11 items-center justify-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors lg:justify-start;
+  }
+  .cb-sidebar-link-active {
+    @apply bg-white/10 text-white;
+    box-shadow: inset 3px 0 0 var(--cb-brand-green);
+  }
+  .cb-button-primary,
+  .cb-button-secondary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors;
+  }
+  .cb-button-primary {
+    @apply border-transparent bg-primary text-white hover:bg-[var(--cb-action-primary-hover)];
+  }
+  .cb-button-secondary {
+    @apply border-border bg-white text-foreground hover:bg-muted;
   }
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -196,82 +346,65 @@
   }
 }
 
-/*
- * App-wide navy treatment, based on the approved mobile reference. These
- * rules intentionally target shared Tailwind utilities so legacy page markup
- * inherits the palette without changing financial or workflow behaviour.
- */
+/* Main product compatibility adapter. It maps legacy utility declarations to
+ * semantic roles without changing Pocket's separately scoped theme. */
 .cb-app-theme {
-  background: #0B1B3A;
-  color: #F8FAFC;
+  background: var(--cb-background);
+  color: var(--cb-text-primary);
 }
 
-.cb-app-theme :is(.cb-mobile-shell, .cb-dashboard-shell) {
-  background: #0B1B3A !important;
+.cb-app-theme :is(.cb-mobile-shell, .cb-workspace-chrome, .cb-analytics-light, .cb-light-surface) {
+  background-color: var(--cb-background) !important;
+  color: var(--cb-text-primary);
 }
 
-.cb-app-theme [class~="bg-white"] {
-  background-color: #10284E;
+.cb-app-theme .cb-dashboard-shell,
+.cb-app-theme .cb-dashboard-shell > aside {
+  background-color: var(--cb-surface-inverse) !important;
 }
 
-.cb-app-theme :is(
-  [class~="bg-gray-50"],
-  [class~="bg-gray-100"],
-  [class~="bg-[#F2F4F7]"],
-  [class~="bg-emerald-50"]
-) {
-  background-color: #173361;
+.cb-app-theme header.cb-workspace-chrome,
+.cb-app-theme :is(.cb-analytics-light, .cb-light-surface) [class~="bg-white"] {
+  background-color: var(--cb-surface) !important;
 }
 
-.cb-app-theme :is(
-  [class~="border-gray-50"],
-  [class~="border-gray-100"],
-  [class~="border-gray-200"],
-  [class~="border-gray-300"],
-  [class~="border-emerald-200"]
-) {
-  border-color: #244777;
+.cb-app-theme :is(.cb-analytics-light, .cb-light-surface) :is(input, select, textarea) {
+  background-color: var(--cb-surface) !important;
+  border-color: var(--cb-border) !important;
+  color: var(--cb-text-primary) !important;
 }
 
-.cb-app-theme :is(
-  [class~="text-gray-400"],
-  [class~="text-gray-500"],
-  [class~="text-gray-600"],
-  [class~="text-gray-700"],
-  [class~="text-gray-800"],
-  [class~="text-gray-900"],
-  [class*="text-[#0D1B3D]"],
-  [class*="text-[#007A52]"]
-) {
-  color: #E7EEF9;
+.cb-app-theme :is(.cb-analytics-light, .cb-light-surface) :is(input, textarea)::placeholder {
+  color: var(--cb-text-secondary) !important;
 }
 
-.cb-app-theme :is(input, select, textarea) {
-  background-color: #0D2143 !important;
-  border-color: #244777 !important;
-  color: #F8FAFC !important;
+.cb-app-theme :is(button, a)[class*="bg-[#009966]"],
+.cb-app-theme :is(button, a)[class*="bg-[#22C99A]"],
+.cb-app-theme :is(button, a)[class*="bg-[#55DDB4]"] {
+  background-color: var(--cb-action-primary);
+  color: var(--cb-text-inverse);
 }
 
-.cb-app-theme :is(input, textarea)::placeholder {
-  color: #8FA6CC !important;
+.cb-app-theme :is(button, a)[class*="hover:bg-[#00B377]"]:hover {
+  background-color: var(--cb-action-primary-hover);
 }
 
-.cb-app-theme [class*="bg-[#009966]"] {
-  background-color: #55DDB4;
+.cb-app-theme :is(button, a)[class*="bg-[#009966]"]:active,
+.cb-app-theme :is(button, a)[class*="bg-[#22C99A]"]:active,
+.cb-app-theme :is(button, a)[class*="bg-[#55DDB4]"]:active {
+  background-color: var(--cb-action-primary-pressed);
 }
 
-.cb-app-theme [class*="text-[#009966]"] {
-  color: #8BE4CA;
+.cb-app-theme :is([class*="text-[#009966]"], [class*="text-[#22C99A]"], [class*="text-[#55DDB4]"]) {
+  color: var(--cb-text-link);
 }
 
-/* Lighter mint fills keep primary actions easy to read with navy labels. */
-.cb-app-theme :is(button, a)[class*="bg-[#009966]"] {
-  background-color: #55DDB4;
-  color: #0B1B3A;
-}
-
-.cb-app-theme :is(button, a)[class*="bg-[#009966]"] :is(.text-white, [class*="text-white"]) {
-  color: #0B1B3A !important;
+.cb-app-theme :is(button, input, select, textarea):disabled,
+.cb-app-theme [aria-disabled="true"] {
+  border-color: var(--cb-disabled-border);
+  background-color: var(--cb-disabled-surface);
+  color: var(--cb-disabled-text);
+  opacity: 1;
 }
 
 /*
@@ -310,4 +443,278 @@
     right: 0 !important;
     max-width: 24rem !important;
   }
+}
+
+/* CollectBoss Pocket has its own touch-friendly, light workspace while preserving the
+ * parent navy/teal brand. Every selector is scoped so Main remains unchanged. */
+@layer components {
+  .pocket-root {
+    --pocket-radius: var(--radius-surface);
+    color-scheme: light;
+    background: var(--pocket-canvas);
+    color: var(--pocket-ink);
+    font-size: 1rem;
+  }
+
+  .pocket-root :is(a, button, input, select, textarea) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pocket-root :is(button, a)[aria-disabled="true"],
+  .pocket-root button:disabled {
+    cursor: not-allowed;
+  }
+
+  .pocket-card {
+    min-width: 0;
+    border: 1px solid var(--pocket-line);
+    border-radius: var(--pocket-radius);
+    background: var(--pocket-surface);
+    box-shadow: var(--shadow-surface);
+  }
+
+  .pocket-primary-action,
+  .pocket-secondary-action {
+    display: inline-flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-control);
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: center;
+    transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+  }
+
+  .pocket-primary-action {
+    border: 1px solid var(--pocket-action-primary-pressed);
+    background: var(--pocket-action-primary);
+    color: var(--pocket-surface);
+    box-shadow: none;
+  }
+
+  .pocket-primary-action:hover:not(:disabled) {
+    background: var(--pocket-action-primary-hover);
+  }
+
+  .pocket-secondary-action {
+    border: 1px solid var(--pocket-line);
+    background: var(--pocket-surface);
+    color: var(--pocket-ink);
+    box-shadow: none;
+  }
+
+  .pocket-secondary-action:hover:not(:disabled) {
+    background: var(--pocket-surface-muted);
+  }
+
+  .pocket-primary-action:active:not(:disabled),
+  .pocket-secondary-action:active:not(:disabled),
+  .pocket-tactile:active {
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+
+  .pocket-primary-action:disabled,
+  .pocket-secondary-action:disabled {
+    opacity: 0.55;
+    box-shadow: none;
+  }
+
+  .pocket-field {
+    margin-top: 0.375rem;
+    min-height: 3rem;
+    width: 100%;
+    border: 1px solid var(--pocket-line);
+    border-radius: var(--radius-control);
+    background: var(--pocket-surface);
+    padding: 0.75rem 1rem;
+    color: var(--pocket-ink);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .pocket-field:hover {
+    border-color: var(--pocket-muted);
+  }
+
+  .pocket-field:focus {
+    border-color: var(--pocket-focus);
+    box-shadow: 0 0 0 4px rgb(47 111 237 / 0.18);
+  }
+
+  .pocket-field[aria-invalid="true"] {
+    border-color: var(--pocket-action-overdue);
+  }
+
+  .pocket-action-tile {
+    position: relative;
+    display: flex;
+    min-height: 8.5rem;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    border: 1px solid var(--pocket-line);
+    border-radius: var(--pocket-radius);
+    background: var(--pocket-surface);
+    padding: 1rem;
+    box-shadow: var(--shadow-surface);
+    transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  }
+
+  .pocket-action-tile:hover {
+    border-color: var(--pocket-action-accent, var(--pocket-action-primary));
+    box-shadow: 0 2px 8px rgb(13 27 61 / 0.06);
+  }
+
+  .pocket-action-tile:active {
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+
+  .pocket-action-tile[data-pocket-action="add-debt"] {
+    --pocket-action-accent: var(--pocket-action-add-debt);
+    --pocket-action-accent-surface: var(--pocket-action-add-debt-surface);
+  }
+
+  .pocket-action-tile[data-pocket-action="record-payment"] {
+    --pocket-action-accent: var(--pocket-action-record-payment);
+    --pocket-action-accent-surface: var(--pocket-action-record-payment-surface);
+  }
+
+  .pocket-action-tile[data-pocket-action="scan-receipt"] {
+    --pocket-action-accent: var(--pocket-action-scan-receipt);
+    --pocket-action-accent-surface: var(--pocket-action-scan-receipt-surface);
+  }
+
+  .pocket-action-tile[data-pocket-action="who-owes-me"] {
+    --pocket-action-accent: var(--pocket-action-who-owes-me);
+    --pocket-action-accent-surface: var(--pocket-action-who-owes-me-surface);
+  }
+
+  .pocket-action-icon {
+    background: var(--pocket-action-accent-surface, var(--pocket-selected-surface));
+    color: var(--pocket-action-accent, var(--pocket-action-primary));
+  }
+
+  .pocket-summary-card {
+    min-width: 0;
+    border: 1px solid var(--pocket-line);
+    border-radius: var(--pocket-radius);
+    background: var(--pocket-surface);
+    padding: 1rem;
+    box-shadow: var(--shadow-surface);
+  }
+
+  .pocket-today-card {
+    border-color: transparent;
+    background: var(--pocket-brand-navy);
+    color: var(--pocket-surface);
+    box-shadow: none;
+  }
+
+  .pocket-status-chip {
+    display: inline-flex;
+    min-height: 1.75rem;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 999px;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .pocket-root :is(h1, h2, h3, p, span, a, button) {
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 639px) {
+    .pocket-root {
+      font-size: clamp(1rem, 3.9vw, 1.125rem);
+    }
+
+    .pocket-primary-action,
+    .pocket-secondary-action {
+      min-height: 3.25rem;
+    }
+  }
+
+  @media (min-width: 640px) and (max-width: 1023px) {
+    .pocket-action-tile {
+      min-height: 9.25rem;
+    }
+
+    .pocket-today-card {
+      grid-column: 1 / -1;
+      padding: 1.5rem;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .pocket-card,
+    .pocket-action-tile,
+    .pocket-summary-card,
+    .pocket-primary-action,
+    .pocket-secondary-action {
+      border: 2px solid ButtonText;
+      box-shadow: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pocket-primary-action,
+    .pocket-secondary-action,
+    .pocket-action-tile {
+      transform: none !important;
+      transition: none !important;
+    }
+  }
+}
+
+/* Main's compatibility theme intentionally uses high-specificity dark form
+ * overrides. Pocket is a separate light product shell, so its scoped chrome
+ * and fields must explicitly opt back into the Pocket palette. */
+.cb-app-theme .pocket-root .pocket-topbar,
+.cb-app-theme .pocket-root .pocket-bottom-nav {
+  background-color: var(--pocket-surface) !important;
+  color: var(--pocket-ink);
+}
+
+.cb-app-theme .pocket-root :is(input, select, textarea).pocket-field {
+  background-color: var(--pocket-surface) !important;
+  border-color: var(--pocket-line) !important;
+  color: var(--pocket-ink) !important;
+}
+
+.cb-app-theme .pocket-root :is(input, textarea).pocket-field::placeholder {
+  color: var(--pocket-muted) !important;
+}
+
+/* Incremental Pocket-only compatibility aliases. These keep existing product
+ * screens visually token-driven while their legacy utility literals are
+ * migrated screen by screen. They never apply outside .pocket-root. */
+.cb-app-theme .pocket-root :is([class*="text-[#082C32]"], [class*="text-[#092F2A]"], [class*="text-[#0f2427]"]) {
+  color: var(--pocket-ink) !important;
+}
+
+.cb-app-theme .pocket-root :is([class*="text-[#536866]"], [class*="text-[#647773]"], [class*="text-[#7c918a]"], [class*="text-[#8aa099]"]) {
+  color: var(--pocket-muted) !important;
+}
+
+.cb-app-theme .pocket-root :is([class*="text-[#087F5B]"], [class*="text-[#086548]"]) {
+  color: var(--pocket-action-primary) !important;
+}
+
+.cb-app-theme .pocket-root :is([class*="bg-[#DFF7EF]"], [class*="bg-[#E7F8F2]"]) {
+  background-color: var(--pocket-selected-surface) !important;
+}
+
+.cb-app-theme .pocket-root :is([class*="border-[#d8e4de]"], [class*="border-[#e6eee9]"]) {
+  border-color: var(--pocket-line) !important;
 }

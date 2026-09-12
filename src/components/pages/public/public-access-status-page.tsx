@@ -1,5 +1,6 @@
 import { AlertTriangle, Clock3, ServerCrash } from "lucide-react";
 import type { PublicAccessState } from "@/lib/public-access/types";
+import { CollectBossWordmark } from "@/components/brand/wordmark";
 
 export function PublicAccessStatusPage({ state, action }: { state: Exclude<PublicAccessState, "valid">; action: "payment" | "acknowledgement" }) {
   const content = state === "invalid"
@@ -11,7 +12,7 @@ export function PublicAccessStatusPage({ state, action }: { state: Exclude<Publi
   return (
     <main className="min-h-screen bg-[#F2F4F7] px-4 py-8">
       <section className="mx-auto max-w-md rounded-3xl bg-white p-8 text-center shadow-sm">
-        <span className="text-xl font-black text-[#0D1B3D]">Collect<span className="text-[#009966]">Boss</span></span>
+        <CollectBossWordmark />
         <div className="mt-10 flex justify-center">{content.icon}</div>
         <h1 className="mt-4 text-xl font-black text-[#0D1B3D]">{content.title}</h1>
         <p className="mt-2 text-sm leading-relaxed text-gray-500">{content.message}</p>

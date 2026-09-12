@@ -77,6 +77,31 @@ export const PLANS: Record<PlanSlug, PlanRow> = {
 // Ordered for display (cheapest → most expensive)
 export const PLAN_ORDER: PlanSlug[] = ["free", "starter", "boss", "pro"];
 
+export const PLAN_MARKETING: Record<PlanSlug, {
+  description: string;
+  badge: string | null;
+  primary: boolean;
+  color: string;
+  cta: string;
+}> = {
+  free: { description: "For SMEs just getting started.", badge: null, primary: false, color: "border-gray-200", cta: "Start Free" },
+  starter: { description: "For SMEs actively managing overdue accounts.", badge: "Most Popular", primary: true, color: "border-[#009966]", cta: "Start Starter" },
+  boss: { description: "For established recovery workflows and small teams.", badge: null, primary: false, color: "border-[#0D1B3D]", cta: "Choose Boss" },
+  pro: { description: "For larger teams needing the highest member limit.", badge: null, primary: false, color: "border-indigo-300", cta: "Choose Pro" },
+};
+
+export function planFeatureLabels(plan: PlanRow): string[] {
+  const limit = (value: number, singular: string, plural: string) => value === -1 ? `Unlimited ${plural}` : `Up to ${value} ${value === 1 ? singular : plural}`;
+  return [
+    limit(plan.case_limit, "active case", "active cases"),
+    limit(plan.evidence_pack_limit, "evidence pack export", "evidence pack exports"),
+    limit(plan.team_member_limit, "team member", "team members"),
+    plan.payment_lock_enabled ? "Payment Lock and proof review" : "Core payment tracking",
+    plan.formal_demand_enabled ? "Formal payment reminder drafts" : "Reminder generator",
+    plan.reports_enabled ? "Operational reports" : "Core case summaries",
+  ];
+}
+
 // ─── Display helpers ──────────────────────────────────────────────────────────
 
 export const PLAN_BADGE: Record<PlanSlug, { label: string; color: string }> = {

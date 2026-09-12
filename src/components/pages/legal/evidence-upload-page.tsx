@@ -411,6 +411,7 @@ function UploadedFileRow({
   });
 
   async function handleDelete() {
+    if (!window.confirm(`Archive ${file.file_name}? It will be removed from active Evidence views, while the audit history remains.`)) return;
     setDeleting(true);
     setError(null);
     const result = await archiveEvidenceFileClient(caseId, file.id);
@@ -462,6 +463,7 @@ function UploadedFileRow({
       </button>
       <button
         onClick={handleDelete}
+        aria-label={`Archive evidence ${file.file_name}`}
         disabled={deleting}
         className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-400 transition-colors shrink-0 disabled:opacity-50"
       >

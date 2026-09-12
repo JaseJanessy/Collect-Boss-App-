@@ -10,8 +10,8 @@ const evidenceTypes = ["invoice", "whatsapp", "payment_proof", "contract", "deli
 const metadataSchema = z.object({ evidenceType: z.enum(evidenceTypes), description: z.string().trim().max(2000).optional(), documentDate: z.string().date().optional(), isInternal: z.enum(["true", "false"]).optional() });
 
 function json(body: Record<string, unknown>, status = 200) { return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } }); }
-async function scope(caseId: string) {
-  const auth = await getAuthenticatedBusiness();
+async function scope(caseId: string, write = false) {
+  const auth = await getAuthenticatedBusiness(write ? "case.manage" : "case.read");
   if ("error" in auth) return { error: auth.error ?? "Evidence service unavailable.", notFound: false } as const;
   const { data } = await auth.client.from("cases").select("id, business_id, archived_at").eq("id", caseId).eq("business_id", auth.businessId).maybeSingle();
   if (!data) return { error: "Case not found.", notFound: true } as const;
@@ -27,7 +27,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ caseId: string }> }) {
-  const { caseId } = await params; const found = await scope(caseId);
+  const { caseId } = await params; const found = await scope(caseId, true);
   if ("error" in found) return json({ error: found.error }, found.notFound ? 404 : 401);
   if (found.caseData.archived_at) return json({ error: "Archived cases cannot accept new evidence." }, 409);
   const form = await request.formData().catch(() => null); const file = form?.get("file");

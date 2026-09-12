@@ -24,6 +24,7 @@ function mockToRow(r: (typeof mockPaymentRecords)[0]): PaymentRow {
   return {
     id:             r.id,
     case_id:        r.caseId,
+    currency:       "MYR",
     amount:         r.amount,
     payment_method: mockMethodToDb(r.method),
     reference_no:   r.reference,

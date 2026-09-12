@@ -8,6 +8,8 @@
  * - Always includes disclaimer
  */
 
+import { brandPdfColors } from "../brand/pdf-theme.ts";
+
 export interface SmallClaimCheckItem {
   id:    string;
   label: string;
@@ -15,6 +17,7 @@ export interface SmallClaimCheckItem {
 }
 
 export interface SmallClaimPdfData {
+  templateVersion?: number;
   caseId:           string;
   businessName:     string;
   today:            string;
@@ -86,28 +89,30 @@ export async function generateSmallClaimPdf(data: SmallClaimPdfData): Promise<Bl
     doc.setFontSize(7);
     doc.setTextColor(180, 180, 180);
     doc.text(
-      `Small Claim Pack · ${data.caseId} · Page ${n} · CollectBoss`,
+      `${(data.templateVersion ?? 2) < 3 ? "Small Claim Pack" : "Case Evidence Export"} · ${data.caseId} · Page ${n} · CollectBoss`,
       W / 2, H - 6, { align: "center" }
     );
     doc.setPage(cur);
   };
 
   // ── Header ──────────────────────────────────────────────────────────────────
-  doc.setFillColor(13, 27, 61);
+  doc.setFillColor(...brandPdfColors.navy);
   doc.rect(0, 0, W, 18, "F");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.setTextColor(255, 255, 255);
+  doc.setFillColor(...brandPdfColors.surface);
+  doc.roundedRect(ML - 2, 3, 43, 13, 1, 1, "F");
+  doc.setTextColor(...brandPdfColors.navy);
   const cw = doc.getTextWidth("Collect");
   doc.text("Collect", ML, 12);
-  doc.setTextColor(0, 153, 102);
+  doc.setTextColor(...brandPdfColors.green);
   doc.text("Boss", ML + cw, 12);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(180, 210, 230);
-  doc.text("Small Claim Case Pack", W - MR, 12, { align: "right" });
+  doc.text((data.templateVersion ?? 2) < 3 ? "Small Claim Case Pack" : "Case Evidence Export", W - MR, 12, { align: "right" });
 
   y = 24;
 
@@ -136,7 +141,7 @@ export async function generateSmallClaimPdf(data: SmallClaimPdfData): Promise<Bl
   const section = (title: string) => {
     guard(12);
     y += 2;
-    doc.setFillColor(13, 27, 61);
+    doc.setFillColor(...brandPdfColors.navy);
     doc.rect(ML, y, CW, 7, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
@@ -161,7 +166,7 @@ export async function generateSmallClaimPdf(data: SmallClaimPdfData): Promise<Bl
     guard(7);
     // Box
     if (done) {
-      doc.setFillColor(0, 153, 102);
+      doc.setFillColor(...brandPdfColors.green);
       doc.roundedRect(ML + 2, y - 3.5, 4, 4, 0.5, 0.5, "F");
       doc.setFont("helvetica", "bold");
       doc.setFontSize(7);
@@ -223,8 +228,8 @@ export async function generateSmallClaimPdf(data: SmallClaimPdfData): Promise<Bl
   kv("Evidence Files",       `${data.evidenceFiles.length} file(s) uploaded`);
   kv("Reminder History",     data.reminderCount > 0 ? `${data.reminderCount} reminder(s) sent` : "None recorded");
   kv("Payment History",      data.paymentCount > 0  ? `${data.paymentCount} payment record(s)` : "None recorded");
-  kv("Evidence Pack",        data.hasEvidencePack   ? "Generated" : "Not yet generated");
-  kv("Formal Demand",        data.hasFormalDemand   ? "Draft saved" : "Not yet created");
+  kv("Case Evidence Export", data.hasEvidencePack   ? "Generated" : "Not yet generated");
+  kv("Payment Notice",       data.hasFormalDemand   ? "Draft saved" : "Not yet created");
   kv("Payment Plan",         data.hasPaymentPlan    ? "Active" : "None");
   kv("Debt Acknowledgement", data.hasAcknowledgement ? "Confirmed" : "Not yet confirmed");
 
@@ -282,7 +287,7 @@ export async function generateSmallClaimPdf(data: SmallClaimPdfData): Promise<Bl
   ];
   for (const [i, step] of steps.entries()) {
     guard(8);
-    doc.setFillColor(13, 27, 61);
+    doc.setFillColor(...brandPdfColors.navy);
     doc.circle(ML + 4, y - 1, 2.5, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);

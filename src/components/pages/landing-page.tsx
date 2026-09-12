@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { CollectBossWordmark } from "@/components/brand/wordmark";
+import { PLAN_MARKETING, PLAN_ORDER, PLANS, planFeatureLabels } from "@/lib/billing/plans";
 import {
   FolderOpen,
   Send,
@@ -16,13 +18,13 @@ import {
   MessageCircle,
   Upload,
   ClipboardList,
-  Star,
   Menu,
   X,
   ArrowRight,
-  Clock,
   TrendingUp,
   Lock,
+  Building2,
+  Smartphone,
 } from "lucide-react";
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
@@ -33,31 +35,32 @@ function Navbar() {
   const links = [
     { href: "#features",   label: "Features"   },
     { href: "#how",        label: "How It Works"},
+    { href: "#products",   label: "Choose Product"},
     { href: "#pricing",    label: "Pricing"     },
     { href: "#faq",        label: "FAQ"         },
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-[#10284E]/95 backdrop-blur-sm border-b border-[#244777] shadow-sm">
+    <header className="sticky top-0 z-50 border-b border-[var(--cb-border)] bg-white/95 backdrop-blur-sm">
       <a
         href="#landing-main-content"
         className="sr-only fixed left-3 top-3 z-[100] rounded-md bg-white px-3 py-2 text-sm font-semibold text-[#0D1B3D] shadow focus:not-sr-only"
       >
         Skip to main content
       </a>
-      <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-5 lg:px-8 h-20 flex items-center justify-between gap-5">
         {/* Logo */}
-        <Link href="/landing" className="text-xl font-black tracking-tight text-white leading-none">
-          Collect<span className="text-[#009966]">Boss</span>
+        <Link href="/landing" aria-label="CollectBoss home">
+          <CollectBossWordmark compact />
         </Link>
 
         {/* Desktop nav */}
-        <nav className="cb-phone-landscape-desktop hidden md:flex items-center gap-6">
+        <nav className="cb-phone-landscape-desktop hidden lg:flex items-center gap-6">
           {links.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="text-sm font-medium text-gray-600 hover:text-[#0D1B3D] transition-colors"
+              className="inline-flex min-h-11 items-center text-sm font-medium text-slate-600 hover:text-slate-950 transition-colors"
             >
               {l.label}
             </a>
@@ -65,13 +68,13 @@ function Navbar() {
         </nav>
 
         {/* Desktop CTA */}
-        <div className="cb-phone-landscape-desktop hidden md:flex items-center gap-3">
-          <Link href="/login" className="text-sm font-semibold text-gray-600 hover:text-[#0D1B3D] transition-colors">
+        <div className="cb-phone-landscape-desktop hidden lg:flex items-center gap-3">
+          <Link href="/login" className="inline-flex min-h-11 items-center text-sm font-medium text-slate-700 hover:text-slate-950 transition-colors">
             Sign In
           </Link>
           <Link
             href="/signup"
-            className="flex items-center gap-1.5 bg-[#009966] hover:bg-[#00B377] text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
+            className="cb-button-primary"
           >
             Start Free <ArrowRight className="w-3.5 h-3.5" />
           </Link>
@@ -79,19 +82,19 @@ function Navbar() {
 
         {/* Mobile hamburger */}
         <button
-          className="cb-phone-landscape-mobile md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+          className="cb-phone-landscape-mobile lg:hidden w-11 h-11 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Toggle menu"
           aria-controls="landing-mobile-nav"
           aria-expanded={menuOpen}
         >
-          {menuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
+          {menuOpen ? <X className="w-5 h-5 text-slate-800" /> : <Menu className="w-5 h-5 text-slate-800" />}
         </button>
       </div>
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="cb-phone-landscape-mobile-block md:hidden border-t border-gray-100 bg-white px-5 pb-4">
+        <div className="cb-phone-landscape-mobile-block lg:hidden border-t border-gray-100 bg-white px-5 pb-4">
           <nav id="landing-mobile-nav" className="flex flex-col gap-0 mt-2">
             {links.map((l) => (
               <a
@@ -128,68 +131,29 @@ function Navbar() {
 
 function Hero() {
   return (
-    <section className="bg-[#0D1B3D] pt-20 pb-28 px-5 text-center relative overflow-hidden">
-      {/* Subtle radial glow */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#009966] opacity-[0.07] rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative max-w-3xl mx-auto">
-        {/* Eyebrow tag */}
-        <span className="inline-flex items-center gap-1.5 bg-[#009966]/20 text-emerald-300 text-[11px] font-bold px-3 py-1 rounded-full mb-6 tracking-wide uppercase">
-          <Star className="w-3 h-3 fill-emerald-300" />
-          Built for Malaysian SMEs
-        </span>
-
-        {/* Headline */}
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.08] tracking-tight mb-6">
-          Collect overdue payments{" "}
-          <span className="text-[#009966]">professionally.</span>
-        </h1>
-
-        {/* Sub */}
-        <p className="text-base md:text-lg text-blue-200 leading-relaxed max-w-2xl mx-auto mb-10">
-          CollectBoss helps Malaysian SMEs record debts, send professional reminders,
-          manage payment proof, and prepare recovery documents — all in one place.
-        </p>
-
-        {/* CTAs */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            href="/signup"
-            className="flex items-center justify-center gap-2 bg-[#009966] hover:bg-[#00B377] text-white font-bold text-base px-8 py-4 rounded-2xl transition-all shadow-lg shadow-emerald-900/40 hover:shadow-emerald-900/60 hover:scale-[1.02] active:scale-[0.98]"
-          >
-            Start Free — No Card Needed
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-          <a
-            href="#features"
-            className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-base px-8 py-4 rounded-2xl transition-colors border border-white/15"
-          >
-            See How It Works
-          </a>
-        </div>
-
-        {/* Trust strip */}
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-blue-300 text-xs font-medium">
-          <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />No credit card required</span>
-          <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />Set up in 5 minutes</span>
-          <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />Made for Malaysia</span>
-        </div>
-      </div>
-
-      {/* Hero stats ribbon */}
-      <div className="relative max-w-3xl mx-auto mt-16 grid grid-cols-3 gap-px bg-white/10 rounded-2xl overflow-hidden">
-        {[
-          { value: "RM 50K+",  label: "Tracked per user (avg)"     },
-          { value: "68%",      label: "Reminder success rate"       },
-          { value: "5 min",    label: "Time to first reminder sent" },
-        ].map((s) => (
-          <div key={s.label} className="bg-[#0D1B3D]/80 px-4 py-5 text-center">
-            <p className="text-2xl font-black text-white">{s.value}</p>
-            <p className="text-[11px] text-blue-300 mt-1">{s.label}</p>
+    <section className="border-b border-[var(--cb-border)] bg-[var(--cb-background)] px-5 py-14 sm:py-20 lg:px-8 lg:py-24">
+      <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+        <div>
+          <p className="mb-6 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--cb-action-primary)]">A clearer view of business receivables</p>
+          <h1 className="max-w-2xl text-4xl font-medium leading-[1.1] tracking-tight text-[var(--cb-brand-navy)] sm:text-5xl xl:text-6xl">Collect overdue payments.<br /><span className="text-[var(--cb-action-primary)]">With confidence.</span></h1>
+          <p className="mt-7 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">Bring debts, follow-ups and payment records into one organised workspace. Built for Malaysian businesses that want a more professional way to collect.</p>
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <Link href="/signup" className="cb-button-primary min-h-12 px-6">Start with CollectBoss <ArrowRight aria-hidden="true" className="size-4" /></Link>
+            <a href="#products" className="cb-button-secondary min-h-12 px-6">Compare Main & Pocket</a>
           </div>
-        ))}
+          <p className="mt-5 text-sm text-slate-500">Free plan available · No credit card required</p>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-[var(--cb-border)] bg-white shadow-[0_16px_48px_rgb(13_27_61_/_0.08)]">
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 bg-[var(--cb-brand-navy)] px-6 py-5 text-white"><span className="text-sm font-medium">A structured collection workflow</span><ClipboardList aria-hidden="true" className="size-5 text-emerald-300" /></div>
+          <ol className="divide-y divide-[var(--cb-divider)] px-6">
+            {[
+              { icon: FolderOpen, title: "Keep the facts together", detail: "Customers, invoices and supporting documents." },
+              { icon: Send, title: "Know the next action", detail: "Follow-ups, promises and payment due dates." },
+              { icon: CheckCircle2, title: "Keep payments accountable", detail: "Payment proof, review and recorded balances." },
+            ].map(({ icon: Icon, title, detail }, index) => <li key={title} className="flex gap-4 py-6"><span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[var(--cb-surface-muted)] text-[var(--cb-brand-navy)]"><Icon aria-hidden="true" className="size-5" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-slate-900">{title}</p><p className="mt-1 text-sm leading-6 text-slate-500">{detail}</p></div><span aria-hidden="true" className="pt-1 font-mono text-xs text-slate-400">0{index + 1}</span></li>)}
+          </ol>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-[var(--cb-divider)] bg-slate-50 px-6 py-4 text-xs text-slate-600"><span>Main · Structured collections</span><span>Pocket · Everyday tracking</span></div>
+        </div>
       </div>
     </section>
   );
@@ -225,26 +189,25 @@ function PainPoints() {
     <section className="py-20 px-5 bg-white">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
-          <p className="text-xs font-bold text-[#009966] uppercase tracking-widest mb-3">Sound familiar?</p>
-          <h2 className="text-3xl md:text-4xl font-black text-[#0D1B3D] leading-tight">
-            Running after debtors is exhausting.
+          <p className="text-xs font-semibold text-[#009966] uppercase tracking-widest mb-3">Designed around your daily work</p>
+          <h2 className="text-3xl md:text-4xl font-semibold text-[#0D1B3D] leading-tight">
+            Less administration. More clarity.
           </h2>
           <p className="text-gray-500 mt-3 max-w-xl mx-auto text-base">
-            Most Malaysian SMEs lose money not because the debt is uncollectable —
-            but because they lack the tools to follow through professionally.
+            Give every outstanding payment a clear record, a responsible owner and a next step.
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {painPoints.map((p) => (
+          {painPoints.map((p, index) => (
             <div
               key={p.title}
-              className="flex gap-4 p-5 bg-red-50/60 border border-red-100 rounded-2xl"
+              className="cb-surface flex gap-4 p-6"
             >
-              <span className="text-2xl shrink-0 mt-0.5">{p.emoji}</span>
+              <span aria-hidden="true" className="mt-0.5 shrink-0 font-mono text-sm text-[var(--cb-action-primary)]">0{index + 1}</span>
               <div>
                 <p className="text-sm font-bold text-gray-900 mb-1">{p.title}</p>
-                <p className="text-xs text-gray-500 leading-relaxed">{p.body}</p>
+                <p className="text-sm text-gray-500 leading-relaxed">{p.body}</p>
               </div>
             </div>
           ))}
@@ -252,9 +215,9 @@ function PainPoints() {
 
         {/* Bridge */}
         <div className="mt-10 flex items-center justify-center gap-3 text-center">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent to-gray-200" />
-          <p className="text-sm font-bold text-[#0D1B3D] shrink-0">CollectBoss solves all of this.</p>
-          <div className="h-px flex-1 bg-gradient-to-l from-transparent to-gray-200" />
+          <div className="h-px flex-1 bg-[var(--cb-divider)]" />
+          <p className="text-sm font-medium text-[#0D1B3D]">One organised collection workflow.</p>
+          <div className="h-px flex-1 bg-[var(--cb-divider)]" />
         </div>
       </div>
     </section>
@@ -276,28 +239,28 @@ const features = [
     accent: "text-blue-600 bg-blue-50",
     title:  "Professional Reminders",
     body:   "Generate polite, firm, or final-notice reminder messages in Bahasa Malaysia or English. Copy and send via WhatsApp or SMS in seconds.",
-    tag:    "68% success rate",
+    tag:    "Guided follow-up",
   },
   {
     icon:   <Lock          className="w-6 h-6" />,
     accent: "text-purple-600 bg-purple-50",
     title:  "Payment Lock",
-    body:   "Debtors request access to your payment details. You approve before they see your bank account or DuitNow — zero risk of unauthorised transfers.",
+    body:   "Control access to receiving-account details through the supported payment-access workflow. Review requests and keep an access record.",
     tag:    "Security",
   },
   {
     icon:   <ClipboardList className="w-6 h-6" />,
     accent: "text-amber-600 bg-amber-50",
-    title:  "Evidence Pack",
-    body:   "Upload invoices, delivery orders, contracts, and photos. Export everything as a stamped PDF evidence pack, ready for a lawyer or court.",
-    tag:    "Legal ready",
+    title:  "Case Evidence Export",
+    body:   "Upload invoices, delivery orders, contracts, and photos, then export an organised factual PDF for your records or external review.",
+    tag:    "Record keeping",
   },
   {
     icon:   <FileText      className="w-6 h-6" />,
     accent: "text-orange-600 bg-orange-50",
-    title:  "Formal Demand Draft",
-    body:   "Generate a formal letter of demand with one click — professional tone, proper Malaysian formatting, ready to send or hand to a solicitor.",
-    tag:    "Legal",
+    title:  "Formal Payment Reminder",
+    body:   "Prepare a creditor-authored payment reminder or final payment notice from recorded case facts, with a visible legal disclaimer.",
+    tag:    "Notice draft",
   },
   {
     icon:   <CheckCircle2  className="w-6 h-6" />,
@@ -376,11 +339,13 @@ const steps = [
     n:    "5",
     icon: <Gavel       className="w-5 h-5 text-white" />,
     title:"Export documents",
-    body: "Generate a formal demand letter or evidence pack PDF — ready for a lawyer or the Tribunal Tuntutan Pengguna.",
+    body: "Prepare a payment-notice draft or factual Case Evidence Export, then request qualified external review when needed.",
   },
 ];
 
 function HowItWorks() {
+  const [activeStep, setActiveStep] = useState(0);
+  const selected = steps[activeStep];
   return (
     <section id="how" className="py-20 px-5 bg-white">
       <div className="max-w-4xl mx-auto">
@@ -395,27 +360,42 @@ function HowItWorks() {
         {/* Steps — vertical timeline on mobile, horizontal on md+ */}
         <div className="flex flex-col md:flex-row gap-0 md:gap-0 relative">
           {/* Connector line (desktop) */}
-          <div className="hidden md:block absolute top-6 left-[calc(10%+20px)] right-[calc(10%+20px)] h-0.5 bg-gradient-to-r from-[#009966] to-[#0D1B3D] opacity-20" />
+          <div className="hidden md:block absolute top-6 left-[calc(10%+20px)] right-[calc(10%+20px)] h-0.5 bg-[var(--cb-divider)]" />
 
           {steps.map((s, i) => (
             <div key={s.n} className="flex-1 flex flex-col items-center text-center px-3">
               {/* Mobile: connecting line */}
               {i > 0 && (
-                <div className="md:hidden w-0.5 h-8 bg-gradient-to-b from-[#009966] to-[#0D1B3D] opacity-20 mb-0" />
+                <div className="md:hidden w-0.5 h-8 bg-[var(--cb-divider)] mb-0" />
               )}
 
               {/* Circle */}
-              <div className="relative z-10 w-12 h-12 rounded-full bg-[#009966] flex items-center justify-center shadow-md shadow-emerald-200 mb-4 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveStep(i)}
+                aria-pressed={activeStep === i}
+                aria-controls="tour-step-detail"
+                className={cn(
+                  "relative z-10 mb-4 flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-md transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007A52] focus-visible:ring-offset-2",
+                  activeStep === i ? "scale-110 bg-[#009966] shadow-emerald-200" : "bg-[#0D1B3D] shadow-slate-200 hover:scale-105",
+                )}
+              >
                 {s.icon}
                 <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#0D1B3D] text-white text-[9px] font-black flex items-center justify-center border-2 border-white">
                   {s.n}
                 </span>
-              </div>
+              </button>
 
               <p className="text-sm font-black text-[#0D1B3D] mb-1.5">{s.title}</p>
               <p className="text-xs text-gray-500 leading-relaxed max-w-[160px] mx-auto">{s.body}</p>
             </div>
           ))}
+        </div>
+
+        <div id="tour-step-detail" aria-live="polite" className="mx-auto mt-10 max-w-xl rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#007A52]">Tour step {selected.n} of {steps.length}</p>
+          <h3 className="mt-2 text-lg font-black text-[#0D1B3D]">{selected.title}</h3>
+          <p className="mt-2 text-sm leading-relaxed text-gray-600">{selected.body}</p>
         </div>
 
         {/* CTA */}
@@ -432,67 +412,75 @@ function HowItWorks() {
   );
 }
 
+// ─── Product fit ──────────────────────────────────────────────────────────────
+
+function ProductFit() {
+  const products = [
+    {
+      name: "CollectBoss",
+      icon: Building2,
+      bestFor: "Businesses managing structured collection cases, controls, teams, evidence and reporting.",
+      points: ["Full case-to-payment workflow", "Team permissions and operational controls", "Evidence exports and advanced reporting"],
+      href: "/signup?plan=free",
+      cta: "Choose CollectBoss",
+    },
+    {
+      name: "CollectBoss Pocket",
+      icon: Smartphone,
+      bestFor: "Solo operators who want a simpler, mobile-first way to track debts, receipts and reminders.",
+      points: ["Fast mobile-first daily workflow", "Customers, debts, receipts and reminders", "Upgrade path to the full workspace"],
+      href: "/signup?product=pocket",
+      cta: "Choose Pocket",
+    },
+  ] as const;
+
+  return (
+    <section id="products" className="bg-white px-5 py-20">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-10 text-center">
+          <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[#009966]">Choose the right product</p>
+          <h2 className="text-3xl font-black text-[#0D1B3D] md:text-4xl">CollectBoss or CollectBoss Pocket?</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-base text-gray-500">Both use one secure account. Choose based on how much workflow depth your business needs today.</p>
+        </div>
+        <div className="grid gap-5 md:grid-cols-2">
+          {products.map(({ name, icon: Icon, bestFor, points, href, cta }) => (
+            <article key={name} className="flex flex-col rounded-2xl border-2 border-gray-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0D1B3D] text-white"><Icon aria-hidden="true" className="h-5 w-5" /></span>
+                <h3 className="text-xl font-black text-[#0D1B3D]">{name}</h3>
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-gray-600">{bestFor}</p>
+              <ul className="my-5 flex flex-1 flex-col gap-2">
+                {points.map((point) => <li key={point} className="flex gap-2 text-sm text-gray-700"><CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#009966]" />{point}</li>)}
+              </ul>
+              <Link href={href} className="flex min-h-11 items-center justify-center rounded-xl bg-[#009966] px-4 py-3 text-sm font-bold text-white hover:bg-[#00B377]">{cta}</Link>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Pricing ──────────────────────────────────────────────────────────────────
 
-const plans = [
-  {
-    name:     "Free",
-    price:    "RM 0",
-    period:   "forever",
-    desc:     "For SMEs just getting started.",
-    color:    "border-gray-200",
-    badge:    null,
-    features: [
-      "Up to 5 active cases",
-      "Reminder generator",
-      "Basic evidence upload",
-      "Payment tracking",
-      "Email support",
-    ],
-    cta:      "Start Free",
-    href:     "/signup",
-    primary:  false,
-  },
-  {
-    name:     "Starter",
-    price:    "RM 49",
-    period:   "/ month",
-    desc:     "For SMEs actively chasing debtors.",
-    color:    "border-[#009966]",
-    badge:    "Most Popular",
-    features: [
-      "Up to 50 active cases",
-      "Professional reminders (all tones)",
-      "Payment Lock & proof review",
-      "Evidence pack PDF export",
-      "Formal demand letter draft",
-      "Priority support",
-    ],
-    cta:      "Start Starter",
-    href:     "/signup",
-    primary:  true,
-  },
-  {
-    name:     "Boss",
-    price:    "RM 149",
-    period:   "/ month",
-    desc:     "For high-volume collections & teams.",
-    color:    "border-[#0D1B3D]",
-    badge:    null,
-    features: [
-      "Unlimited active cases",
-      "Everything in Starter",
-      "Team members (up to 5)",
-      "Lawyer referral directory",
-      "Small claim pack generator",
-      "Custom branding on documents",
-      "Dedicated account manager",
-    ],
-    cta:      "Go Boss",
-    href:     "/signup",
-    primary:  false,
-  },
-];
+const plans = PLAN_ORDER.map((slug) => {
+  const plan = PLANS[slug];
+  const marketing = PLAN_MARKETING[slug];
+  return {
+    name: plan.name,
+    slug,
+    price: plan.monthly_price_rm === 0 ? "RM 0" : `RM ${plan.monthly_price_rm}`,
+    period: plan.monthly_price_rm === 0 ? "forever" : "/ month",
+    desc: marketing.description,
+    color: marketing.color,
+    badge: marketing.badge,
+    features: planFeatureLabels(plan),
+    cta: marketing.cta,
+    href: `/signup?plan=${slug}`,
+    primary: marketing.primary,
+  };
+});
 
 function Pricing() {
   return (
@@ -505,13 +493,9 @@ function Pricing() {
             Start free. Upgrade when you need more.
             All prices in Ringgit Malaysia.
           </p>
-          <div className="inline-flex items-center gap-2 mt-4 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold px-4 py-2 rounded-full">
-            <Clock className="w-3.5 h-3.5 text-amber-500" />
-            Pricing coming soon — all features free during beta
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => (
             <div
               key={plan.name}
@@ -585,7 +569,7 @@ const faqs = [
   },
   {
     q: "Can the evidence pack be used in court?",
-    a: "The evidence pack PDF is designed to organise and present your documentation clearly. While it is not a legal document itself, it contains all the evidence you need to support a claim at the Tribunal Tuntutan Pengguna Malaysia or through a lawyer.",
+    a: "The Case Evidence Export organises the records you selected. It is not a filed claim, does not prove admissibility or completeness, and does not determine court or tribunal eligibility. Verify requirements with the relevant official authority and a qualified legal professional.",
   },
   {
     q: "What happens to my data if I cancel?",
@@ -616,7 +600,11 @@ function FAQ() {
                 )}
               >
                 <button
+                  type="button"
                   onClick={() => setOpenIdx(isOpen ? null : i)}
+                  aria-expanded={isOpen}
+                  aria-controls={`landing-faq-answer-${i}`}
+                  id={`landing-faq-question-${i}`}
                   className="w-full flex items-center justify-between px-5 py-4 text-left gap-3"
                 >
                   <p className={cn("text-sm font-semibold", isOpen ? "text-[#009966]" : "text-[#0D1B3D]")}>
@@ -630,7 +618,7 @@ function FAQ() {
                   />
                 </button>
                 {isOpen && (
-                  <div className="px-5 pb-4">
+                  <div id={`landing-faq-answer-${i}`} role="region" aria-labelledby={`landing-faq-question-${i}`} className="px-5 pb-4">
                     <p className="text-sm text-gray-600 leading-relaxed">{faq.a}</p>
                   </div>
                 )}
@@ -654,8 +642,7 @@ function CTABanner() {
           Stop chasing. Start collecting.
         </h2>
         <p className="text-blue-200 text-base mb-8 leading-relaxed">
-          Join Malaysian SME owners who use CollectBoss to recover money
-          they were owed — professionally and without awkward conversations.
+          Create your secure account, choose the right product, and start a guided recovery workflow.
         </p>
         <Link
           href="/signup"
@@ -680,9 +667,7 @@ function Footer() {
         <div className="flex flex-col md:flex-row items-start justify-between gap-8 mb-10">
           {/* Brand */}
           <div className="max-w-xs">
-            <span className="text-2xl font-black tracking-tight text-white">
-              Collect<span className="text-[#009966]">Boss</span>
-            </span>
+            <CollectBossWordmark variant="dark" className="text-2xl" />
             <p className="text-blue-300 text-xs mt-2 leading-relaxed">
               Collect Smart. Recover Better.
             </p>
@@ -696,10 +681,16 @@ function Footer() {
             <div>
               <p className="text-blue-200 font-bold text-xs uppercase tracking-wide mb-3">Product</p>
               <ul className="flex flex-col gap-2">
-                {["Features", "How It Works", "Pricing", "FAQ"].map((l) => (
-                  <li key={l}>
-                    <a href={`#${l.toLowerCase().replace(/ /g, "")}`} className="text-blue-400 hover:text-blue-200 text-xs transition-colors">
-                      {l}
+                {[
+                  { label: "Features", href: "#features" },
+                  { label: "How It Works", href: "#how" },
+                  { label: "Choose Product", href: "#products" },
+                  { label: "Pricing", href: "#pricing" },
+                  { label: "FAQ", href: "#faq" },
+                ].map((item) => (
+                  <li key={item.href}>
+                    <a href={item.href} className="text-blue-400 hover:text-blue-200 text-xs transition-colors">
+                      {item.label}
                     </a>
                   </li>
                 ))}
@@ -711,6 +702,8 @@ function Footer() {
                 {[
                   { label: "Sign Up",  href: "/signup" },
                   { label: "Sign In",  href: "/login"  },
+                  { label: "System Status", href: "/status" },
+                  { label: "Beginner Glossary", href: "/glossary" },
                 ].map((l) => (
                   <li key={l.label}>
                     <Link href={l.href} className="text-blue-400 hover:text-blue-200 text-xs transition-colors">
@@ -752,8 +745,8 @@ function Footer() {
                   CollectBoss is a debt management software tool, not a law firm and not a debt collection agency.
                   CollectBoss does not provide legal advice. All communications, documents, and actions
                   taken using this platform are your responsibility as the creditor.
-                  Formal demand letters and evidence packs generated by CollectBoss are drafts only — consult
-                  a qualified Malaysian solicitor before taking legal action.
+                  Payment notices and case evidence exports generated by CollectBoss are factual drafts only;
+                  they are not issued with lawyer or court authority. Consult a qualified Malaysian solicitor before legal action.
                   Use of this platform must comply with the Consumer Protection Act 1999,
                   the Contracts Act 1950, and all applicable Malaysian laws.
                 </p>
@@ -786,6 +779,7 @@ export function LandingPage() {
         <PainPoints />
         <Features />
         <HowItWorks />
+        <ProductFit />
         <Pricing />
         <FAQ />
         <CTABanner />

@@ -6,10 +6,13 @@ import type { EvidenceFileRow } from "../src/lib/supabase/types.ts";
 
 function file(id: string, name: string, uploadedAt: string, bytes = 1024): EvidenceFileRow {
   return {
-    id, case_id: "case-1", file_name: name, file_type: "PDF", file_url: null, file_size_bytes: bytes,
+    id, case_id: "case-1", business_id: "business-1", intake_id: null,
+    file_name: name, file_type: "PDF", file_url: null, file_size_bytes: bytes,
     evidence_type: "invoice", uploaded_at: uploadedAt, object_path: "private/path", description: null,
     document_date: null, is_internal: true, archived_at: null, archived_by: null, retention_until: null,
     content_sha256: "a".repeat(64),
+    page_count: 1, evidence_version: 1, is_current: true, scan_status: "clean",
+    processing_status: "completed", duplicate_match_status: "none", soft_deleted_at: null,
   };
 }
 

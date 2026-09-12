@@ -14,8 +14,7 @@ import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
 import { formatRM } from "@/lib/mock-data";
 import {
   ChevronLeft, Eye, ShieldCheck, Lock, CheckCircle2,
-  Smartphone, FileCheck, Clock, User, ExternalLink,
-  AlertCircle, Save,
+  ExternalLink, AlertCircle,
 } from "lucide-react";
 
 // ─── Lock mode options ────────────────────────────────────────────────────────
@@ -54,23 +53,6 @@ const lockOptions: Array<{
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "relative w-11 h-6 rounded-full transition-colors shrink-0",
-        checked ? "bg-[#009966]" : "bg-gray-200"
-      )}
-    >
-      <span className={cn(
-        "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all",
-        checked ? "left-[22px]" : "left-0.5"
-      )} />
-    </button>
-  );
-}
-
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -90,11 +72,8 @@ export function PaymentAccessSettingsPage({ caseId }: Props) {
   const [publicUrl,  setPublicUrl] = useState<string | null>(null);
   const [creatingPublicLink, setCreatingPublicLink] = useState(false);
 
-  // Local-only security controls (not yet persisted to DB)
-  const [requireOtp,    setRequireOtp]    = useState(true);
-  const [manualProof,   setManualProof]   = useState(true);
-  const [autoHide,      setAutoHide]      = useState(true);
-  const [oneTimeAccess, setOneTimeAccess] = useState(false);
+  // Applied by the server when a new capability link is created.
+  const [expiresInHours, setExpiresInHours] = useState(24);
 
   if (caseLoading) return <LoadingSpinner />;
 
@@ -144,7 +123,7 @@ export function PaymentAccessSettingsPage({ caseId }: Props) {
       const response = await fetch(`/api/cases/${encodeURIComponent(c.id)}/public-links`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ purpose: "payment", expiresInHours: autoHide ? 24 : 168 }),
+        body: JSON.stringify({ purpose: "payment", expiresInHours }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || typeof payload.url !== "string") {
@@ -205,6 +184,7 @@ export function PaymentAccessSettingsPage({ caseId }: Props) {
               return (
                 <button
                   key={opt.mode}
+                  aria-pressed={isSelected}
                   onClick={() => setLockMode(opt.mode)}
                   className={cn(
                     "flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all",
@@ -254,33 +234,12 @@ export function PaymentAccessSettingsPage({ caseId }: Props) {
           </div>
         )}
 
-        {/* Security controls (UI-only, not yet persisted) */}
-        <SectionCard title="Security Controls">
-          <p className="text-[11px] text-gray-400 mb-3 mt-1">
-            Additional safeguards for payment information.
-          </p>
-          <div className="flex flex-col gap-1">
-            {[
-              { icon: <Smartphone className="w-4 h-4 text-blue-500" />, label: "Require OTP before request", sub: "Debtor must verify phone number", checked: requireOtp, onChange: setRequireOtp },
-              { icon: <FileCheck className="w-4 h-4 text-purple-500" />, label: "Manual proof required", sub: "You review payment proof before marking paid", checked: manualProof, onChange: setManualProof },
-              { icon: <Clock className="w-4 h-4 text-amber-500" />, label: "Auto-hide after 24 hours", sub: "Payment details expire automatically", checked: autoHide, onChange: setAutoHide },
-              { icon: <User className="w-4 h-4 text-gray-400" />, label: "One-time access only", sub: "Details shown once, then locked again", checked: oneTimeAccess, onChange: setOneTimeAccess },
-            ].map((row) => (
-              <div key={row.label} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
-                <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 mt-0.5">{row.icon}</div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-800">{row.label}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">{row.sub}</p>
-                  </div>
-                </div>
-                <div className="ml-3"><Toggle checked={row.checked} onChange={row.onChange} /></div>
-              </div>
-            ))}
-          </div>
-          <p className="text-[10px] text-gray-400 mt-2">
-            ⚠️ Security controls are locally set and will be persisted in a future update.
-          </p>
+        <SectionCard title="New payment link">
+          <label className="cb-field-label" htmlFor="payment-link-expiry">Link expires after</label>
+          <select id="payment-link-expiry" className="cb-field" value={expiresInHours} onChange={(event) => setExpiresInHours(Number(event.target.value))}>
+            <option value={24}>24 hours</option><option value={168}>7 days</option>
+          </select>
+          <p className="cb-field-help">Applies to the next link you create, not existing links. Access and proof-review requirements are enforced by the server; they cannot be changed with local switches.</p>
         </SectionCard>
 
         {/* Payment reference */}
@@ -297,17 +256,18 @@ export function PaymentAccessSettingsPage({ caseId }: Props) {
         <button
           type="button"
           onClick={createPaymentLink}
-          disabled={creatingPublicLink}
+          disabled={creatingPublicLink || isDirty || saving}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-600 transition-colors hover:border-gray-300 disabled:opacity-60"
         >
           {creatingPublicLink ? <InlineSpinner /> : <ExternalLink className="w-4 h-4" />}
           Create secure payment link
         </button>
+        {isDirty && <p className="text-sm text-slate-600">Save the visibility rule before creating a link.</p>}
         {publicUrl && <a href={publicUrl} target="_blank" rel="noreferrer" className="break-all text-center text-xs font-semibold text-[#009966] hover:underline">{publicUrl}</a>}
 
         {/* Error */}
         {saveError && (
-          <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+          <div role="alert" className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
             <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
             <p className="text-xs text-red-700">{saveError}</p>
           </div>

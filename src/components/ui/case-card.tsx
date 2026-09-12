@@ -4,8 +4,10 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { StatusBadge } from "./status-badge";
 import { type CaseRow } from "@/lib/supabase/types";
-import { formatRM, getInitials, getAvatarColor } from "@/lib/mock-data";
+import { getInitials, getAvatarColor } from "@/lib/mock-data";
 import { Calendar, MapPin, Send, ChevronRight } from "lucide-react";
+import { useRegion } from "@/contexts/region-context";
+import { formatCalendarDate, formatCurrency } from "@/lib/international/formatting";
 
 interface CaseCardProps {
   case: CaseRow;
@@ -14,6 +16,7 @@ interface CaseCardProps {
 }
 
 export function CaseCard({ case: c, className, showAction = true }: CaseCardProps) {
+  const { configuration } = useRegion();
   const amountDisplay = c.balance > 0 ? c.balance : c.amount_paid;
 
   return (
@@ -47,13 +50,13 @@ export function CaseCard({ case: c, className, showAction = true }: CaseCardProp
           </div>
 
           <p className="text-lg font-black text-gray-900 mt-2 tracking-tight">
-            {formatRM(amountDisplay)}
+            {formatCurrency(amountDisplay, configuration.settings, c.currency ?? configuration.settings.defaultCurrency)}
           </p>
 
           <div className="flex items-center gap-3 mt-1.5 flex-wrap">
             <span className="flex items-center gap-1 text-[11px] text-gray-400">
               <Calendar className="w-3 h-3" />
-              Due {c.due_date}
+              Due {formatCalendarDate(c.due_date, configuration.settings)}
             </span>
             {c.days_overdue > 0 && (
               <span className="text-[11px] text-red-500 font-semibold">

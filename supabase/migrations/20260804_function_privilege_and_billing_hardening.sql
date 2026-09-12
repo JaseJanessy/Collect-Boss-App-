@@ -26,3 +26,9 @@ grant execute on function public.payment_plan_record_response(uuid,text,text,tex
 grant execute on function public.public_rotate_access_token(uuid,text,uuid,timestamptz) to service_role;
 
 commit;
+
+-- Rollback: replace this allowlist only with the previously reviewed explicit
+-- grants required by the deployed application. Never restore blanket EXECUTE
+-- to public, anon or authenticated, and never expose service-only functions.
+-- If the prior release cannot operate with least privilege, keep this migration
+-- and roll the application forward instead.

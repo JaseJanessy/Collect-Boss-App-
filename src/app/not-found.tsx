@@ -1,12 +1,11 @@
 import Link from "next/link";
+import { CollectBossWordmark } from "@/components/brand/wordmark";
 
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-[#F2F4F7] flex flex-col items-center justify-center px-6 text-center">
       {/* CollectBoss wordmark */}
-      <span className="text-2xl font-black text-[#0D1B3D] mb-8">
-        Collect<span className="text-[#009966]">Boss</span>
-      </span>
+      <CollectBossWordmark className="mb-8 text-2xl" />
 
       {/* 404 block */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 px-8 py-10 max-w-sm w-full">

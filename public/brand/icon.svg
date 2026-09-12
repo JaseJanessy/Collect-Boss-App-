@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">CollectBoss CB app icon</title>
+  <rect width="512" height="512" rx="104" fill="#0D1B3D"/>
+  <text x="256" y="278" font-family="Arial, sans-serif" font-size="210" font-weight="900" text-anchor="middle">
+    <tspan fill="#FFFFFF">C</tspan><tspan fill="#009966">B</tspan>
+  </text>
+</svg>

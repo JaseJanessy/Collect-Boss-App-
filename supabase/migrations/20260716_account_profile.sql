@@ -120,3 +120,8 @@ using (
 
 commit;
 
+-- Rollback: deploy the previous profile UI/API first and stop writes to these
+-- fields. Preserve creditor-profile rows and business-assets objects required
+-- by audit or retention policy. Revoke the added storage policies before
+-- removing only proven-unused schema objects; never delete stored assets as an
+-- application rollback shortcut.

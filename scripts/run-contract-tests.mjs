@@ -8,7 +8,7 @@ function findContractTests(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) {
-      return ["component", "fixtures", "integration", "unit"].includes(entry.name)
+      return ["component", "fixtures", "integration", "performance", "unit"].includes(entry.name)
         ? []
         : findContractTests(path);
     }

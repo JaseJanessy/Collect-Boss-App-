@@ -16,20 +16,22 @@ export interface UseLegalDocumentsState {
   addDoc:    (doc: LegalDocumentRow) => void;
 }
 
-export function useLegalDocuments(caseId: string): UseLegalDocumentsState {
+export function useLegalDocuments(caseId: string, enabled = true): UseLegalDocumentsState {
   const [docs,    setDocs]    = useState<LegalDocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!enabled) return;
+    setLoading(true);
     if (!caseId) { setLoading(false); return; }
     const result = await getLegalDocsByCaseClient(caseId);
     if (result.error) setError(result.error);
     else              setDocs(result.data ?? []);
     setLoading(false);
-  }, [caseId]);
+  }, [caseId, enabled]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (enabled) void load(); }, [enabled, load]);
 
   const addDoc = useCallback((doc: LegalDocumentRow) => {
     setDocs((prev) => [doc, ...prev]);

@@ -1,0 +1,13 @@
+
+> collectboss@1.0.0-rc.1 test:unit
+> node ./node_modules/vitest/vitest.mjs run --config vitest.config.mts --pool=forks --maxWorkers=1 tests/integration/billing-event-idempotency.integration.test.ts
+
+
+ RUN  v4.1.10 D:/Web App and phone app/COMPLETED & RUN/Completed Collectboss/collectboss
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  09:21:10
+   Duration  13.36s (transform 370ms, setup 11.29s, import 185ms, tests 9ms, environment 0ms)
+

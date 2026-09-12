@@ -32,7 +32,7 @@ test("server session consumers import the guarded client factory", () => {
     "src/app/api/cases/[caseId]/payment-plans/route.ts",
   ];
   for (const path of consumers) {
-    assert.match(read(path), /from "@\/lib\/supabase\/server-client"/);
+    assert.match(read(path), /from "@\/lib\/(?:supabase\/server-client|auth\/tenant-access|debtors\/server)"/);
   }
 });
 

@@ -11,7 +11,9 @@ import { useBusinessId } from "@/hooks/use-business-id";
 import { createPaymentClient, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS } from "@/lib/db/payments-client";
 import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
 import { type PaymentMethod, type PaymentReviewStatus } from "@/lib/supabase/types";
-import { formatRM } from "@/lib/mock-data";
+import { useRegion } from "@/contexts/region-context";
+import { formatCurrency } from "@/lib/international/formatting";
+import { getCurrencyMetadata, minorToMajorNumber, parseCurrencyToMinor } from "@/lib/financial/money";
 import {
   ChevronLeft, DollarSign, Hash, FileText, Upload,
   CheckCircle2, AlertCircle, Info, Loader2,
@@ -26,6 +28,7 @@ interface Props {
 export function RecordPaymentPage({ caseId }: Props) {
   const { caseData, loading: caseLoading } = useCase(caseId);
   const businessId = useBusinessId();
+  const { configuration } = useRegion();
 
   const [amount,       setAmount]       = useState("");
   const [method,       setMethod]       = useState<PaymentMethod>("duitnow_qr");
@@ -53,8 +56,13 @@ export function RecordPaymentPage({ caseId }: Props) {
   }
 
   const c          = caseData;
-  const amountNum  = parseFloat(amount) || 0;
-  const isValid    = amountNum > 0;
+  let amountNum = 0;
+  let isValid = false;
+  try {
+    const amountMinor = parseCurrencyToMinor(amount, c.currency);
+    amountNum = minorToMajorNumber(amountMinor, c.currency);
+    isValid = true;
+  } catch { /* The server returns the authoritative validation message. */ }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -97,6 +105,7 @@ export function RecordPaymentPage({ caseId }: Props) {
 
     const result = await createPaymentClient({
       case_id:        c.id,
+      currency:       c.currency,
       amount,
       payment_method: method,
       reference_no:   reference.trim() || null,
@@ -156,24 +165,24 @@ export function RecordPaymentPage({ caseId }: Props) {
           </div>
           <div className="text-right">
             <p className="text-[10px] text-blue-200">Balance Due</p>
-            <p className="text-lg font-black text-white">{formatRM(c.balance)}</p>
+            <p className="text-lg font-black text-white">{formatCurrency(c.balance, configuration.settings, c.currency)}</p>
           </div>
         </div>
 
         {/* Amount */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-bold text-gray-700">Amount Received (RM) *</label>
+          <label className="text-sm font-bold text-gray-700">Amount Received ({c.currency}) *</label>
           <div className="relative">
             <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
-              type="number" min="0.01" step="0.01" placeholder="0.00"
+              type="number" min={10 ** -getCurrencyMetadata(c.currency).minorUnit} step={10 ** -getCurrencyMetadata(c.currency).minorUnit} placeholder={getCurrencyMetadata(c.currency).minorUnit === 0 ? "0" : `0.${"0".repeat(getCurrencyMetadata(c.currency).minorUnit)}`}
               value={amount} onChange={(e) => setAmount(e.target.value)}
               className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-lg font-black text-gray-900 outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300 transition-all"
             />
           </div>
           {amountNum > 0 && amountNum < c.balance && (
             <p className="text-xs text-amber-600 ml-1">
-              Partial — remaining balance: {formatRM(c.balance - amountNum)}
+              Partial — remaining balance: {formatCurrency(c.balance - amountNum, configuration.settings, c.currency)}
             </p>
           )}
           {amountNum >= c.balance && amountNum > 0 && (
@@ -353,6 +362,7 @@ function Confirmation({
   caseData: import("@/lib/supabase/types").CaseRow;
   submitted: { amount: number; method: PaymentMethod; reference: string; status: PaymentReviewStatus };
 }) {
+  const { configuration } = useRegion();
   const isApproved = s.status === "approved";
   return (
     <div className="flex flex-col items-center px-6 py-12 text-center">
@@ -371,7 +381,7 @@ function Confirmation({
       <div className="mt-5 bg-[#F2F4F7] rounded-2xl p-4 w-full text-left flex flex-col gap-2.5">
         {[
           { label: "Debtor",    value: c.debtor_name },
-          { label: "Amount",    value: formatRM(s.amount) },
+          { label: "Amount",    value: formatCurrency(s.amount, configuration.settings, c.currency) },
           { label: "Method",    value: PAYMENT_METHOD_LABELS[s.method] },
           { label: "Reference", value: s.reference },
           { label: "Status",    value: isApproved ? "Approved" : "Pending Review" },

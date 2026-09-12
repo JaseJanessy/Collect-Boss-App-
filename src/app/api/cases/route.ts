@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findDuplicateDebtors, getAuthenticatedBusiness } from "@/lib/debtors/server";
 import { caseStatusSchema, createCaseSchema } from "@/lib/validations/case";
-import { minorToMyRDecimal, parseMyrToMinor } from "@/lib/financial/money";
+import { minorToDecimalString, parseCurrencyToMinor } from "@/lib/financial/money";
+import { normalizeLegacyCaseRow } from "@/lib/receivables/legacy-normalization";
 import type { CaseRow, DebtorRow } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,16 @@ function parsePageParam(value: string | null, fallback: number, maximum: number)
   return Number.isInteger(parsed) && parsed >= 1 && parsed <= maximum ? parsed : null;
 }
 
+function optionalInteger(value: string | null, maximum = 100_000_000) {
+  if (value === null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= maximum ? parsed : undefined;
+}
+
+function booleanParam(value: string | null) {
+  return value === "true";
+}
+
 export async function GET(request: NextRequest) {
   const auth = await getAuthenticatedBusiness();
   if ("error" in auth) {
@@ -28,41 +39,62 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid pagination parameters." }, { status: 400 });
   }
 
-  const requestedStatus = request.nextUrl.searchParams.get("status");
-  const status = requestedStatus ? caseStatusSchema.safeParse(requestedStatus) : null;
-  if (requestedStatus && !status?.success) {
+  const requestedStatuses = request.nextUrl.searchParams.getAll("status");
+  const statuses = requestedStatuses.map((value) => caseStatusSchema.safeParse(value));
+  if (statuses.some((status) => !status.success)) {
     return NextResponse.json({ error: "Invalid case status filter." }, { status: 400 });
   }
 
-  const rawQuery = request.nextUrl.searchParams.get("query")?.trim().slice(0, 100) ?? "";
-  const search = rawQuery.replace(/[,%().]/g, "");
-  let query = auth.client
-    .from("cases")
-    .select("*", { count: "exact" })
-    .eq("business_id", auth.businessId)
-    .order("created_at", { ascending: false });
-
-  if (status?.success) query = query.eq("status", status.data);
-  if (search) {
-    query = query.or([
-      `id.ilike.%${search}%`,
-      `debtor_name.ilike.%${search}%`,
-      `debtor_company.ilike.%${search}%`,
-    ].join(","));
+  const priorities = request.nextUrl.searchParams.getAll("priority");
+  if (priorities.some((value) => !["low", "medium", "high", "urgent"].includes(value))) {
+    return NextResponse.json({ error: "Invalid priority filter." }, { status: 400 });
   }
-
-  const start = (page - 1) * perPage;
-  const { data, error, count } = await query.range(start, start + perPage - 1);
-  if (error) return NextResponse.json({ error: "Unable to load cases." }, { status: 500 });
+  const agingMin = optionalInteger(request.nextUrl.searchParams.get("agingMin"), 36_500);
+  const agingMax = optionalInteger(request.nextUrl.searchParams.get("agingMax"), 36_500);
+  const highValueMinor = optionalInteger(request.nextUrl.searchParams.get("highValueMinor"));
+  if (agingMin === undefined || agingMax === undefined || highValueMinor === undefined
+    || (agingMin !== null && agingMax !== null && agingMin > agingMax)) {
+    return NextResponse.json({ error: "Invalid numeric filter." }, { status: 400 });
+  }
+  const owner = request.nextUrl.searchParams.get("owner")?.trim() || null;
+  if (owner && !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(owner)) {
+    return NextResponse.json({ error: "Invalid owner filter." }, { status: 400 });
+  }
+  const { data, error } = await auth.client.rpc("operational_case_search", {
+    p_business_id: auth.businessId,
+    p_query: request.nextUrl.searchParams.get("query")?.trim().slice(0, 160) || null,
+    p_statuses: requestedStatuses.length ? requestedStatuses : null,
+    p_priorities: priorities.length ? priorities : null,
+    p_owner_id: owner,
+    p_aging_min: agingMin,
+    p_aging_max: agingMax,
+    p_promise_missed: booleanParam(request.nextUrl.searchParams.get("promiseMissed")),
+    p_has_plan: booleanParam(request.nextUrl.searchParams.get("plan")),
+    p_has_dispute: booleanParam(request.nextUrl.searchParams.get("dispute")),
+    p_due_today: booleanParam(request.nextUrl.searchParams.get("dueToday")),
+    p_high_value_minor: highValueMinor,
+    p_closed: booleanParam(request.nextUrl.searchParams.get("closed")),
+    p_limit: perPage,
+    p_offset: (page - 1) * perPage,
+  });
+  if (error || !data) {
+    return NextResponse.json({
+      error: error?.code === "PGRST202"
+        ? "Operational search is unavailable until the R16 database migration is applied."
+        : "Unable to load cases.",
+    }, { status: 503 });
+  }
+  const result = data as { cases?: CaseRow[]; total?: number };
+  const rows = Array.isArray(result.cases) ? result.cases : [];
 
   return NextResponse.json(
-    { cases: (data ?? []) as CaseRow[], page, perPage, total: count ?? 0 },
+    { cases: rows.map(normalizeLegacyCaseRow), page, perPage, total: Number(result.total ?? 0) },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await getAuthenticatedBusiness();
+  const auth = await getAuthenticatedBusiness("case.manage");
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.error === "You must be signed in." ? 401 : 503 });
   }
@@ -71,7 +103,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Enter complete valid case details." }, { status: 400 });
   const input = parsed.data;
   let principalAmount: string;
-  try { principalAmount = minorToMyRDecimal(parseMyrToMinor(input.amount_owed)); } catch {
+  try { principalAmount = minorToDecimalString(parseCurrencyToMinor(input.amount_owed, input.currency), input.currency); } catch {
     return NextResponse.json({ error: "Enter a valid case amount." }, { status: 400 });
   }
 
@@ -128,6 +160,7 @@ export async function POST(request: NextRequest) {
       debtor_company: debtor.debtor_type === "business" ? debtor.business_name : null,
       debtor_reg_no: debtor.registration_no,
       debtor_location: debtor.address,
+      currency: input.currency,
       amount_owed: principalAmount,
       amount_paid: 0,
       due_date: input.due_date,
@@ -146,5 +179,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unable to create case." }, { status: 500 });
   }
 
-  return NextResponse.json({ case: caseRow }, { status: 201 });
+  return NextResponse.json({ case: normalizeLegacyCaseRow(caseRow as CaseRow) }, { status: 201 });
 }

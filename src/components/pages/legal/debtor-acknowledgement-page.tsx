@@ -5,6 +5,8 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { InlineSpinner } from "@/components/ui/loading-spinner";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import type { PublicAcknowledgementDetails } from "@/lib/public-access/types";
+import { formatCurrencyMinor } from "@/lib/financial/money";
+import { CollectBossWordmark } from "@/components/brand/wordmark";
 
 interface Props {
   token: string;
@@ -13,8 +15,8 @@ interface Props {
 
 type FormState = "ready" | "submitting" | "success" | "invalid" | "expired" | "error";
 
-const formatRM = (minor: string) =>
-  new Intl.NumberFormat("en-MY", { style: "currency", currency: "MYR" }).format(Number(minor) / 100);
+const formatMoney = (minor: string, currency: string) =>
+  formatCurrencyMinor(BigInt(minor), currency, { explicitCode: true });
 
 export function DebtorAcknowledgementPage({ token, plan }: Props) {
   const [state, setState] = useState<FormState>("ready");
@@ -75,14 +77,14 @@ export function DebtorAcknowledgementPage({ token, plan }: Props) {
 
         <div className="mt-5 rounded-2xl bg-[#F2F4F7] p-4">
           <p className="text-xs font-semibold text-gray-500">Total proposed settlement</p>
-          <p className="mt-1 text-2xl font-black text-[#0D1B3D]">{formatRM(plan.totalMinor)}</p>
+          <p className="mt-1 text-2xl font-black text-[#0D1B3D]">{formatMoney(plan.totalMinor, plan.currency)}</p>
           <p className="mt-2 text-xs text-gray-500">{plan.schedule.length} instalments · {plan.frequency} · terms version {plan.termsVersion}</p>
         </div>
 
         {plan.schedule.length > 0 && <div className="mt-5">
           <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Immutable instalment schedule</p>
           <ul className="mt-2 max-h-40 space-y-2 overflow-y-auto rounded-xl border border-gray-100 p-3 text-sm text-gray-700">
-            {plan.schedule.map((item) => <li key={item.sequence} className="flex justify-between gap-3"><span>{item.sequence}. {item.dueDate}</span><strong>{formatRM(item.amountMinor)}</strong></li>)}
+            {plan.schedule.map((item) => <li key={item.sequence} className="flex justify-between gap-3"><span>{item.sequence}. {item.dueDate}</span><strong>{formatMoney(item.amountMinor, plan.currency)}</strong></li>)}
           </ul>
         </div>}
         {plan.notes && <p className="mt-4 rounded-xl bg-gray-50 p-3 text-xs leading-relaxed text-gray-600">{plan.notes}</p>}
@@ -116,7 +118,7 @@ export function DebtorAcknowledgementPage({ token, plan }: Props) {
 }
 
 function Brand() {
-  return <span className="text-xl font-black text-[#0D1B3D]">Collect<span className="text-[#009966]">Boss</span></span>;
+  return <CollectBossWordmark />;
 }
 
 function StateView({ title, message, success = false }: { title: string; message: string; success?: boolean }) {

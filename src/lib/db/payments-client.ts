@@ -15,6 +15,7 @@ import {
 import { ok, fail, type DbResult } from "./result";
 import { recordPaymentClient } from "./cases-client";
 import { mockPaymentRecords } from "@/lib/mock-payment-data";
+import { PAYMENT_STATUS_METADATA } from "@/lib/domain/workflows";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -38,11 +39,11 @@ export const REVIEW_STATUS_CONFIG: Record<
   PaymentReviewStatus,
   { label: string; color: string; bg: string; border: string; dot: string }
 > = {
-  pending_review: { label: "Pending Review", color: "text-amber-700",   bg: "bg-amber-50",   border: "border-amber-200",   dot: "bg-amber-400"   },
-  approved:       { label: "Approved",       color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200", dot: "bg-emerald-500" },
-  rejected:       { label: "Rejected",       color: "text-red-600",     bg: "bg-red-50",     border: "border-red-200",     dot: "bg-red-400"     },
-  unmatched:      { label: "Unmatched",      color: "text-gray-500",    bg: "bg-gray-50",    border: "border-gray-200",    dot: "bg-gray-400"    },
-  reversed:       { label: "Reversed",       color: "text-rose-700",    bg: "bg-rose-50",    border: "border-rose-200",    dot: "bg-rose-500"    },
+  pending_review: { label: PAYMENT_STATUS_METADATA.pending_review.label, color: "text-amber-700",   bg: "bg-amber-50",   border: "border-amber-200",   dot: "bg-amber-400"   },
+  approved:       { label: PAYMENT_STATUS_METADATA.approved.label,       color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200", dot: "bg-emerald-500" },
+  rejected:       { label: PAYMENT_STATUS_METADATA.rejected.label,       color: "text-red-600",     bg: "bg-red-50",     border: "border-red-200",     dot: "bg-red-400"     },
+  unmatched:      { label: PAYMENT_STATUS_METADATA.unmatched.label,      color: "text-gray-500",    bg: "bg-gray-50",    border: "border-gray-200",    dot: "bg-gray-400"    },
+  reversed:       { label: PAYMENT_STATUS_METADATA.reversed.label,       color: "text-rose-700",    bg: "bg-rose-50",    border: "border-rose-200",    dot: "bg-rose-500"    },
 };
 
 // ─── Mock store ───────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ function initMockStore(): PaymentRow[] {
   return mockPaymentRecords.map((r) => ({
     id:             r.id,
     case_id:        r.caseId,
+    currency:       "MYR",
     amount:         r.amount,
     payment_method: methodToDb(r.method),
     reference_no:   r.reference ?? null,
@@ -132,6 +134,7 @@ export async function createPaymentClient(
     const newRow: PaymentRow = {
       id:             mockId(),
       case_id:        input.case_id,
+      currency:       input.currency,
       amount:         Number(input.amount),
       payment_method: input.payment_method,
       reference_no:   input.reference_no ?? null,

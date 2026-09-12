@@ -6,6 +6,7 @@
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getServerClient } from "@/lib/supabase/server-client";
 import { type CaseRow, type CaseInsert, type CaseUpdate } from "@/lib/supabase/types";
+import { normalizeLegacyCaseRow } from "@/lib/receivables/legacy-normalization";
 import { ok, fail, type DbResult } from "./result";
 import {
   mockCases,
@@ -21,7 +22,11 @@ function mockToRow(m: DebtorCase): CaseRow {
   return {
     id:                m.id,
     business_id:       "mock-business-id",
+    business_entity_id: null,
     debtor_id:         null,
+    account_id:        null,
+    case_scope:        "standalone",
+    currency:          "MYR",
     debtor_type:       m.companyRegNo ? "business" : "individual",
     debtor_name:       m.debtorName,
     debtor_phone:      m.phone,
@@ -87,7 +92,7 @@ export async function getCases(): Promise<DbResult<CaseRow[]>> {
     .order("created_at", { ascending: false });
 
   if (error) return fail(error.message);
-  return ok(data ?? []);
+  return ok((data ?? []).map(normalizeLegacyCaseRow));
 }
 
 // ─── getCaseById ──────────────────────────────────────────────────────────────
@@ -109,7 +114,7 @@ export async function getCaseById(id: string): Promise<DbResult<CaseRow>> {
 
   if (error) return fail(error.message);
   if (!data)  return fail("Case not found");
-  return ok(data);
+  return ok(normalizeLegacyCaseRow(data));
 }
 
 // ─── createCase ───────────────────────────────────────────────────────────────
@@ -130,7 +135,7 @@ export async function createCase(
     .single();
 
   if (error) return fail(error.message);
-  return ok(data);
+  return ok(normalizeLegacyCaseRow(data));
 }
 
 // ─── updateCase ───────────────────────────────────────────────────────────────
@@ -153,7 +158,7 @@ export async function updateCase(
     .single();
 
   if (error) return fail(error.message);
-  return ok(data);
+  return ok(normalizeLegacyCaseRow(data));
 }
 
 // ─── getCaseStats ─────────────────────────────────────────────────────────────

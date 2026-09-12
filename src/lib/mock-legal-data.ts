@@ -171,7 +171,7 @@ export const mockCaseTimelines: Record<string, TimelineEntry[]> = {
     { date: "8 Apr 2024",  event: "First email notice sent",                         type: "reminder" },
     { date: "15 Apr 2024", event: "Phone call — customer said will arrange payment", type: "call"     },
     { date: "22 Apr 2024", event: "Second reminder sent",                            type: "reminder" },
-    { date: "16 May 2024", event: "Formal demand letter prepared",                   type: "demand"   },
+    { date: "16 May 2024", event: "Payment notice draft prepared",                  type: "demand"   },
     { date: "2 Jun 2026",  event: "WhatsApp reminder sent today",                   type: "reminder" },
   ],
 };
@@ -264,7 +264,7 @@ export function computeLegalReadiness(
   if (!uploadedIds.has("whatsapp"))       recommendations.push("Add chat screenshot showing acknowledgement");
   if (!uploadedIds.has("delivery_order")) recommendations.push("Upload delivery order if applicable");
   if (!hasAcknowledgement)               recommendations.push("Get debtor to sign debt acknowledgement");
-  if (!hasFormalDemand && daysOverdue >= 14) recommendations.push("Send a formal demand letter");
+  if (!hasFormalDemand && daysOverdue >= 14) recommendations.push("Prepare a formal payment reminder");
 
   return {
     score,

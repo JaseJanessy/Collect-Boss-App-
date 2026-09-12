@@ -32,6 +32,16 @@ test("case-record text preserves jurisdiction and external legal-review gate", (
   assert.doesNotMatch(text, /Form 198|Magistrate Court|RM 5,000/);
 });
 
+test("version 3 is presented as a Case Evidence Export without changing legacy snapshots", () => {
+  const legacy = snapshot();
+  assert.match(buildSmallClaimPackText(legacy), /CASE-RECORD PACK FOR LEGAL REVIEW/);
+  const current = snapshot();
+  current.templateVersion = 3;
+  current.pdf.templateVersion = 3;
+  assert.match(buildSmallClaimPackText(current), /CASE EVIDENCE EXPORT FOR LEGAL REVIEW/);
+  assert.match(buildSmallClaimPackText(current), /does not determine court eligibility/i);
+});
+
 test("long case-record pack renders as a PDF", async () => {
   const pdf = await generateSmallClaimPdf(snapshot().pdf);
   const bytes = new Uint8Array(await pdf.arrayBuffer());

@@ -6,6 +6,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ChevronRight, ArrowLeft } from "lucide-react";
+import { CollectBossWordmark } from "@/components/brand/wordmark";
 
 interface LegalShellProps {
   title:        string;
@@ -34,8 +35,8 @@ export function LegalShell({ title, subtitle, lastUpdated, children }: LegalShel
       {/* ── Top nav ──────────────────────────────────────────────────────── */}
       <header className="border-b border-gray-100 bg-white sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-5 h-14 flex items-center justify-between">
-          <Link href="/" className="text-lg font-black tracking-tight text-[#0D1B3D]">
-            Collect<span className="text-[#009966]">Boss</span>
+          <Link href="/">
+            <CollectBossWordmark compact />
           </Link>
           <Link
             href="/"

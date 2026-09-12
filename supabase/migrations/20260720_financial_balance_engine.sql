@@ -388,3 +388,9 @@ grant execute on function public.financial_reverse_payment(uuid,uuid,text) to au
 grant execute on function public.financial_reconcile_case(text) to authenticated;
 
 commit;
+
+-- Rollback: stop financial writes and deploy the prior compatible readers
+-- before revoking the new RPC grants. Preserve ledger events, payment rows and
+-- minor-unit projections as financial evidence. Never drop or recompute posted
+-- records to imitate an older balance; use a verified database restore if a
+-- forward-compatible application rollback is impossible.

@@ -9,12 +9,18 @@ import { useBusinessProfile } from "@/hooks/use-business-profile";
 import { useReceivingAccounts } from "@/hooks/use-receiving-accounts";
 import { type ReceivingAccountRow } from "@/lib/supabase/types";
 import {
-  Building2, CreditCard, Lock, Bell, Shield, ChevronRight,
+  Building2, Lock, Bell,
   Star, QrCode, Eye, ShieldCheck, Zap, ArrowRight,
 } from "lucide-react";
 import { PlanBadge } from "@/components/ui/plan-badge";
 import { useEntitlements } from "@/hooks/use-entitlements";
 import { PLANS, formatLimit, formatPlanPrice, PLAN_ORDER } from "@/lib/billing/plans";
+import { TrustSafetyPanel } from "@/components/settings/trust-safety-panel";
+import { TeamAccessPanel } from "@/components/settings/team-access-panel";
+import { CreditPolicyPanel } from "@/components/settings/credit-policy-panel";
+import { EmailCommunicationsPanel } from "@/components/settings/email-communications-panel";
+import { AccountingIntegrationsPanel } from "@/components/settings/accounting-integrations-panel";
+import { RegionSettingsPanel } from "@/components/settings/region-settings-panel";
 
 // ─── Lock mode labels ─────────────────────────────────────────────────────────
 
@@ -41,8 +47,8 @@ interface Props {
 }
 
 export function BusinessSettingsPage({ dashboard }: Props) {
-  const { user } = useAuth();
-  const { profile, loading: profileLoading } = useBusinessProfile();
+  const { user, hasPermission } = useAuth();
+  const { profile, loading: profileLoading, refresh: refreshProfile } = useBusinessProfile();
   const { accounts, loading: acctLoading } = useReceivingAccounts();
   const { entitlement, loading: entLoading } = useEntitlements();
 
@@ -67,8 +73,7 @@ export function BusinessSettingsPage({ dashboard }: Props) {
       )}
 
       <div className={cn("flex flex-col gap-5", !dashboard && "px-4 pt-4")}>
-        {/* Business profile */}
-        <SectionCard title="Business Profile">
+        {hasPermission("settings.sensitive.manage") && <SectionCard title="Business Profile">
           <div className="flex items-center gap-3 mt-2">
             <div className="w-12 h-12 rounded-2xl bg-[#0D1B3D] flex items-center justify-center text-white text-base font-bold shrink-0">
               {(profile?.displayName ?? user?.name ?? user?.email ?? "?").slice(0, 2).toUpperCase()}
@@ -88,10 +93,18 @@ export function BusinessSettingsPage({ dashboard }: Props) {
               {profile ? "Edit →" : "Complete →"}
             </Link>
           </div>
-        </SectionCard>
+        </SectionCard>}
+
+        {hasPermission("settings.sensitive.manage") && <RegionSettingsPanel />}
+
+        {hasPermission("settings.sensitive.manage") && <TrustSafetyPanel profile={profile} />}
+        {hasPermission("users.manage") && <div id="team"><TeamAccessPanel /></div>}
+        {hasPermission("settings.sensitive.manage") && <CreditPolicyPanel profile={profile} refresh={refreshProfile} />}
+        {hasPermission("settings.sensitive.manage") && <EmailCommunicationsPanel />}
+        {hasPermission("settings.sensitive.manage") && <div id="integrations"><AccountingIntegrationsPanel /></div>}
 
         {/* Receiving account */}
-        <SectionCard
+        {hasPermission("receiving_accounts.manage") && <SectionCard
           title="Receiving Account"
           action={
             <Link href="/payments/account" className="text-xs text-[#009966] font-semibold">
@@ -114,7 +127,7 @@ export function BusinessSettingsPage({ dashboard }: Props) {
               </Link>
             </div>
           )}
-        </SectionCard>
+        </SectionCard>}
 
         {/* Payment policy */}
         <SectionCard title="Payment Lock Policy">
@@ -148,37 +161,8 @@ export function BusinessSettingsPage({ dashboard }: Props) {
           </Link>
         </SectionCard>
 
-        {/* Quick links */}
-        <SectionCard title="Quick Links">
-          <div className="flex flex-col mt-1">
-            {[
-              { icon: <CreditCard className="w-4 h-4 text-emerald-600" />, label: "Payment Requests",   sub: "Review debtor payment requests", href: "/payments/requests" },
-              { icon: <Shield className="w-4 h-4 text-blue-500" />,        label: "Payment History",    sub: "All recorded payments",          href: "/payments" },
-              { icon: <Bell className="w-4 h-4 text-amber-500" />,         label: "Reminders Sent",     sub: "View all generated reminders",   href: "/cases" },
-            ].map((item, i, arr) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 py-3 hover:bg-gray-50 -mx-4 px-4 transition-colors",
-                  i < arr.length - 1 && "border-b border-gray-50"
-                )}
-              >
-                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                  {item.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">{item.label}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">{item.sub}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
-              </Link>
-            ))}
-          </div>
-        </SectionCard>
-
         {/* Billing & Plan */}
-        <SectionCard
+        {hasPermission("billing.manage") && <SectionCard
           title="Billing & Plan"
           action={
             <Link href="/billing" className="text-xs font-semibold text-[#009966] hover:text-emerald-700">
@@ -191,14 +175,14 @@ export function BusinessSettingsPage({ dashboard }: Props) {
           ) : (
             <BillingSection planSlug={entitlement?.plan_slug ?? "free"} />
           )}
-        </SectionCard>
+        </SectionCard>}
 
-        {/* Team members */}
-        <SectionCard title="Team Members">
+        {/* Plan limit for the role controls above */}
+        {hasPermission("users.manage") && <SectionCard title="Team Plan Limit">
           <div className="mt-2">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs text-gray-500">
-                Team member invites are coming in a future update.
+                  Role controls above are subject to your plan&apos;s team limit.
               </p>
               {entitlement && (
                 <span className="text-[10px] font-bold text-gray-500">
@@ -218,13 +202,13 @@ export function BusinessSettingsPage({ dashboard }: Props) {
               </div>
             )}
           </div>
-        </SectionCard>
+        </SectionCard>}
 
         {/* Legal notice */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
           <p className="text-[11px] text-amber-700 leading-relaxed">
-            <strong>⚖️ Malaysian Compliance:</strong> Never expose debtor payment details publicly.
-            Always use payment lock settings. Comply with PDPA (Personal Data Protection Act 2010).
+            <strong>Payment data safety:</strong> Never expose customer payment details publicly.
+            Use payment lock settings and follow the privacy and collections requirements that apply to your business.
           </p>
         </div>
       </div>
@@ -241,10 +225,10 @@ function BillingSection({ planSlug }: { planSlug: string }) {
 
   const featureRows = [
     { label: "Cases",          value: formatLimit(plan.case_limit) },
-    { label: "Evidence Packs", value: formatLimit(plan.evidence_pack_limit) },
+    { label: "Case Evidence Exports", value: formatLimit(plan.evidence_pack_limit) },
     { label: "Team Members",   value: String(plan.team_member_limit) },
     { label: "Payment Lock",   value: plan.payment_lock_enabled    ? "✓ Included" : "✗ Not included" },
-    { label: "Formal Demand",  value: plan.formal_demand_enabled   ? "✓ Included" : "✗ Not included" },
+    { label: "Formal Payment Notice", value: plan.formal_demand_enabled ? "✓ Included" : "✗ Not included" },
     { label: "Reports",        value: plan.reports_enabled         ? "✓ Included" : "✗ Not included" },
   ];
 

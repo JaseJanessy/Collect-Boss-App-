@@ -1,5 +1,7 @@
 # CollectBoss — Final Deployment Checklist
 
+> Superseded for the current candidate by `release/v1.0.0-rc.1/RELEASE_CHECKLIST.md`. Historical checked statements below are not evidence for the current release.
+>
 > **Purpose:** Last gate before deploying to Vercel production and switching Stripe to live mode.  
 > Work through every section in order. All boxes must be checked before going live.
 

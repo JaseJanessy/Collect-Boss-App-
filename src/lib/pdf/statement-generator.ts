@@ -1,5 +1,8 @@
 import { jsPDF } from "jspdf";
 import type { StatementData } from "@/lib/statements/service";
+import type { Statement2Data } from "@/lib/statements/service";
+import { generateStatementPdfV2 } from "./statement-generator-v2.ts";
+import { brandPdfColors } from "../brand/pdf-theme.ts";
 
 const PAGE_WIDTH = 210;
 const MARGIN = 15;
@@ -25,7 +28,7 @@ function fit(doc: jsPDF, value: string, width: number): string {
   return `${shortened}${ellipsis}`;
 }
 
-export function generateStatementPdf(data: StatementData): Uint8Array {
+function generateLegacyStatementPdf(data: StatementData): Uint8Array {
   const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
   let y = 18;
   let page = 1;
@@ -63,10 +66,14 @@ export function generateStatementPdf(data: StatementData): Uint8Array {
     drawTableHeader();
   }
 
-  doc.setTextColor(13, 27, 61);
+  doc.setTextColor(...brandPdfColors.navy);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("CollectBoss", MARGIN, y);
+  const collectWidth = doc.getTextWidth("Collect");
+  doc.text("Collect", MARGIN, y);
+  doc.setTextColor(...brandPdfColors.green);
+  doc.text("Boss", MARGIN + collectWidth, y);
+  doc.setTextColor(...brandPdfColors.navy);
   y += 8;
   doc.setFontSize(13);
   doc.text("Collection Activity Statement", MARGIN, y);
@@ -106,7 +113,7 @@ export function generateStatementPdf(data: StatementData): Uint8Array {
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.setTextColor(13, 27, 61);
+  doc.setTextColor(...brandPdfColors.navy);
   doc.text("Payment activity", MARGIN, y);
   y += 5;
 
@@ -141,4 +148,9 @@ export function generateStatementPdf(data: StatementData): Uint8Array {
 
   footer();
   return new Uint8Array(doc.output("arraybuffer"));
+}
+
+/** Preserves the original template for legacy data while routing Statement 2.0 through the new paginated template. */
+export function generateStatementPdf(data: StatementData | Statement2Data): Uint8Array {
+  return "version" in data && data.version === 2 ? generateStatementPdfV2(data) : generateLegacyStatementPdf(data);
 }

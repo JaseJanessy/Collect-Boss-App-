@@ -7,6 +7,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSpinner, InlineSpinner } from "@/components/ui/loading-spinner";
 import { usePayments } from "@/hooks/use-payments";
+import { usePaymentProofs } from "@/hooks/use-payment-proofs";
 import { useBusinessId } from "@/hooks/use-business-id";
 import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
 import { track } from "@/lib/analytics/tracker";
@@ -15,6 +16,7 @@ import {
   REVIEW_STATUS_CONFIG,
 } from "@/lib/db/payments-client";
 import { type PaymentRow } from "@/lib/supabase/types";
+import type { PaymentProofDecision, PaymentProofSubmission } from "@/lib/payment-proofs/client";
 import { formatRM } from "@/lib/mock-data";
 import {
   CreditCard, Clock, CheckCircle2, XCircle,
@@ -24,12 +26,27 @@ import {
 
 export function PaymentHistoryPage() {
   const { payments, loading, error, approve, reject, markUnmatched, refresh } = usePayments();
+  const { submissions, loading: proofsLoading, error: proofsError, review: reviewProof } = usePaymentProofs();
   const businessId = useBusinessId();
 
   const totalPaid      = payments.filter((p) => p.review_status === "approved").reduce((s, p) => s + p.amount, 0);
   const pendingReview  = payments.filter((p) => p.review_status === "pending_review");
   const approved       = payments.filter((p) => p.review_status === "approved");
   const others         = payments.filter((p) => p.review_status === "rejected" || p.review_status === "unmatched");
+  const proofQueue = submissions.filter((item) => ["submitted", "under_review", "more_information_required", "pending_review"].includes(item.status));
+
+  async function handleProofReview(submission: PaymentProofSubmission, decision: PaymentProofDecision) {
+    let reason: string | undefined;
+    if (decision === "rejected" || decision === "more_information_required") {
+      const entered = window.prompt(decision === "rejected" ? "Reason for rejection (required)" : "What information is required?");
+      if (entered === null) return;
+      reason = entered.trim();
+      if (reason.length < 3) return;
+    }
+    const result = await reviewProof(submission.id, decision, reason);
+    if (result.error) window.alert(result.error);
+    if (!result.error && decision === "confirmed") await refresh();
+  }
 
   async function handleApprove(p: PaymentRow) {
     const { error: err } = await approve(p.id);
@@ -61,7 +78,7 @@ export function PaymentHistoryPage() {
   }
 
   return (
-    <div className="flex flex-col pb-6">
+    <div className="cb-light-surface flex flex-col pb-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-4">
         <div className="flex items-center justify-between">
@@ -99,7 +116,7 @@ export function PaymentHistoryPage() {
         {/* Quick links */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <QuickLink href="/payments/requests" icon={<Inbox className="w-4 h-4" />} label="Access Queue"
-            badge={pendingReview.length > 0 ? pendingReview.length : undefined} />
+            badge={proofQueue.length > 0 ? proofQueue.length : undefined} />
           <QuickLink href="/payments/account" icon={<CreditCard className="w-4 h-4" />} label="Accounts" />
           <QuickLink href="/statements" icon={<FileSpreadsheet className="w-4 h-4" />} label="Statements" />
           <QuickLink href="/cases" icon={<ShieldCheck className="w-4 h-4" />} label="All Cases" />
@@ -128,6 +145,20 @@ export function PaymentHistoryPage() {
         ) : (
           <>
             {/* Pending review — with action buttons */}
+            {(proofsLoading || proofsError || proofQueue.length > 0) && (
+              <SectionCard title={`Payment Proof Review (${proofQueue.length})`}>
+                {proofsLoading ? <LoadingSpinner /> : proofsError ? (
+                  <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-xs text-red-700">{proofsError}</div>
+                ) : (
+                  <div className="mt-2 flex flex-col gap-3">
+                    {proofQueue.map((submission) => (
+                      <PaymentProofCard key={submission.id} submission={submission} onReview={(decision) => handleProofReview(submission, decision)} />
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+            )}
+
             {pendingReview.length > 0 && (
               <SectionCard title={`Pending Review (${pendingReview.length})`}>
                 <div className="flex flex-col gap-3 mt-2">
@@ -195,6 +226,56 @@ export function PaymentHistoryPage() {
 }
 
 // ─── Pending payment card (with inline actions) ───────────────────────────────
+
+function PaymentProofCard({ submission, onReview }: { submission: PaymentProofSubmission; onReview: (decision: PaymentProofDecision) => Promise<void> }) {
+  const [acting, setActing] = useState<PaymentProofDecision | null>(null);
+  async function act(decision: PaymentProofDecision) {
+    setActing(decision);
+    await onReview(decision);
+    setActing(null);
+  }
+  return (
+    <article className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
+      <div className="space-y-1 px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="font-mono text-xs font-bold text-gray-700">{submission.case_id}</p>
+            <p className="text-[11px] text-gray-500">{PAYMENT_METHOD_LABELS[submission.payment_method]} · Paid {submission.payment_date}</p>
+            {submission.reference_no && <p className="text-[11px] text-gray-500">Reference: {submission.reference_no}</p>}
+          </div>
+          <p className="shrink-0 text-base font-black text-gray-900">{formatRM(submission.amount)}</p>
+        </div>
+        {submission.debtor_note && <p className="text-[11px] italic text-gray-500">&ldquo;{submission.debtor_note}&rdquo;</p>}
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold uppercase text-amber-700">{submission.status.replaceAll("_", " ")}</span>
+          {submission.proofUrl && <a href={submission.proofUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-[#009966] hover:underline">View Payment Proof</a>}
+        </div>
+        {submission.rejection_reason && <p className="rounded-lg bg-red-50 px-2 py-1.5 text-[11px] text-red-700">Reason: {submission.rejection_reason}</p>}
+        {submission.events.length > 0 && (
+          <ol className="mt-2 border-l-2 border-gray-100 pl-3" aria-label="Payment proof timeline">
+            {submission.events.map((event) => (
+              <li key={event.id} className="pb-1 text-[10px] text-gray-500">
+                <strong className="capitalize text-gray-700">{event.to_status.replaceAll("_", " ")}</strong>
+                {` · ${new Date(event.created_at).toLocaleString("en-MY", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
+                {event.reason && <span className="block">{event.reason}</span>}
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-2 border-t border-gray-100 p-3 sm:grid-cols-4">
+        <ProofAction disabled={!!acting} label="Under Review" onClick={() => act("under_review")} />
+        <ProofAction disabled={!!acting} label="Need Info" onClick={() => act("more_information_required")} />
+        <ProofAction disabled={!!acting} label="Reject" danger onClick={() => act("rejected")} />
+        <ProofAction disabled={!!acting} label="Confirm" primary onClick={() => act("confirmed")} />
+      </div>
+    </article>
+  );
+}
+
+function ProofAction({ label, onClick, disabled, primary, danger }: { label: string; onClick: () => void; disabled: boolean; primary?: boolean; danger?: boolean }) {
+  return <button type="button" onClick={onClick} disabled={disabled} className={cn("min-h-10 rounded-xl border px-2 py-2 text-[11px] font-bold disabled:opacity-50", primary ? "border-emerald-500 bg-emerald-500 text-white" : danger ? "border-red-200 text-red-600" : "border-gray-200 text-gray-600")}>{label}</button>;
+}
 
 function PendingPaymentCard({
   payment: p, onApprove, onReject, onUnmatched,

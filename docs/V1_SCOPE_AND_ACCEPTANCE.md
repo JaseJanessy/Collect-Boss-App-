@@ -1,5 +1,7 @@
 # CollectBoss v1.0 scope and acceptance contract
 
+> Scope-baseline history: later reviewed work added tenant memberships/roles and other controlled workflows. The Commercial V1 candidate scope and unsupported claims are frozen in `release/v1.0.0-rc.1/SCOPE_FREEZE.md`; this older document is not release-readiness evidence.
+
 **Version:** 1.0.0  
 **Status:** approved scope baseline for Phase 2  
 **Decision date:** 2026-07-16
@@ -105,4 +107,3 @@ Severity policy: critical and high findings block launch; medium findings need a
 ## Traceability and next decisions
 
 This contract is grounded in the current 43 routes, owner-only RLS model, Supabase schema, public-token migration, and legal/PDPA pages. It deliberately does not approve a database shape for individual versus business profile data; that is the narrowly scoped design decision for Prompt 8. Any resulting SQL must be proposed and approved before application and must keep `supabase/schema.sql`, ordered migrations, `src/lib/supabase/rls.sql`, and generated database types consistent.
-

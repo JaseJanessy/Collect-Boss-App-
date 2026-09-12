@@ -64,10 +64,22 @@
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://xxx.supabase.co` | Required |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJ...` | Required |
 | `SUPABASE_SERVICE_ROLE_KEY` | `eyJ...` | Optional — server-side only |
+| `CRON_SECRET` | strong random value | Required for scheduled domain-event detection |
 | `NEXT_PUBLIC_APP_URL` | `https://app.collectboss.my` | Your production URL |
 | `NEXT_PUBLIC_APP_ENV` | `production` | Disables mock data |
 
 > ⚠️ Never add SUPABASE_SERVICE_ROLE_KEY with NEXT_PUBLIC_ prefix
+
+### Recovery domain-event scheduler
+
+`vercel.json` registers `GET /api/cron/domain-events` hourly at minute 5 UTC.
+Vercel supplies `Authorization: Bearer $CRON_SECRET`. The database detector
+evaluates each business in its configured timezone, so the UTC invocation time
+does not determine the tenant's recovery date. The endpoint creates internal
+domain events, then projects them into persistent creditor notifications. It
+then projects actionable event types into the separate Action Centre using
+deterministic priority rules. It does not send debtor messages, and
+informational/positive notifications do not become work automatically.
 
 ### Custom Domain (optional)
 1. Vercel Dashboard → Project → Settings → Domains
@@ -105,6 +117,8 @@ Test these flows after deploy:
 - [ ] Access `/cases` without login (should redirect to /login)
 - [ ] Create payment plan, debtor confirms via /acknowledge link
 - [ ] Submit payment proof as debtor
+- [ ] Verify notification bell unread count, deep link, mark-read and mark-all-read persistence
+- [ ] Verify Today action counts, amount represented, completion history and controlled snooze
 - [ ] Approve payment proof as creditor — verify balance updates
 - [ ] Export evidence pack PDF
 - [ ] Save formal demand draft
@@ -119,6 +133,14 @@ Test these flows after deploy:
 - [ ] `NEXT_PUBLIC_APP_ENV=production` set in Vercel
 - [ ] Supabase Auth redirect URLs updated to production domain
 - [ ] No `.env.local` committed to git
+- [ ] `PAYMENT_ACCESS_OTP_PEPPER` is a production-only secret of at least 32 characters
+- [ ] Email OTP delivery has `RESEND_API_KEY` and `PAYMENT_OTP_FROM_EMAIL`
+- [ ] SMS OTP delivery has `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`
+- [ ] Receiving accounts exposed by secure links have `verification_status = 'verified'`
+- [ ] R14 industry risk policies have been reviewed and approved for the deployment
+- [ ] Platform safety reviewers use only the service-role verification/report decision RPCs
+- [ ] A named operational owner monitors the platform abuse review queue
+- [ ] Verification copy is described as a CollectBoss review, never government or regulatory verification
 
 ---
 

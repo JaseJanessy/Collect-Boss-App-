@@ -1,0 +1,118 @@
+{
+  "brand": {
+    "navy": "#0D1B3D",
+    "green": "#009966"
+  },
+  "background": "#F6F8FB",
+  "surface": {
+    "default": "#FFFFFF",
+    "raised": "#FFFFFF",
+    "muted": "#EEF2F6",
+    "inverse": "#0D1B3D",
+    "inverseRaised": "#142B57",
+    "overlay": "rgba(13, 27, 61, 0.72)"
+  },
+  "text": {
+    "primary": "#14213D",
+    "secondary": "#667085",
+    "inverse": "#FFFFFF",
+    "inverseMuted": "#D9E2EC",
+    "brandAccent": "#009966",
+    "link": "#087F5B"
+  },
+  "border": {
+    "default": "#D9E2EC",
+    "divider": "#E7ECF2",
+    "strong": "#AAB7C4",
+    "inverse": "#38527C",
+    "focus": "#2F6FED"
+  },
+  "interaction": {
+    "primary": "#087F5B",
+    "primaryHover": "#066A4B",
+    "primaryPressed": "#05563E",
+    "dangerHover": "#912018",
+    "dangerPressed": "#7A271A",
+    "primarySelectedSurface": "#DFF7EF",
+    "primarySelectedText": "#066A4B",
+    "secondaryHover": "#E8EDF4",
+    "secondaryPressed": "#DCE4ED"
+  },
+  "status": {
+    "success": "#067647",
+    "successSurface": "#ECFDF3",
+    "successBorder": "#ABEFC6",
+    "warning": "#B54708",
+    "warningSurface": "#FFFAEB",
+    "warningBorder": "#FEDF89",
+    "danger": "#D64545",
+    "dangerStrong": "#B42318",
+    "dangerSurface": "#FEF3F2",
+    "dangerBorder": "#FECDCA",
+    "information": "#175CD3",
+    "informationSurface": "#EFF8FF",
+    "informationBorder": "#B2DDFF",
+    "neutral": "#475467",
+    "neutralSurface": "#F2F4F7",
+    "neutralBorder": "#D0D5DD",
+    "highRisk": "#C4320A",
+    "highRiskSurface": "#FFF4ED",
+    "highRiskBorder": "#F9DBAF"
+  },
+  "disabled": {
+    "surface": "#EAECF0",
+    "border": "#D0D5DD",
+    "text": "#667085"
+  },
+  "pocket": {
+    "canvas": "#F6F8FB",
+    "surface": "#FFFFFF",
+    "surfaceMuted": "#EEF2F6",
+    "ink": "#0D1B3D",
+    "muted": "#667085",
+    "line": "#D9E2EC",
+    "navyRaised": "#142B57",
+    "selectedSurface": "#DFF7EF",
+    "focus": "#2F6FED",
+    "action": {
+      "primary": "#087F5B",
+      "primaryHover": "#066A4B",
+      "primaryPressed": "#05563E",
+      "addDebt": "#009966",
+      "addDebtSurface": "#DFF7EF",
+      "recordPayment": "#175CD3",
+      "recordPaymentSurface": "#EFF8FF",
+      "scanReceipt": "#6941C6",
+      "scanReceiptSurface": "#F4F3FF",
+      "whoOwesMe": "#B54708",
+      "whoOwesMeSurface": "#FFFAEB",
+      "overdue": "#B42318",
+      "overdueSurface": "#FEF3F2"
+    }
+  },
+  "chart": {
+    "series1": "#0D1B3D",
+    "series2": "#087F5B",
+    "series3": "#175CD3",
+    "series4": "#B54708",
+    "series5": "#B42318",
+    "grid": "#D9E2EC",
+    "label": "#667085",
+    "tooltipBackground": "#14213D",
+    "tooltipText": "#FFFFFF"
+  },
+  "typography": {
+    "family": "IBM Plex Sans, Segoe UI, Arial, sans-serif",
+    "weightRegular": 400,
+    "weightMedium": 500,
+    "weightSemibold": 600,
+    "weightBold": 700,
+    "weightBlack": 700
+  },
+  "radius": {
+    "control": 8,
+    "surface": 12,
+    "pill": 999
+  },
+  "targetSize": 44
+}

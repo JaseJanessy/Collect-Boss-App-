@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { PrimaryButton } from "@/components/ui/primary-button";
-import { AuthShell, AuthCard, AuthField, AuthError, AuthSuccess } from "./auth-shell";
+import { AuthShell, AuthCard, AuthField, AuthError } from "./auth-shell";
 import { requestPasswordReset } from "@/lib/auth/session";
 import { Mail, Loader2, ArrowRight } from "lucide-react";
 
@@ -34,7 +34,7 @@ export function ForgotPasswordPage() {
     setLoading(true);
     setError("");
 
-    const result = await requestPasswordReset(email);
+    const result = await requestPasswordReset(email.trim());
 
     if (!result.success) {
       setError(result.error ?? "Failed to send reset email. Please try again.");

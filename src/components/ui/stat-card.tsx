@@ -29,7 +29,7 @@ export function StatCard({
       className={cn(
         "rounded-xl p-4 flex flex-col gap-1 border",
         accent
-          ? "bg-[#0D1B3D] text-white border-[#0D1B3D]"
+          ? "bg-[var(--cb-surface-inverse)] text-white border-[var(--cb-surface-inverse)]"
           : "bg-white text-gray-900 border-gray-100 shadow-sm",
         className
       )}

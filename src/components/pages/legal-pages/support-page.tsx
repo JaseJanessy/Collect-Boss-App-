@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   LegalShell, LegalH2, LegalH3, LegalP, LegalUL, LegalHighlight,
 } from "./legal-shell";
@@ -77,17 +77,22 @@ const faqs: { q: string; a: string }[] = [
 
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
+  const id = useId();
   return (
     <div className="border border-gray-100 rounded-xl overflow-hidden">
       <button
+        type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={`${id}-answer`}
+        id={`${id}-question`}
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
       >
         <span className="text-sm font-semibold text-[#0D1B3D] pr-4">{q}</span>
-        <span className={`text-lg font-bold text-[#009966] shrink-0 transition-transform ${open ? "rotate-45" : ""}`}>+</span>
+        <span aria-hidden="true" className="text-lg font-bold text-[#009966] shrink-0">{open ? "−" : "+"}</span>
       </button>
       {open && (
-        <div className="px-4 pb-4 border-t border-gray-100">
+        <div id={`${id}-answer`} role="region" aria-labelledby={`${id}-question`} className="px-4 pb-4 border-t border-gray-100">
           <p className="text-sm text-gray-600 leading-relaxed pt-3">{a}</p>
         </div>
       )}
@@ -102,7 +107,7 @@ export function SupportPage() {
     <LegalShell
       title="Contact & Support"
       subtitle="Get help with CollectBoss — billing, account, data, or platform questions."
-      lastUpdated="2025-01-01"
+      lastUpdated="2026-09-01"
     >
       <LegalH2>How to Reach Us</LegalH2>
 
@@ -138,8 +143,7 @@ export function SupportPage() {
       </div>
 
       <LegalHighlight>
-        CollectBoss is a private beta product. Response times may vary. We aim to respond
-        to all queries within 2 business days (Kuala Lumpur time, UTC+8), Monday to Friday.
+        We aim to respond to all queries within 2 business days (Kuala Lumpur time, UTC+8), Monday to Friday.
         For urgent account issues, email support@collectboss.my with &ldquo;URGENT&rdquo; in the subject line.
       </LegalHighlight>
 
@@ -161,7 +165,7 @@ export function SupportPage() {
       <LegalP>
         You can also use the feedback button in the bottom-right corner of the app (the chat
         bubble icon) to send feedback or report bugs directly from within CollectBoss.
-        Feedback submitted this way is stored locally and reviewed by our team.
+        Feedback submitted this way is delivered securely to our support inbox. If delivery is unavailable, the form shows an error and directs you here instead of claiming success.
       </LegalP>
 
       <LegalH2>Frequently Asked Questions</LegalH2>
@@ -174,8 +178,7 @@ export function SupportPage() {
 
       <LegalH2>Platform Status</LegalH2>
       <LegalP>
-        CollectBoss is currently in private beta. During the beta period, planned maintenance
-        may occur without advance notice. We do not currently publish a public status page.
+        View the public system-status page at collectboss.my/status for the latest automated service check.
         For urgent outage queries, email support@collectboss.my.
       </LegalP>
 

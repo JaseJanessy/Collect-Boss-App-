@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Clock, RefreshCw } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
+import { CollectBossWordmark } from "@/components/brand/wordmark";
 
 const PAID_STATUSES = new Set(["active", "trialing"]);
 
@@ -47,8 +48,8 @@ export function BillingSuccessStatus() {
 
   return (
     <div className="min-h-screen bg-[#F2F4F7] flex flex-col items-center justify-center px-5 text-center">
-      <Link href="/" className="text-2xl font-black tracking-tight text-[#0D1B3D] mb-10">
-        Collect<span className="text-[#009966]">Boss</span>
+      <Link href="/" className="mb-10">
+        <CollectBossWordmark className="text-2xl" />
       </Link>
 
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 px-8 py-10 max-w-sm w-full">

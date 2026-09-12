@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { parseCurrencyToMinor } from "@/lib/financial/money";
+import { CASE_STATUS_METADATA } from "@/lib/domain/workflows";
 
 // ─── Status enum ──────────────────────────────────────────────────────────────
 
@@ -15,18 +17,19 @@ export const caseStatusSchema = z.enum([
 export type CaseStatusValue = z.infer<typeof caseStatusSchema>;
 
 export const STATUS_LABELS: Record<CaseStatusValue, string> = {
-  action_needed:       "Action Needed",
-  payment_promise:     "Payment Promise",
-  partial_paid:        "Partial Paid",
-  paid:                "Paid",
-  overdue:             "Overdue",
-  formal_demand_ready: "Formal Demand Ready",
-  closed:              "Closed",
+  action_needed:       CASE_STATUS_METADATA.action_needed.label,
+  payment_promise:     CASE_STATUS_METADATA.payment_promise.label,
+  partial_paid:        CASE_STATUS_METADATA.partial_paid.label,
+  paid:                CASE_STATUS_METADATA.paid.label,
+  overdue:             CASE_STATUS_METADATA.overdue.label,
+  formal_demand_ready: CASE_STATUS_METADATA.formal_demand_ready.label,
+  closed:              CASE_STATUS_METADATA.closed.label,
 };
 
 // ─── Create case ──────────────────────────────────────────────────────────────
 
 export const createCaseSchema = z.object({
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, "Choose a valid currency.").default("MYR"),
   debtor_type: z.enum(["individual", "business"]).default("individual"),
 
   debtor_name: z
@@ -76,8 +79,7 @@ export const createCaseSchema = z.object({
   amount_owed: z
     .string()
     .min(1, "Amount is required")
-    .regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, "Amount must use at most two decimal places")
-    .refine((v) => v !== "0" && v !== "0.0" && v !== "0.00", { message: "Amount must be greater than RM 0.00" }),
+    .regex(/^(?:0|[1-9]\d*)(?:\.\d+)?$/, "Enter a valid amount"),
 
   due_date: z
     .string()
@@ -99,6 +101,9 @@ export const createCaseSchema = z.object({
     .optional()
     .or(z.literal("")),
 }).superRefine((value, context) => {
+  try { parseCurrencyToMinor(value.amount_owed, value.currency); } catch (error) {
+    context.addIssue({ code: "custom", path: ["amount_owed"], message: error instanceof Error ? error.message : "Enter a valid amount." });
+  }
   if (value.debtor_type === "business" && !value.debtor_company?.trim()) {
     context.addIssue({
       code: "custom",

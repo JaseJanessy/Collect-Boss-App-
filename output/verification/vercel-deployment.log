@@ -1,0 +1,15 @@
+Vercel CLI 59.11.7 (Node.js 24.18.0)
+Deploying collectboss
+{
+  "status": "error",
+  "reason": "deploy_failed",
+  "message": "Hobby accounts are limited to daily cron jobs. This cron expression (5 * * * *) would run more than once per day. Upgrade to the Pro plan to unlock all Cron Jobs features on Vercel.",
+  "next": [
+    {
+      "command": "vercel deploy --scope stylexjaser-5845s-projects",
+      "when": "retry deploy"
+    }
+  ]
+}
+Error: Hobby accounts are limited to daily cron jobs. This cron expression (5 * * * *) would run more than once per day. Upgrade to the Pro plan to unlock all Cron Jobs features on Vercel.
+Learn More: https://vercel.link/3Fpeeb1

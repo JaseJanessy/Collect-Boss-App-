@@ -1,12 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useCases } from "@/hooks/use-cases";
+import { usePaymentProofs } from "@/hooks/use-payment-proofs";
 import { formatRM } from "@/lib/mock-data";
+import type { ActionCentreItemRow } from "@/lib/supabase/types";
 import {
   Send,
   Upload,
@@ -79,8 +82,8 @@ const actionGroups: Array<{ group: string; items: ActionItem[] }> = [
       {
         id:          "demand",
         icon:        <FileText className="w-5 h-5" />,
-        label:       "Prepare Formal Demand",
-        description: "Generate formal demand letter",
+        label:       "Prepare Formal Payment Reminder",
+        description: "Create a factual creditor payment notice",
         tag:         "Legal",
         tagColor:    "bg-orange-100 text-orange-700",
         href:        "/cases",
@@ -93,7 +96,7 @@ const actionGroups: Array<{ group: string; items: ActionItem[] }> = [
       {
         id:          "promise",
         icon:        <Clock className="w-5 h-5" />,
-        label:       "Record Payment Promise",
+        label:       "Record Promise to Pay",
         description: "Track promised payment date",
         tag:         "Coming Soon",
         tagColor:    "bg-gray-100 text-gray-500",
@@ -127,6 +130,18 @@ interface ActionsPageProps {
 
 export function ActionsPage({ dashboard }: ActionsPageProps) {
   const { cases, loading } = useCases();
+  const { submissions } = usePaymentProofs();
+  const [planActions, setPlanActions] = useState<ActionCentreItemRow[]>([]);
+  const [legalHandoffActions, setLegalActions] = useState<ActionCentreItemRow[]>([]);
+  useEffect(() => {
+    fetch("/api/action-centre", { cache: "no-store" }).then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json() as { items?: ActionCentreItemRow[] };
+      setPlanActions((payload.items ?? []).filter((item) => item.type === "payment_plan.missed"));
+      setLegalActions((payload.items ?? []).filter((item) => item.type === "legal_handoff.documents_requested"));
+    }).catch(() => {});
+  }, []);
+  const paymentProofActions = submissions.filter((item) => ["submitted", "under_review", "more_information_required", "pending_review"].includes(item.status));
 
   const urgentCases = cases.filter(
     (c) => c.status === "overdue" || c.status === "action_needed"
@@ -175,6 +190,57 @@ export function ActionsPage({ dashboard }: ActionsPageProps) {
 
         {/* Recommended action banner */}
         <RecommendedBanner />
+
+        {planActions.length > 0 && (
+          <SectionCard title={`Missed Plan Installments (${planActions.length})`}>
+            <div className="mt-1 flex flex-col">
+              {planActions.slice(0, 5).map((item, index) => (
+                <Link key={item.id} href={item.href} className={cn("flex items-center gap-3 py-3", index < Math.min(planActions.length, 5) - 1 && "border-b border-gray-50")}>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-50"><AlertCircle className="h-4 w-4 text-red-600" /></div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-gray-800">{item.title}</p>
+                    <p className="truncate text-[11px] text-gray-500">{item.description}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-300" />
+                </Link>
+              ))}
+            </div>
+          </SectionCard>
+        )}
+
+        {legalHandoffActions.length > 0 && (
+          <SectionCard title={`Legal Handoff Requests (${legalHandoffActions.length})`}>
+            <div className="mt-1 flex flex-col">
+              {legalHandoffActions.slice(0, 5).map((item, index) => (
+                <Link key={item.id} href={item.href} className={cn("flex items-center gap-3 py-3", index < Math.min(legalHandoffActions.length, 5) - 1 && "border-b border-gray-50")}>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-50"><FileText className="h-4 w-4 text-purple-700" /></div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-gray-800">{item.title}</p>
+                    <p className="truncate text-[11px] text-gray-500">{item.description}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-300" />
+                </Link>
+              ))}
+            </div>
+          </SectionCard>
+        )}
+
+        {paymentProofActions.length > 0 && (
+          <SectionCard title={`Payment Proofs (${paymentProofActions.length})`}>
+            <div className="mt-1 flex flex-col">
+              {paymentProofActions.slice(0, 5).map((item, index) => (
+                <Link key={item.id} href="/payments" className={cn("flex items-center gap-3 py-3", index < Math.min(paymentProofActions.length, 5) - 1 && "border-b border-gray-50")}>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50"><CheckCircle2 className="h-4 w-4 text-amber-600" /></div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-gray-800">Review payment proof</p>
+                    <p className="truncate text-[11px] text-gray-500">{item.case_id} · {formatRM(item.amount)}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-300" />
+                </Link>
+              ))}
+            </div>
+          </SectionCard>
+        )}
 
         {/* Cases needing reminder */}
         {(loading || urgentCases.length > 0) && (

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CollectBossWordmark } from "@/components/brand/wordmark";
 import {
   ShieldCheck,
   Send,
@@ -56,9 +57,9 @@ export function BetaWelcomePage() {
         </span>
 
         {/* Wordmark */}
-        <h1 className="text-4xl font-black tracking-tight text-white leading-tight mb-3">
-          Welcome to{" "}
-          <span className="text-[#009966]">CollectBoss</span>
+        <h1 className="flex flex-wrap items-center justify-center gap-x-2 text-4xl font-black tracking-tight text-white leading-tight mb-3">
+          <span>Welcome to</span>
+          <CollectBossWordmark variant="dark" className="text-3xl sm:text-4xl" />
         </h1>
         <p className="text-blue-200 text-base max-w-sm mx-auto leading-relaxed">
           The smart debt collection app built for Malaysian SMEs.

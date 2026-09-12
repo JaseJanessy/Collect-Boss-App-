@@ -15,9 +15,10 @@ import { useLegalDocuments } from "@/hooks/use-legal-documents";
 import { useBusinessProfile } from "@/hooks/use-business-profile";
 import { getDocumentCreditorName } from "@/lib/business-profile/identity";
 import { PAYMENT_METHOD_LABELS } from "@/lib/db/payments-client";
+import { FORMAL_DEMAND_DISCLAIMER } from "@/lib/formal-demands/template";
 import {
   ChevronLeft, FileText, Download, Send, Info, CheckCircle2,
-  AlertCircle, Copy, Check, Save, ClipboardList,
+  AlertCircle, Copy, Check, Save,
 } from "lucide-react";
 import { useEntitlements } from "@/hooks/use-entitlements";
 import { LockedFeature } from "@/components/billing/locked-feature";
@@ -30,31 +31,29 @@ type DeadlineDays = 3 | 7 | 14;
 const TONES = [
   {
     id: "standard" as ToneId,
-    label: "Friendly Formal",
-    description: "Professional and polite. Suitable for a first formal notice.",
+    label: "Formal Payment Reminder",
+    description: "Professional and polite. Suitable for a first written payment notice.",
     tone: "Friendly",
     docType: "demand_standard" as const,
     recommended: true,
   },
   {
     id: "firm" as ToneId,
-    label: "Strict Formal",
-    description: "Direct and firm. Use after multiple unsuccessful reminders.",
+    label: "Firm Payment Reminder",
+    description: "Direct and factual. Use after multiple unsuccessful reminders.",
     tone: "Firm",
     docType: "demand_firm" as const,
   },
   {
     id: "final" as ToneId,
-    label: "Final Notice Before Legal Review",
-    description: "Final notice urging immediate action before referral for legal review.",
+    label: "Final Payment Notice",
+    description: "A final factual notice that flags external legal review as a possible next step.",
     tone: "Final",
     docType: "demand_final" as const,
   },
 ] as const;
 
-const DISCLAIMER =
-  "CollectBoss helps prepare document drafts based on your case records. " +
-  "This is not legal advice. Please consult a qualified lawyer before taking legal action.";
+const DISCLAIMER = FORMAL_DEMAND_DISCLAIMER;
 
 // ─── Draft builder ────────────────────────────────────────────────────────────
 
@@ -119,7 +118,7 @@ function buildDraft(p: DraftParams): string {
       : "";
 
   if (p.tone === "standard") {
-    return `NOTICE OF OUTSTANDING PAYMENT
+    return `FORMAL PAYMENT REMINDER
 
 Date: ${p.today}
 Reference: ${p.caseId}
@@ -152,7 +151,7 @@ ${DISCLAIMER}`;
   }
 
   if (p.tone === "firm") {
-    return `FORMAL DEMAND NOTICE
+    return `FIRM PAYMENT REMINDER
 
 Date: ${p.today}
 Reference: ${p.caseId}
@@ -169,7 +168,7 @@ ${paymentHistorySection}
 ${remindersLine}
 You are hereby formally notified that the full outstanding amount of ${amt} is required to be paid within ${p.deadlineDays} days from the date of this notice, by ${p.deadlineDate}.
 
-Failure to settle this amount within the stated period may necessitate referral of this matter for further recovery action.
+If the amount remains unpaid, the creditor may continue factual payment follow-up or request external legal review.
 ${paymentInstructions}${evidenceRef}
 Please treat this matter with urgency.
 
@@ -183,7 +182,7 @@ ${DISCLAIMER}`;
   }
 
   // final
-  return `FINAL NOTICE OF OUTSTANDING PAYMENT
+  return `FINAL PAYMENT NOTICE
 
 Date: ${p.today}
 Reference: ${p.caseId}
@@ -199,9 +198,9 @@ This relates to ${inv}, which was due on ${p.dueDate}.${partial}
 ${paymentHistorySection}
 You are required to settle the full outstanding amount of ${amt} within ${p.deadlineDays} days from the date of this notice, by ${p.deadlineDate}.
 
-If payment is not received by the above deadline, we will have no alternative but to refer this matter to our legal advisors for formal review and recovery proceedings.
+If payment is not received by the above deadline, the creditor may request external legal review before deciding whether any further action is appropriate.
 
-We strongly urge you to act upon this notice immediately. We recommend that you seek independent legal advice regarding your obligations.
+Please treat this payment notice seriously. You may obtain independent legal advice if you are unsure of your position.
 ${paymentInstructions}${evidenceRef}
 Yours faithfully,
 
@@ -296,11 +295,11 @@ export function FormalDemandPage({ caseId }: Props) {
         body: JSON.stringify({ mode: "draft", tone, deadlineDays, includePayment, includeEvidenceRef }),
       });
       const payload = await response.json().catch(() => ({})) as { document?: Parameters<typeof addDoc>[0]; error?: string };
-      if (!response.ok || !payload.document) throw new Error(payload.error ?? "Unable to save the formal-demand draft.");
+      if (!response.ok || !payload.document) throw new Error(payload.error ?? "Unable to save the payment-notice draft.");
       addDoc(payload.document);
       setSaved(true);
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "Unable to save the formal-demand draft.");
+      setSaveError(error instanceof Error ? error.message : "Unable to save the payment-notice draft.");
     } finally {
       setSaving(false);
     }
@@ -355,20 +354,20 @@ export function FormalDemandPage({ caseId }: Props) {
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({})) as { error?: string };
-        throw new Error(payload.error ?? "Unable to issue the formal demand.");
+        throw new Error(payload.error ?? "Unable to issue the payment notice.");
       }
       const blob = await response.blob();
       const documentId = response.headers.get("X-Formal-Demand-Id");
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "formal-demand.pdf";
+      anchor.download = tone === "final" ? "final-payment-notice.pdf" : "formal-payment-reminder.pdf";
       anchor.click();
       URL.revokeObjectURL(url);
       if (documentId) refreshDocuments();
       setSaved(true);
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "Unable to issue the formal demand.");
+      setSaveError(error instanceof Error ? error.message : "Unable to issue the payment notice.");
     } finally {
       setDownloading(false);
     }
@@ -417,12 +416,12 @@ export function FormalDemandPage({ caseId }: Props) {
           <Link href={`/evidence/${caseId}/pack`} className="text-gray-400 hover:text-gray-600 text-sm">
             ← Back
           </Link>
-          <h1 className="text-lg font-bold text-[#0D1B3D] mt-2">Formal Demand Draft</h1>
+          <h1 className="text-lg font-bold text-[#0D1B3D] mt-2">Formal Payment Reminder</h1>
         </div>
         <div className="px-4 pt-6">
           <LockedFeature
-            feature="Formal Demand Letter"
-            description="Generate a professional formal demand letter to send to your debtor before escalating to legal action."
+            feature="Formal Payment Notice"
+            description="Prepare a factual written payment reminder or final payment notice from your case records."
             availableFrom="boss"
             icon={<FileText className="w-5 h-5" />}
           />
@@ -451,10 +450,10 @@ export function FormalDemandPage({ caseId }: Props) {
           <Link href={`/evidence/${caseId}/pack`} className="text-gray-400 hover:text-gray-600">
             <ChevronLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-lg font-bold text-[#0D1B3D]">Formal Demand Draft</h1>
+          <h1 className="text-lg font-bold text-[#0D1B3D]">Formal Payment Reminder</h1>
         </div>
         <p className="text-xs text-gray-400 ml-7">
-          Prepare a formal payment demand letter for your records.
+          Prepare a factual creditor payment notice from the recorded case details.
         </p>
       </div>
 
@@ -466,8 +465,8 @@ export function FormalDemandPage({ caseId }: Props) {
           <div>
             <p className="text-xs font-bold text-blue-800">What is this?</p>
             <p className="text-[11px] text-blue-700 mt-0.5 leading-relaxed">
-              A formal written notice requesting payment. It creates a paper trail and
-              demonstrates seriousness. Always review with a lawyer before sending.
+              A creditor-authored payment notice prepared from your records. It is not a
+              lawyer&apos;s demand or a court document. Review escalation language before sending.
             </p>
           </div>
         </div>
@@ -489,7 +488,7 @@ export function FormalDemandPage({ caseId }: Props) {
         </div>
 
         {/* Tone selector */}
-        <SectionCard title="Demand Tone">
+        <SectionCard title="Notice Style">
           <div className="flex flex-col gap-2 mt-2">
             {TONES.map((t) => (
               <button
@@ -522,6 +521,12 @@ export function FormalDemandPage({ caseId }: Props) {
             ))}
           </div>
         </SectionCard>
+
+        {tone === "final" && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-800">
+            <strong>Legal review flag:</strong> this version mentions possible external legal review. CollectBoss does not decide whether legal action is available or appropriate.
+          </div>
+        )}
 
         {/* Deadline selector */}
         <SectionCard title="Payment Deadline">
@@ -632,9 +637,9 @@ export function FormalDemandPage({ caseId }: Props) {
           </button>
         </SectionCard>
 
-        {/* Previously saved demands */}
+        {/* Previously saved payment notices */}
         {savedDemands.length > 0 && (
-          <SectionCard title={`Saved Drafts (${savedDemands.length})`}>
+          <SectionCard title={`Saved Payment Notice Drafts (${savedDemands.length})`}>
             <div className="flex flex-col gap-2 mt-2">
               {savedDemands.map((d) => {
                 let meta: { generated_at?: string; tone?: string; deadline_days?: number } = {};
@@ -678,9 +683,7 @@ export function FormalDemandPage({ caseId }: Props) {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2">
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <p className="text-[11px] text-amber-800 leading-relaxed">
-            <strong>CollectBoss helps prepare document drafts based on your case records.
-            This is not legal advice.</strong> Please consult a qualified lawyer before
-            taking legal action.
+            <strong>{DISCLAIMER}</strong>
           </p>
         </div>
 
@@ -706,10 +709,10 @@ export function FormalDemandPage({ caseId }: Props) {
             {downloading ? "Generating PDF…" : "Download as PDF"}
           </PrimaryButton>
 
-          {/* Send to Lawyer */}
+          {/* Request external review */}
           <Link href={`/legal/${caseId}/lawyer`}>
             <PrimaryButton fullWidth variant="ghost" size="lg" icon={<Send className="w-4 h-4" />}>
-              Send to Lawyer for Review
+              Request Legal Review
             </PrimaryButton>
           </Link>
         </div>

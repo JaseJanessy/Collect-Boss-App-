@@ -4,22 +4,15 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  User,
-  Building2,
-  CreditCard,
-  Settings,
-  FileText,
-  FileSpreadsheet,
-  HelpCircle,
   LogOut,
   ChevronRight,
-  Shield,
-  Rocket,
-  Zap,
 } from "lucide-react";
+import { navigationItemIsVisible, secondaryNavigation, type NavigationIcon as NavigationIconName } from "@collectboss/navigation";
+import { NavigationIcon } from "@/components/navigation/navigation-icon";
+import { workspacePlanLabel } from "@/lib/workspace/presentation";
 
 interface MenuRow {
-  icon:    React.ReactNode;
+  icon:    NavigationIconName | "sign-out";
   label:   string;
   sub?:    string;
   href?:   string;
@@ -28,80 +21,30 @@ interface MenuRow {
 }
 
 export function MorePage() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, permissions, workspace, signingOut, signOutError, isConfigured } = useAuth();
 
   const initials = user?.name
     ? user.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
     : user?.email?.slice(0, 2).toUpperCase() ?? "CB";
 
+  const visibleSecondary = secondaryNavigation.filter((item) => navigationItemIsVisible(item, permissions));
   const menuGroups: Array<{ title: string; items: MenuRow[] }> = [
-    {
-      title: "Account",
-      items: [
-        {
-          icon:  <Building2 className="w-4 h-4 text-[#009966]" />,
-          label: "Business Profile",
-          sub:   "Edit your business details",
-          href:  "/onboarding/profile",
-        },
-        {
-          icon:  <CreditCard className="w-4 h-4 text-blue-500" />,
-          label: "Payment Accounts",
-          sub:   "Bank account and DuitNow",
-          href:  "/payments/account",
-        },
-        {
-          icon:  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />,
-          label: "Statements",
-          sub:   "Download payment activity PDFs",
-          href:  "/statements",
-        },
-        {
-          icon:  <Shield className="w-4 h-4 text-purple-500" />,
-          label: "Payment Security",
-          sub:   "Default lock mode settings",
-          href:  "/payments/requests",
-        },
-        {
-          icon:  <Zap className="w-4 h-4 text-amber-500" />,
-          label: "Billing & Plan",
-          sub:   "Manage your subscription",
-          href:  "/billing",
-        },
-      ],
-    },
-    {
-      title: "App",
-      items: [
-        {
-          icon:  <Settings className="w-4 h-4 text-gray-500" />,
-          label: "Settings",
-          href:  "/settings",
-        },
-        {
-          icon:  <FileText className="w-4 h-4 text-amber-500" />,
-          label: "Documents & Legal",
-          href:  "/documents",
-        },
-        {
-          icon:  <HelpCircle className="w-4 h-4 text-gray-400" />,
-          label: "Help & Support",
-          sub:   "FAQ and contact",
-          href:  "#",
-        },
-        {
-          icon:  <Rocket className="w-4 h-4 text-[#009966]" />,
-          label: "Beta Welcome Guide",
-          sub:   "Getting started & checklist",
-          href:  "/beta-welcome",
-        },
-      ],
-    },
+    ...(["Workspace", "Account", "Support"] as const).map((title) => ({
+      title,
+      items: visibleSecondary
+        .filter((item) => item.group === title)
+        .map((item) => ({
+          icon: item.icon,
+          label: item.label,
+          sub: item.description,
+          href: item.href,
+        })),
+    })).filter((group) => group.items.length > 0),
     {
       title: "",
       items: [
         {
-          icon:   <LogOut className="w-4 h-4 text-red-500" />,
+          icon:   "sign-out",
           label:  "Sign Out",
           action: signOut,
           danger: true,
@@ -111,29 +54,30 @@ export function MorePage() {
   ];
 
   return (
-    <div className="flex flex-col pb-6">
+    <div className="mx-auto flex max-w-5xl flex-col pb-6">
       {/* User header */}
-      <div className="bg-[#0D1B3D] px-4 pt-5 pb-6">
+      <div className="border-b border-[var(--cb-border)] bg-white px-5 py-6 md:rounded-xl md:border">
+        <h1 className="cb-page-title mb-5">More</h1>
         <div className="flex items-center gap-3">
           <div className="w-14 h-14 rounded-2xl bg-[#009966] flex items-center justify-center text-white text-lg font-black">
             {initials}
           </div>
           <div>
-            <p className="text-base font-black text-white">
-              {user?.name ?? "Demo User"}
+            <p className="text-base font-semibold text-slate-900">
+              {user?.name ?? "Your account"}
             </p>
-            <p className="text-xs text-blue-200 mt-0.5">
-              {user?.email ?? "demo@collectboss.my"}
+            <p className="text-sm text-slate-500 mt-0.5">
+              {user?.email ?? "Account details unavailable"}
             </p>
-            <span className="inline-block mt-1 text-[10px] font-bold text-emerald-300 bg-emerald-900/40 px-2 py-0.5 rounded-full">
-              Pro Plan
+            <span className="inline-block mt-2 text-xs font-medium text-emerald-800 bg-emerald-50 px-2 py-1 rounded-md">
+              {isConfigured ? workspacePlanLabel(workspace?.plan.slug) : "Development preview"}
             </span>
           </div>
         </div>
       </div>
 
       {/* Menu groups */}
-      <div className="px-4 pt-4 flex flex-col gap-4">
+      <div className="grid items-start gap-5 px-4 pt-6 md:grid-cols-2 md:px-0">
         {menuGroups.map((group, gi) => (
           <div key={gi}>
             {group.title && (
@@ -156,7 +100,9 @@ export function MorePage() {
                     )}
                   >
                     <div className="w-8 h-8 bg-gray-50 rounded-xl flex items-center justify-center shrink-0">
-                      {item.icon}
+                      {item.icon === "sign-out"
+                        ? <LogOut className="w-4 h-4 text-red-500" />
+                        : <NavigationIcon name={item.icon} className="w-4 h-4 text-blue-400" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p
@@ -179,7 +125,7 @@ export function MorePage() {
 
                 if (item.action) {
                   return (
-                    <button key={item.label} onClick={item.action} className="w-full text-left">
+                    <button key={item.label} disabled={signingOut} onClick={item.action} className="w-full text-left">
                       {inner}
                     </button>
                   );
@@ -194,8 +140,9 @@ export function MorePage() {
           </div>
         ))}
 
+        {signOutError && <p role="alert" className="text-sm text-red-700 md:col-span-2">{signOutError}</p>}
         {/* Legal notice */}
-        <p className="text-[11px] text-gray-400 text-center leading-relaxed px-4">
+        <p className="text-xs text-gray-500 text-center leading-relaxed px-4 md:col-span-2">
           CollectBoss does not provide legal advice.
           All debt recovery actions are your responsibility.
         </p>

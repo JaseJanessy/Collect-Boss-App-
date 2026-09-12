@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { CollectBossApp } from '@/components/collectboss-app';
+import { MobileProductGate } from '@/components/product-gate';
 import { AuthProvider } from '@/providers/auth-provider';
 
 export default function App() {
@@ -9,7 +9,7 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <StatusBar style="dark" />
-        <CollectBossApp />
+        <MobileProductGate />
       </AuthProvider>
     </SafeAreaProvider>
   );

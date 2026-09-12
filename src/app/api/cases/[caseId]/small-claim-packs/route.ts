@@ -39,8 +39,8 @@ function buildChecklist(params: { caseData: CaseRow; evidence: EvidenceFileRow[]
     { id: "due_date", label: "Payment due date recorded", done: Boolean(params.caseData.due_date) },
     { id: "reminders", label: "Reminder history recorded", done: params.reminderCount > 0 },
     { id: "payments", label: "Approved payment records reviewed", done: params.approvedPayments.length > 0 },
-    { id: "evidence_pack", label: "Evidence pack available", done: params.hasEvidencePack },
-    { id: "formal_demand", label: "Formal demand record available", done: params.hasFormalDemand },
+    { id: "evidence_pack", label: "Case evidence export available", done: params.hasEvidencePack },
+    { id: "formal_demand", label: "Payment notice record available", done: params.hasFormalDemand },
   ];
   return items;
 }
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const input = inputSchema.safeParse(await request.json().catch(() => null));
   if (!input.success) return json({ error: "Invalid case-record pack request." }, 400);
 
-  const auth = await getAuthenticatedBusiness();
+  const auth = await getAuthenticatedBusiness("case.manage");
   if ("error" in auth) return json({ error: auth.error ?? "Case-record pack service is unavailable." }, 401);
   const service = await getServiceClient();
   if (!service) return json({ error: "Case-record pack service is unavailable." }, 503);
@@ -95,6 +95,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     missingItems,
     acknowledgement: acknowledgementRow ? { decision: acknowledgementRow.decision, acknowledgedAt: acknowledgementRow.acknowledged_at, termsVersion: acknowledgementRow.terms_version } : null,
     pdf: {
+      templateVersion: SMALL_CLAIM_TEMPLATE_VERSION,
       caseId: currentCase.id,
       businessName: currentBusiness.legal_name!.trim(),
       today: longDate(new Date()),
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const id = randomUUID();
   const number = `CB-CRP-${issuedAt.slice(0, 10).replace(/-/g, "")}-${id.slice(0, 8).toUpperCase()}`;
   try {
-    const { data: document, error: documentError } = await service.from("legal_documents").insert({ id, case_id: caseId, document_type: "small_claim_pack", title: `Case-record pack - ${currentCase.debtor_name} - ${snapshot.pdf.today}`, content: JSON.stringify({ snapshot }), status: "finalised", document_number: number, template_version: SMALL_CLAIM_TEMPLATE_VERSION, issued_at: issuedAt, issued_by: userResult.user.id, snapshot }).select("*").single();
+    const { data: document, error: documentError } = await service.from("legal_documents").insert({ id, case_id: caseId, document_type: "small_claim_pack", title: `Case Evidence Export - ${currentCase.debtor_name} - ${snapshot.pdf.today}`, content: JSON.stringify({ snapshot }), status: "finalised", document_number: number, template_version: SMALL_CLAIM_TEMPLATE_VERSION, issued_at: issuedAt, issued_by: userResult.user.id, snapshot }).select("*").single();
     if (documentError || !document) throw new Error("Unable to persist the case-record pack.");
     const { error: auditError } = await service.from("audit_logs").insert({ business_id: auth.businessId, case_id: caseId, action: "small_claim_pack.issued", actor_type: "owner", actor_id: userResult.user.id, metadata: { document_id: id, document_number: number, template_version: SMALL_CLAIM_TEMPLATE_VERSION, jurisdiction: "MY", legal_review_required: true } });
     if (auditError) {
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
     if (input.data.mode === "save") return json({ document, snapshot });
     const pdf = await generateSmallClaimPdf(snapshot.pdf);
-    return new NextResponse(await pdf.arrayBuffer(), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename=\"case-record-pack-${number}.pdf\"`, "Cache-Control": "private, no-store, max-age=0", "X-Content-Type-Options": "nosniff", "X-Small-Claim-Pack-Id": id } });
+    return new NextResponse(await pdf.arrayBuffer(), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename=\"case-evidence-export-${number}.pdf\"`, "Cache-Control": "private, no-store, max-age=0", "X-Content-Type-Options": "nosniff", "X-Small-Claim-Pack-Id": id } });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Unable to create the case-record pack." }, 500);
   }

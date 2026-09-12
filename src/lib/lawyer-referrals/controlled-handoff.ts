@@ -2,7 +2,7 @@ export const LAWYER_REFERRAL_CONSENT_VERSION = "lawyer-referral-data-sharing-v1"
 
 export const ACTIVE_REFERRAL_STATUSES = new Set([
   "ready_for_review", "handoff_pending", "handoff_failed", "submitted",
-  "under_review", "lawyer_contacted", "accepted",
+  "under_review", "additional_documents_requested", "lawyer_contacted", "accepted",
 ]);
 
 export function isReferralEligible(input: { archivedAt: string | null; status: string; balance: number }): boolean {
@@ -10,5 +10,5 @@ export function isReferralEligible(input: { archivedAt: string | null; status: s
 }
 
 export function canWithdrawReferral(status: string): boolean {
-  return ["ready_for_review", "handoff_pending", "handoff_failed", "submitted", "under_review", "lawyer_contacted"].includes(status);
+  return ["ready_for_review", "handoff_pending", "handoff_failed", "submitted", "under_review", "additional_documents_requested", "lawyer_contacted"].includes(status);
 }

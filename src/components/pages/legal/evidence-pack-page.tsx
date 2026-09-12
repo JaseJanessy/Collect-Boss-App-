@@ -57,7 +57,7 @@ export function EvidencePackPage({ caseId }: Props) {
     return (
       <div className="flex flex-col pb-6">
         <div className="bg-white border-b border-gray-100 px-4 py-4">
-          <h1 className="text-base font-bold text-[#0D1B3D]">Evidence Pack Preview</h1>
+          <h1 className="text-base font-bold text-[#0D1B3D]">Case Evidence Export Preview</h1>
         </div>
         <LoadingSpinner />
       </div>
@@ -261,7 +261,7 @@ export function EvidencePackPage({ caseId }: Props) {
               <ChevronLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-base font-bold text-[#0D1B3D]">Evidence Pack Preview</h1>
+              <h1 className="text-base font-bold text-[#0D1B3D]">Case Evidence Export Preview</h1>
               <p className="text-[11px] text-gray-400">{files.length} document{files.length !== 1 ? "s" : ""} · {score}% complete</p>
             </div>
           </div>
@@ -396,7 +396,7 @@ export function EvidencePackPage({ caseId }: Props) {
           <div className="flex items-center gap-2 mb-4">
             <Building2 className="w-4 h-4 text-blue-300" />
             <p className="text-[11px] font-bold text-blue-200 uppercase tracking-wide">
-              Debt Recovery Evidence Pack
+              Factual Case Evidence Export
             </p>
           </div>
           <h2 className="text-lg font-black text-white leading-tight">{c.debtor_name}</h2>
@@ -672,7 +672,7 @@ export function EvidencePackPage({ caseId }: Props) {
             disabled={exporting}
             icon={exporting ? <InlineSpinner className="text-white" /> : <FileText className="w-4 h-4" />}
           >
-            {exporting ? "Generating PDF…" : "Export Evidence Pack as PDF"}
+            {exporting ? "Generating PDF…" : "Export Case Evidence as PDF"}
           </PrimaryButton>
         ) : (
           <div className="flex flex-col gap-2">
@@ -693,7 +693,7 @@ export function EvidencePackPage({ caseId }: Props) {
             <button className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3.5 hover:border-[#009966] hover:bg-emerald-50 transition-all">
               <div className="flex items-center gap-2.5">
                 <Send className="w-4 h-4 text-[#009966]" />
-                <p className="text-sm font-bold text-gray-800">Prepare Formal Demand</p>
+                <p className="text-sm font-bold text-gray-800">Prepare Formal Payment Reminder</p>
               </div>
               <ChevronRightIcon className="w-4 h-4 text-gray-400" />
             </button>
@@ -702,7 +702,7 @@ export function EvidencePackPage({ caseId }: Props) {
             <button className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3.5 hover:border-[#009966] hover:bg-emerald-50 transition-all">
               <div className="flex items-center gap-2.5">
                 <Building2 className="w-4 h-4 text-[#009966]" />
-                <p className="text-sm font-bold text-gray-800">Refer to Lawyer</p>
+                <p className="text-sm font-bold text-gray-800">Request Legal Review</p>
               </div>
               <ChevronRightIcon className="w-4 h-4 text-gray-400" />
             </button>

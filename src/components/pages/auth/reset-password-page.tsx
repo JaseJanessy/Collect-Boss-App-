@@ -6,7 +6,28 @@ import { useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import { AuthShell, AuthCard, AuthField, AuthError } from "./auth-shell";
 import { updatePassword } from "@/lib/auth/session";
-import { Lock, Loader2, CheckCircle2 } from "lucide-react";
+import { Lock, Loader2, CheckCircle2, ShieldAlert } from "lucide-react";
+
+export function InvalidRecoveryPage() {
+  return (
+    <AuthShell>
+      <AuthCard>
+        <div role="alert" className="flex flex-col items-center py-4 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50">
+            <ShieldAlert aria-hidden="true" className="h-7 w-7 text-amber-600" />
+          </div>
+          <h1 className="mt-4 text-xl font-black text-[#0D1B3D]">Reset link required</h1>
+          <p className="mt-2 max-w-xs text-sm leading-relaxed text-gray-500">
+            This password form only opens from a valid, unexpired recovery email. Request a new link to continue safely.
+          </p>
+          <Link href="/forgot-password" className="mt-5 rounded-xl bg-[#009966] px-5 py-3 text-sm font-bold text-white hover:bg-[#00B377]">
+            Request a new reset link
+          </Link>
+        </div>
+      </AuthCard>
+    </AuthShell>
+  );
+}
 
 export function ResetPasswordPage() {
   const router = useRouter();

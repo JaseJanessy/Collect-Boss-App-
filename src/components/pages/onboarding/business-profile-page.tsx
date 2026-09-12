@@ -10,7 +10,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { track } from "@/lib/analytics/tracker";
 import { type AccountType, type PaymentLockMode } from "@/lib/supabase/types";
 import { useBusinessProfile } from "@/hooks/use-business-profile";
-import type { BusinessProfileDto } from "@/lib/business-profile/types";
+import type { BusinessIndustry, BusinessProfileDto } from "@/lib/business-profile/types";
 import { businessProfileSchema, type BusinessProfileInput } from "@/lib/business-profile/validation";
 import {
   Building2,
@@ -27,6 +27,8 @@ import {
   Loader2,
   Info,
 } from "lucide-react";
+import { PLANS } from "@/lib/billing/plans";
+import type { PlanSlug } from "@/lib/billing/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,6 +37,7 @@ interface ProfileForm {
   businessName:    string;
   legalName:       string;
   registrationNo:  string;
+  industry:        BusinessIndustry;
   ownerName:       string;
   phone:           string;
   email:           string;
@@ -49,6 +52,7 @@ function createProfileForm(profile: BusinessProfileDto | null): ProfileForm {
     businessName: profile?.displayName ?? "",
     legalName: profile?.legalName ?? "",
     registrationNo: profile?.registrationNo ?? "",
+    industry: profile?.industry ?? "general",
     ownerName: profile?.contactName ?? "",
     phone: profile?.phone ?? "",
     email: profile?.email ?? "",
@@ -65,6 +69,7 @@ function toProfileInput(form: ProfileForm): BusinessProfileInput | Record<string
     legalName: form.legalName,
     contactName: form.ownerName,
     registrationNo: form.registrationNo.trim() || null,
+    industry: form.industry,
     phone: form.phone,
     email: form.email,
     address: form.address.trim() || null,
@@ -103,7 +108,7 @@ const lockModes: Array<{
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export function BusinessProfilePage() {
+export function BusinessProfilePage({ selectedPlan }: { selectedPlan?: PlanSlug }) {
   const { profile, loading, error, refresh } = useBusinessProfile();
 
   if (isSupabaseConfigured && loading) {
@@ -123,6 +128,7 @@ export function BusinessProfilePage() {
       initialProfile={profile}
       loadError={error}
       onRetry={refresh}
+      selectedPlan={selectedPlan}
     />
   );
 }
@@ -131,10 +137,12 @@ function BusinessProfileForm({
   initialProfile,
   loadError,
   onRetry,
+  selectedPlan,
 }: {
   initialProfile: BusinessProfileDto | null;
   loadError: string | null;
   onRetry: () => Promise<void>;
+  selectedPlan?: PlanSlug;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
@@ -164,6 +172,7 @@ function BusinessProfileForm({
       legalName: fields.legalName?.[0],
       ownerName: fields.contactName?.[0],
       registrationNo: fields.registrationNo?.[0],
+      industry: fields.industry?.[0],
       phone: fields.phone?.[0],
       email: fields.email?.[0],
       address: fields.address?.[0],
@@ -197,7 +206,7 @@ function BusinessProfileForm({
       setMockBusinessComplete();
       await new Promise((r) => setTimeout(r, 600)); // simulate save
       track("business_profile_created", { payment_lock_mode: form.paymentLockMode });
-      router.push("/");
+      router.push(selectedPlan && selectedPlan !== "free" ? `/billing?plan=${selectedPlan}` : "/");
       return;
     }
 
@@ -219,11 +228,16 @@ function BusinessProfileForm({
     }
 
     track("business_profile_created", { payment_lock_mode: form.paymentLockMode });
-    router.push("/");
+    router.push(selectedPlan && selectedPlan !== "free" ? `/billing?plan=${selectedPlan}` : "/");
   }
 
   return (
     <AuthShell maxWidth="md">
+      {selectedPlan && (
+        <p className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+          Step 3 of 3 · About 3 minutes · {PLANS[selectedPlan].name} plan selected
+        </p>
+      )}
       {/* Progress indicator */}
       <div className="flex items-center gap-3 mb-6">
         {[1, 2].map((s) => (
@@ -347,6 +361,30 @@ function BusinessProfileForm({
                 hint="SSM registration number"
               />
               )}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-bold text-gray-700" htmlFor="business-industry">Industry</label>
+                <select
+                  id="business-industry"
+                  value={form.industry}
+                  onChange={(event) => update("industry", event.target.value as BusinessIndustry)}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-700"
+                >
+                  <option value="general">General business</option>
+                  <option value="professional_services">Professional services</option>
+                  <option value="retail">Retail</option>
+                  <option value="construction">Construction</option>
+                  <option value="property">Property</option>
+                  <option value="education">Education</option>
+                  <option value="healthcare">Healthcare</option>
+                  <option value="financial_services">Financial services</option>
+                  <option value="financing_money_lending">Financing / money lending</option>
+                  <option value="other">Other</option>
+                </select>
+                {errors.industry && <p className="ml-1 text-xs text-red-500">{errors.industry}</p>}
+                <p className="ml-1 text-[11px] text-gray-400">
+                  Industry is used for risk-based review. Financing and money-lending businesses may need licence review before payment links are enabled.
+                </p>
+              </div>
               <FormField
                 label="Owner / Contact Name"
                 placeholder="e.g. Ahmad bin Hassan"

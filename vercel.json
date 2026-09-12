@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/domain-events",
+      "schedule": "5 * * * *"
+    },
+    {
+      "path": "/api/cron/accounting-sync",
+      "schedule": "35 2 * * *"
+    },
+    {
+      "path": "/api/cron/integration-jobs",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/document-extractions",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/document-scans",
+      "schedule": "* * * * *"
+    }
+  ]
+}

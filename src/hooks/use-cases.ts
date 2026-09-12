@@ -16,7 +16,13 @@ export interface UseCasesState {
   loadMore: () => void;
 }
 
-export function useCases({ query = "", status }: Pick<CaseListOptions, "query" | "status"> = {}): UseCasesState {
+export function useCases(options: Omit<CaseListOptions, "page" | "perPage"> = {}): UseCasesState {
+  const {
+    query = "", statuses = [], priorities = [], owner, agingMin, agingMax,
+    promiseMissed, plan, dispute, dueToday, highValueMinor, closed,
+  } = options;
+  const statusesKey = statuses.join(",");
+  const prioritiesKey = priorities.join(",");
   const [cases,   setCases]   = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -30,7 +36,14 @@ export function useCases({ query = "", status }: Pick<CaseListOptions, "query" |
     if (append) setLoadingMore(true);
     else setLoading(true);
 
-    const result = await getCasesClient({ page: requestedPage, query, status });
+    const result = await getCasesClient({
+      page: requestedPage,
+      query,
+      statuses: statusesKey ? statusesKey.split(",") as CaseListOptions["statuses"] : [],
+      priorities: prioritiesKey ? prioritiesKey.split(",") as CaseListOptions["priorities"] : [],
+      owner, agingMin, agingMax,
+      promiseMissed, plan, dispute, dueToday, highValueMinor, closed,
+    });
     if (version !== requestVersion.current) return;
 
     if (result.data) {
@@ -43,7 +56,10 @@ export function useCases({ query = "", status }: Pick<CaseListOptions, "query" |
     }
     setLoading(false);
     setLoadingMore(false);
-  }, [query, status]);
+  }, [
+    query, statusesKey, prioritiesKey, owner, agingMin, agingMax,
+    promiseMissed, plan, dispute, dueToday, highValueMinor, closed,
+  ]);
 
   useEffect(() => {
     void load(1, false);

@@ -133,8 +133,8 @@ export function featureBlockReason(
 ): LimitReason {
   const labels: Record<string, string> = {
     payment_lock:     "Payment Lock",
-    formal_demand:    "Formal Demand Letter",
-    lawyer_referral:  "Lawyer Referral",
+    formal_demand:    "Formal Payment Notice",
+    lawyer_referral:  "Request Legal Review",
     reports:          "Reports & Analytics",
   };
   return {

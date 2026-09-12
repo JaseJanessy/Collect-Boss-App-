@@ -7,7 +7,7 @@ export function PrivacyPage() {
     <LegalShell
       title="Privacy Policy"
       subtitle="How CollectBoss collects, uses, and protects your personal data."
-      lastUpdated="2025-01-01"
+      lastUpdated="2026-09-01"
     >
       <LegalHighlight>
         This Privacy Policy is prepared in compliance with the Personal Data Protection Act

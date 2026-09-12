@@ -1,5 +1,5 @@
 /**
- * Formal Demand Letter PDF Generator.
+ * Versioned payment-notice PDF generator for the legacy formal-demand route.
  * Uses jsPDF (dynamic import) — browser-only, no SSR.
  *
  * SAFETY:
@@ -8,6 +8,8 @@
  * - No fake court warnings
  * - Always includes the legal disclaimer
  */
+
+import { brandPdfColors } from "../brand/pdf-theme.ts";
 
 export interface DemandPdfData {
   caseId:        string;
@@ -52,33 +54,39 @@ export async function generateDemandPdf(data: DemandPdfData): Promise<Blob> {
     doc.setFontSize(7);
     doc.setTextColor(180, 180, 180);
     doc.text(
-      `Formal Demand · ${data.caseId} · Page ${n} · CollectBoss`,
+      `${(data.templateVersion ?? 1) < 2 ? "Formal Demand" : "Payment Notice"} · ${data.caseId} · Page ${n} · CollectBoss`,
       W / 2, H - 8, { align: "center" }
     );
     doc.setPage(saved);
   };
 
   // ── Header bar ─────────────────────────────────────────────────────────────
-  doc.setFillColor(13, 27, 61);
+  doc.setFillColor(...brandPdfColors.navy);
   doc.rect(0, 0, W, 18, "F");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.setTextColor(255, 255, 255);
+  doc.setFillColor(...brandPdfColors.surface);
+  doc.roundedRect(ML - 2, 3, 43, 13, 1, 1, "F");
+  doc.setTextColor(...brandPdfColors.navy);
   const collectW = doc.getTextWidth("Collect");
   doc.text("Collect", ML, 12);
-  doc.setTextColor(0, 153, 102);
+  doc.setTextColor(...brandPdfColors.green);
   doc.text("Boss", ML + collectW, 12);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(180, 210, 230);
-  const toneLabelMap: Record<string, string> = {
+  const toneLabelMap: Record<string, string> = (data.templateVersion ?? 1) < 2 ? {
     standard: "Formal Payment Notice",
     firm:     "Formal Demand Notice",
     final:    "Final Notice of Outstanding Payment",
+  } : {
+    standard: "Formal Payment Reminder",
+    firm:     "Firm Payment Reminder",
+    final:    "Final Payment Notice",
   };
-  doc.text(toneLabelMap[data.tone] ?? "Formal Demand", W - MR, 12, { align: "right" });
+  doc.text(toneLabelMap[data.tone] ?? "Payment Notice", W - MR, 12, { align: "right" });
 
   y = 26;
 
@@ -104,7 +112,7 @@ export async function generateDemandPdf(data: DemandPdfData): Promise<Blob> {
       guard(10);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
-      doc.setTextColor(13, 27, 61);
+      doc.setTextColor(...brandPdfColors.navy);
       doc.text(line, ML, y);
       y += 6;
     } else if (line.trim() === "") {
@@ -136,9 +144,9 @@ export async function generateDemandPdf(data: DemandPdfData): Promise<Blob> {
   doc.setTextColor(107, 114, 128);
   doc.text("DISCLAIMER", ML + 3, y + 5);
   doc.setFont("helvetica", "normal");
-  const disclaimer =
-    "CollectBoss helps prepare document drafts based on your case records. " +
-    "This is not legal advice. Please consult a qualified lawyer before taking legal action.";
+  const disclaimer = (data.templateVersion ?? 1) < 2
+    ? "CollectBoss helps prepare document drafts based on your case records. This is not legal advice. Please consult a qualified lawyer before taking legal action."
+    : "CollectBoss prepares a factual payment-notice draft from creditor records. It is not a law firm, does not provide legal advice, and gives this document no lawyer or court authority. Obtain qualified legal review before legal action.";
   const dLines = doc.splitTextToSize(disclaimer, CW - 6);
   doc.text(dLines, ML + 3, y + 10);
   y += 22;

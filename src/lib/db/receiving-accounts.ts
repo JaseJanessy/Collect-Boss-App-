@@ -12,6 +12,8 @@ function mockToRow(a: (typeof mockReceivingAccounts)[0]): ReceivingAccountRow {
   return {
     id:                   a.id,
     business_id:          "mock-business-id",
+    currency:             "MYR",
+    business_entity_id:   null,
     bank_name:            a.bankName,
     account_holder_name:  a.accountHolder,
     account_number:       a.accountNumber,
@@ -22,6 +24,16 @@ function mockToRow(a: (typeof mockReceivingAccounts)[0]): ReceivingAccountRow {
     created_at:           new Date().toISOString(),
     updated_at:           new Date().toISOString(),
     version:              1,
+    business_entity:      a.accountHolder,
+    payment_method:       "bank_transfer",
+    masked_display:       a.accountNumber.replace(/.(?=.{4})/g, "*"),
+    qr_object_path:       null,
+    is_active:            true,
+    verification_status:  "unverified",
+    created_by:           null,
+    updated_by:           null,
+    approved_by:          null,
+    approved_at:          null,
   };
 }
 
@@ -55,6 +67,10 @@ export async function getPrimaryAccount(): Promise<DbResult<ReceivingAccountRow 
     .from("receiving_accounts")
     .select("*")
     .eq("is_primary", true)
+    .eq("is_active", true)
+    .not("verification_status", "in", "(rejected,disabled)")
+    .eq("is_active", true)
+    .not("verification_status", "in", "(rejected,disabled)")
     .maybeSingle();
 
   if (error) return fail(error.message);

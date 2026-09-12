@@ -17,7 +17,8 @@ function snapshot(creditorType: "individual" | "business", debtorType: "individu
     approvedPayments: partial ? [{ date: "2026-07-01T00:00:00.000Z", amount: 50, method: "bank_transfer", reference: "REF-1" }] : [],
     reminderCount: 2, paymentInstructionsIncluded: true,
     paymentInstructions: { bankName: "Example Bank", accountHolder: "Creditor", accountNumber: "123456789", duitnowId: null },
-    evidenceReferenceIncluded: true, disclaimer: FORMAL_DEMAND_DISCLAIMER,
+    evidenceReferenceIncluded: true, legalReviewRequired: false, legalReviewReason: null,
+    disclaimer: "CollectBoss helps prepare document drafts based on your case records. This is not legal advice. Please consult a qualified lawyer before taking legal action.",
     pdf: { caseId: "case-1", businessName: "Creditor", tone: "firm", deadlineDays: 14, deadlineDate: "1 August 2026", today: "18 July 2026", draftText: "", documentNumber: "CB-FD-20260718-ABC12345", templateVersion: 1 },
   };
   value.pdf.draftText = buildFormalDemandText(value);
@@ -42,6 +43,25 @@ test("partial-payment demand preserves the remaining balance snapshot", () => {
   assert.match(text, /partial payment of RM 50.00/);
   assert.match(text, /remaining balance of RM 150.00/);
   assert.equal(text.includes("RM 200.00"), false);
+});
+
+test("version 2 payment notices use factual labels while version 1 remains reproducible", () => {
+  const legacy = snapshot("business", "business");
+  assert.match(buildFormalDemandText(legacy), /FORMAL DEMAND NOTICE/);
+
+  const current = snapshot("business", "business");
+  current.templateVersion = 2;
+  current.tone = "final";
+  current.legalReviewRequired = true;
+  current.legalReviewReason = "External review required before legal action.";
+  current.disclaimer = FORMAL_DEMAND_DISCLAIMER;
+  current.pdf.templateVersion = 2;
+  current.pdf.tone = "final";
+  const text = buildFormalDemandText(current);
+  assert.match(text, /FINAL PAYMENT NOTICE/);
+  assert.match(text, /may request external legal review/i);
+  assert.match(text, /not a law firm/i);
+  assert.doesNotMatch(text, /our legal advisors|recovery proceedings|FORMAL DEMAND NOTICE/i);
 });
 
 test("demand PDF renders from the persisted snapshot", async () => {

@@ -1,0 +1,2 @@
+import { PocketFinancialSummary } from "@/components/pocket/pocket-payments";
+export default function PocketReportsPage(){return <section aria-labelledby="reports-title"><p className="text-sm font-bold text-[#087F5B]">Shared ledger summary</p><h1 id="reports-title" className="mt-2 text-3xl font-black text-[#092F2A]">Basic Reports</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">These totals come from the same debts, confirmed allocations, and linked reversals shown everywhere else in Pocket.</p><PocketFinancialSummary/></section>}

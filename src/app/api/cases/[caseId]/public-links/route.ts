@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { appendSensitiveAudit, requireTenantPermission } from "@/lib/auth/tenant-access";
 import { getAppUrl } from "@/lib/app-url";
 import {
-  getOwnedCaseScope,
   generatePublicToken,
   hashPublicToken,
   type PublicAccessPurpose,
 } from "@/lib/public-access/service";
-import { getServerClient } from "@/lib/supabase/server-client";
-import { getServiceClient } from "@/lib/supabase/service-client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,12 +18,11 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ caseId: string }> },
 ) {
-  const ownerClient = await getServerClient();
-  const { data: { user } } = ownerClient ? await ownerClient.auth.getUser() : { data: { user: null } };
-  if (!user) return json({ error: "You must be signed in." }, 401);
-
+  const access = await requireTenantPermission("public_link.manage");
+  if ("error" in access) return json({ error: access.error }, access.status);
   const { caseId } = await context.params;
-  const caseScope = await getOwnedCaseScope(caseId, user.id);
+  const { data: caseScope } = await access.service.from("cases")
+    .select("id,business_id,currency").eq("id", caseId).eq("business_id", access.businessId).maybeSingle();
   if (!caseScope) return json({ error: "Case not found." }, 404);
 
   let body: unknown;
@@ -45,8 +42,7 @@ export async function POST(
     return json({ error: "Expiry must be between one hour and 30 days." }, 400);
   }
 
-  const service = await getServiceClient();
-  if (!service) return json({ error: "Public link service is unavailable." }, 503);
+  const service = access.service;
 
   const { data: paymentCase } = await service
     .from("cases")
@@ -93,9 +89,24 @@ export async function POST(
   const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
   let receivingAccountId: string | null = null;
   if (purpose === "payment") {
+    const { data: access, error: accessError } = await service.rpc("business_payment_link_access", {
+      p_business_id: caseScope.business_id,
+    });
+    if (accessError) return json({ error: "Unable to verify payment-link eligibility." }, 503);
+    const paymentLinkAccess = access as { allowed?: boolean; reason?: string };
+    if (!paymentLinkAccess.allowed) {
+      const message = paymentLinkAccess.reason === "additional_review_required"
+        ? "Business verification review is required before payment links can be enabled for this industry."
+        : "Payment links are temporarily unavailable while a safety review is active.";
+      return json({ error: message, restrictionReason: paymentLinkAccess.reason }, 409);
+    }
     receivingAccountId = (paymentCase as { receiving_account_id: string | null }).receiving_account_id;
+    if (receivingAccountId) {
+      const { data: selected } = await service.from("receiving_accounts").select("id").eq("id", receivingAccountId).eq("business_id", caseScope.business_id).eq("currency", caseScope.currency).eq("is_active", true).eq("verification_status", "verified").maybeSingle();
+      if (!selected) receivingAccountId = null;
+    }
     if (!receivingAccountId) {
-      const { data: primary } = await service.from("receiving_accounts").select("id").eq("business_id", caseScope.business_id).eq("is_primary", true).maybeSingle();
+      const { data: primary } = await service.from("receiving_accounts").select("id").eq("business_id", caseScope.business_id).eq("currency", caseScope.currency).eq("is_primary", true).eq("is_active", true).eq("verification_status", "verified").maybeSingle();
       receivingAccountId = (primary as { id: string } | null)?.id ?? null;
     }
     if (!receivingAccountId) return json({ error: "Choose a receiving account before creating a payment link." }, 409);
@@ -103,13 +114,19 @@ export async function POST(
   const { error: insertError } = await service.from("public_access_tokens").insert({
     token_hash: hashPublicToken(rawToken),
     purpose: purpose as PublicAccessPurpose,
+    business_id: caseScope.business_id,
     case_id: caseScope.id,
     payment_plan_id: paymentPlanId,
     receiving_account_id: receivingAccountId,
-    created_by: user.id,
+    created_by: access.user.id,
     expires_at: expiresAt,
   });
   if (insertError) return json({ error: "Unable to create the public link." }, 500);
+
+  await appendSensitiveAudit({
+    access, request, action: "public_link.created", entityType: "public_access_token", caseId,
+    metadata: { purpose, expires_at: expiresAt },
+  });
 
   let baseUrl: string;
   try {

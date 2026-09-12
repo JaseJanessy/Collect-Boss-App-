@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { XCircle, ArrowLeft, CreditCard } from "lucide-react";
+import { CollectBossWordmark } from "@/components/brand/wordmark";
 
 export const metadata: Metadata = {
   title: "Checkout Cancelled",
@@ -11,8 +12,8 @@ export default function BillingCancelPage() {
   return (
     <div className="min-h-screen bg-[#F2F4F7] flex flex-col items-center justify-center px-5 text-center">
       {/* Wordmark */}
-      <Link href="/" className="text-2xl font-black tracking-tight text-[#0D1B3D] mb-10">
-        Collect<span className="text-[#009966]">Boss</span>
+      <Link href="/" className="mb-10">
+        <CollectBossWordmark className="text-2xl" />
       </Link>
 
       {/* Card */}

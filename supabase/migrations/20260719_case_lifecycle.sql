@@ -101,3 +101,8 @@ grant execute on function public.transition_case_status(text,text,text,date,inte
 revoke all on function public.archive_closed_case(text,text,integer) from public;
 grant execute on function public.archive_closed_case(text,text,integer) to authenticated;
 commit;
+
+-- Rollback: stop lifecycle schedulers and deploy code that no longer calls the
+-- transition RPCs. Preserve case_status_history and every transitioned case.
+-- The trigger/functions may be disabled only after write traffic stops; do not
+-- coerce newer statuses or remove lifecycle columns after they contain data.

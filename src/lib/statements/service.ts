@@ -2,6 +2,9 @@ import "server-only";
 
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getServerClient } from "@/lib/supabase/server-client";
+export { getOwnerStatementDataV2, Statement2AccessError, Statement2ValidationError } from "./builder";
+export type { Statement2Data, Statement2Summary, Statement2Payment, StatementCustomerOption, StatementType, RecoveryActivity, RecoverySummary } from "./builder";
+export type { StatementPeriod as StatementPeriodV2 } from "./periods";
 
 export type StatementPeriod = "3m" | "6m" | "12m";
 

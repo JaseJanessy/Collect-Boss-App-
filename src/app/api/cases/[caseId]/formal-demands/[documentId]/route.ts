@@ -13,13 +13,14 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const { data: caseData } = await auth.client.from("cases").select("id").eq("id", caseId).eq("business_id", auth.businessId).maybeSingle();
   if (!caseData) return NextResponse.json({ error: "Case not found." }, { status: 404, headers: { "Cache-Control": "no-store" } });
   const { data: document } = await auth.client.from("legal_documents").select("document_number, issued_at, snapshot, document_type").eq("id", documentId).eq("case_id", caseId).in("document_type", ["demand_standard", "demand_firm", "demand_final"]).maybeSingle();
-  if (!document || !document.issued_at || !document.snapshot) return NextResponse.json({ error: "Only an issued, immutable formal demand can be downloaded." }, { status: 409, headers: { "Cache-Control": "no-store" } });
+  if (!document || !document.issued_at || !document.snapshot) return NextResponse.json({ error: "Only an issued, immutable payment notice can be downloaded." }, { status: 409, headers: { "Cache-Control": "no-store" } });
   const snapshot = document.snapshot as FormalDemandSnapshot;
   if (!snapshot.pdf || !snapshot.documentNumber || snapshot.documentNumber !== document.document_number) return NextResponse.json({ error: "The formal-demand snapshot is invalid." }, { status: 409, headers: { "Cache-Control": "no-store" } });
   try {
     const pdf = await generateDemandPdf(toDemandPdfData(snapshot));
-    return new NextResponse(await pdf.arrayBuffer(), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename=\"formal-demand-${snapshot.documentNumber}.pdf\"`, "Cache-Control": "private, no-store, max-age=0", "X-Content-Type-Options": "nosniff" } });
+    const filename = snapshot.templateVersion < 2 ? "formal-demand" : "payment-notice";
+    return new NextResponse(await pdf.arrayBuffer(), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename=\"${filename}-${snapshot.documentNumber}.pdf\"`, "Cache-Control": "private, no-store, max-age=0", "X-Content-Type-Options": "nosniff" } });
   } catch {
-    return NextResponse.json({ error: "Unable to render the issued formal demand." }, { status: 500, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ error: "Unable to render the issued payment notice." }, { status: 500, headers: { "Cache-Control": "no-store" } });
   }
 }

@@ -23,6 +23,8 @@
 | Cross-account tester | tester2@collectboss.my | Business Owner |
 | Debtor (no account needed) | — | Uses /pay and /acknowledge links only |
 
+Create these only in the isolated staging Supabase project. Generate unique passwords in the approved secret manager, invite the testers through the normal confirmation flow, and never record passwords in this repository or release evidence. Keep both businesses empty before the run so cross-tenant and zero-state checks are meaningful.
+
 ---
 
 ## SECTION 1 — Authentication
@@ -32,14 +34,15 @@
 **Steps:**
 1. Open app in Incognito / Private window
 2. Navigate to `/signup`
-3. Enter email: `tester1@collectboss.my`, password: `Test1234!`
+3. Enter `tester1@collectboss.my` and its generated staging-only password
 4. Click Sign Up
 5. Check email for OTP (or Supabase Dashboard → Auth → Logs)
-6. Enter the 6-digit OTP
+6. Open the confirmation link
 
 **Expected result:**
 - OTP email arrives within 30 seconds
-- After OTP: redirected to `/onboarding/profile`
+- After confirmation: redirected to `/choose-product`
+- Select CollectBoss, accept the rules, then continue to `/onboarding/profile`
 - NO mock demo data visible (Tan Wei Ming, CB-2024-xxxx) anywhere
 
 ---
@@ -64,7 +67,7 @@
 **Steps:**
 1. Logout (More → Logout)
 2. Navigate to `/login`
-3. Enter `tester1@collectboss.my` / `Test1234!`
+3. Enter `tester1@collectboss.my` and its generated staging-only password
 4. Click Login
 
 **Expected result:**

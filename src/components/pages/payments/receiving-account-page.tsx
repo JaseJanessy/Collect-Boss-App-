@@ -15,41 +15,53 @@ import {
   deleteReceivingAccountClient,
   setPrimaryAccountClient,
 } from "@/lib/db/receiving-accounts-client";
-import { appendAuditLogClient } from "@/lib/db/audit-logs-client";
 import {
   Building2, Copy, Check, QrCode, Bell, ChevronLeft,
   Plus, Star, Edit3, Trash2, X, AlertCircle, Save,
   Shield, Loader2,
 } from "lucide-react";
+import { useRegion } from "@/contexts/region-context";
 
 // ─── Form state ───────────────────────────────────────────────────────────────
 
 interface AccountFormValues {
+  currency:             string;
   bank_name:            string;
   account_holder_name:  string;
   account_number:       string;
   duitnow_id:           string;
   include_in_reminders: boolean;
   is_primary:           boolean;
+  business_entity:      string;
+  payment_method:       "bank_transfer" | "duitnow" | "ewallet" | "other";
+  confirmation:         string;
 }
 
 const emptyForm: AccountFormValues = {
+  currency:             "MYR",
   bank_name:            "",
   account_holder_name:  "",
   account_number:       "",
   duitnow_id:           "",
   include_in_reminders: true,
   is_primary:           false,
+  business_entity:      "",
+  payment_method:       "bank_transfer",
+  confirmation:         "",
 };
 
 function rowToForm(row: ReceivingAccountRow): AccountFormValues {
   return {
+    currency:             row.currency ?? "MYR",
     bank_name:            row.bank_name,
     account_holder_name:  row.account_holder_name,
     account_number:       row.account_number,
     duitnow_id:           row.duitnow_id ?? "",
     include_in_reminders: row.include_in_reminders,
     is_primary:           row.is_primary,
+    business_entity:      row.business_entity,
+    payment_method:       row.payment_method,
+    confirmation:         "",
   };
 }
 
@@ -136,9 +148,17 @@ function AccountCard({
               <Star className="w-2.5 h-2.5" /> Primary
             </span>
           )}
+          <span className={cn(
+            "ml-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-semibold capitalize",
+            account.verification_status === "verified" ? "bg-emerald-50 text-emerald-700" :
+            account.verification_status === "rejected" || account.verification_status === "disabled" ? "bg-red-50 text-red-700" :
+            "bg-amber-50 text-amber-700"
+          )}>
+            {account.verification_status}
+          </span>
         </div>
         <div className="flex items-center gap-1">
-          {!account.is_primary && (
+          {account.is_active && !account.is_primary && (
             <button
               onClick={onSetPrimary}
               className="p-1.5 text-gray-300 hover:text-amber-500 transition-colors"
@@ -147,12 +167,12 @@ function AccountCard({
               <Star className="w-3.5 h-3.5" />
             </button>
           )}
-          <button onClick={onEdit} className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors">
+          <button onClick={onEdit} disabled={!account.is_active} className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-30">
             <Edit3 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={onDelete}
-            disabled={isDeleting}
+            disabled={isDeleting || !account.is_active}
             className="p-1.5 text-gray-300 hover:text-red-400 transition-colors"
           >
             {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
@@ -167,8 +187,7 @@ function AccountCard({
           <CopyButton value={account.account_holder_name} />
         </div>
         <div className="flex items-center justify-between">
-          <div><p className="text-[11px] text-gray-400">Account Number</p><p className="text-sm font-semibold text-gray-800 mt-0.5 font-mono">{account.account_number}</p></div>
-          <CopyButton value={account.account_number} />
+          <div><p className="text-[11px] text-gray-400">Account Number</p><p className="text-sm font-semibold text-gray-800 mt-0.5 font-mono">{account.masked_display}</p></div>
         </div>
       </div>
 
@@ -241,12 +260,23 @@ function AccountForm({
 
       <FormInput label="Bank Name *" placeholder="e.g. Maybank Berhad" value={v.bank_name}
         onChange={(val) => set("bank_name", val)} />
+      <div>
+        <label className="text-xs font-semibold text-gray-600 mb-1 block" htmlFor="receiving-currency">Receiving currency *</label>
+        <select id="receiving-currency" value={v.currency} onChange={(event) => set("currency", event.target.value)}
+          className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300">
+          {["MYR", "SGD", "USD", "GBP", "AUD", "CAD", "EUR", "NZD", "AED"].map((currency) => <option key={currency}>{currency}</option>)}
+        </select>
+      </div>
+      <FormInput label="Business Entity *" placeholder="Legal business or individual name" value={v.business_entity}
+        onChange={(val) => set("business_entity", val)} />
       <FormInput label="Account Holder Name *" placeholder="e.g. Syarikat ABC Sdn Bhd"
         value={v.account_holder_name} onChange={(val) => set("account_holder_name", val)} />
       <FormInput label="Account Number *" placeholder="e.g. 1234 5678 9012"
         value={v.account_number} onChange={(val) => set("account_number", val)} type="text" />
       <FormInput label="DuitNow ID (Optional)" placeholder="e.g. 01X-XXXXXXX or IC/SSM"
         value={v.duitnow_id} onChange={(val) => set("duitnow_id", val)} />
+      <FormInput label={'Security confirmation — type "CHANGE PAYMENT DESTINATION"'} placeholder="CHANGE PAYMENT DESTINATION"
+        value={v.confirmation} onChange={(val) => set("confirmation", val)} />
 
       <div className="flex flex-col gap-2.5">
         <ToggleRow
@@ -328,9 +358,10 @@ function ToggleRow({ label, sub, checked, onChange }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function ReceivingAccountPage() {
-  const { accounts, loading, error, addAccount, patchAccount, removeAccount } =
+  const { accounts, loading, error, addAccount, patchAccount, refresh } =
     useReceivingAccounts();
   const businessId = useBusinessId();
+  const { configuration } = useRegion();
 
   const [editingId,  setEditingId]  = useState<string | null>(null);
   const [showAdd,    setShowAdd]    = useState(false);
@@ -338,7 +369,6 @@ export function ReceivingAccountPage() {
   const [formError,  setFormError]  = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [savedMsg,   setSavedMsg]   = useState<string | null>(null);
-
   const bId = businessId ?? "mock-business-id";
 
   async function handleSaveEdit(id: string, v: AccountFormValues) {
@@ -348,24 +378,24 @@ export function ReceivingAccountPage() {
     setFormError(null);
 
     const patch: ReceivingAccountUpdate = {
+      currency:             v.currency,
       bank_name:            v.bank_name.trim(),
       account_holder_name:  v.account_holder_name.trim(),
       account_number:       v.account_number.trim(),
       duitnow_id:           v.duitnow_id.trim() || null,
       include_in_reminders: v.include_in_reminders,
       is_primary:           v.is_primary,
+      business_entity:      v.business_entity.trim(),
+      payment_method:       v.payment_method,
     };
 
-    const result = await updateReceivingAccountClient(id, patch);
+    const result = await updateReceivingAccountClient(id, patch, v.confirmation);
     if (result.error) {
       setFormError(result.error);
     } else {
       patchAccount(id, patch);
       setEditingId(null);
-      await appendAuditLogClient({
-        business_id: bId, action: "receiving_account.updated",
-        actor_type: "owner", metadata: { account_id: id, bank_name: patch.bank_name ?? null },
-      });
+      refresh();
       showSaved("Account updated.");
     }
     setSaving(false);
@@ -379,6 +409,7 @@ export function ReceivingAccountPage() {
 
     const result = await saveReceivingAccountClient({
       business_id:          bId,
+      currency:             v.currency,
       bank_name:            v.bank_name.trim(),
       account_holder_name:  v.account_holder_name.trim(),
       account_number:       v.account_number.trim(),
@@ -386,42 +417,39 @@ export function ReceivingAccountPage() {
       duitnow_qr_url:       null,
       include_in_reminders: v.include_in_reminders,
       is_primary:           v.is_primary,
-    });
+      business_entity:      v.business_entity.trim(),
+      payment_method:       v.payment_method,
+      qr_object_path:       null,
+    }, v.confirmation);
 
     if (result.error) {
       setFormError(result.error);
     } else {
       addAccount(result.data!);
       setShowAdd(false);
-      await appendAuditLogClient({
-        business_id: bId, action: "receiving_account.created",
-        actor_type: "owner", metadata: { bank_name: v.bank_name.trim() },
-      });
       showSaved("Account added.");
     }
     setSaving(false);
   }
 
   async function handleDelete(id: string) {
+    const confirmation = window.prompt('Type "CHANGE PAYMENT DESTINATION" to disable this account.') ?? "";
     setDeletingId(id);
-    const result = await deleteReceivingAccountClient(id);
+    const result = await deleteReceivingAccountClient(id, confirmation);
     if (!result.error) {
-      removeAccount(id);
-      await appendAuditLogClient({
-        business_id: bId, action: "receiving_account.deleted",
-        actor_type: "owner", metadata: { account_id: id },
-      });
+      refresh();
+      showSaved("Account disabled. Existing records were preserved.");
+    } else {
+      setFormError(result.error);
     }
     setDeletingId(null);
   }
 
   async function handleSetPrimary(id: string) {
-    await setPrimaryAccountClient(id);
+    const confirmation = window.prompt('Type "CHANGE PAYMENT DESTINATION" to change the default account.') ?? "";
+    const result = await setPrimaryAccountClient(id, confirmation);
+    if (result.error) { setFormError(result.error); return; }
     patchAccount(id, { is_primary: true });
-    await appendAuditLogClient({
-      business_id: bId, action: "receiving_account.set_primary",
-      actor_type: "owner", metadata: { account_id: id },
-    });
     showSaved("Primary account updated.");
   }
 
@@ -529,7 +557,7 @@ export function ReceivingAccountPage() {
             {/* Add new account */}
             {showAdd ? (
               <AccountForm
-                initialValues={{ ...emptyForm, is_primary: accounts.length === 0 }}
+                initialValues={{ ...emptyForm, currency: configuration.settings.defaultCurrency, is_primary: accounts.length === 0 }}
                 onSave={handleCreate}
                 onCancel={() => { setShowAdd(false); setFormError(null); }}
                 saving={saving}
