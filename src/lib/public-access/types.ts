@@ -18,6 +18,8 @@ export interface PublicPaymentDetails {
     verificationState: "unverified" | "pending" | "verified" | "rejected" | "restricted";
   };
   invoiceReference: string | null;
+  /** Pay by FPX / card through the creditor's own Stripe account. */
+  onlinePayment: { available: boolean };
   amountDue: number;
   totalOutstanding: number;
   collectableAmount: number;

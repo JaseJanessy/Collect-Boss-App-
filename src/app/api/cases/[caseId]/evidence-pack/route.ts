@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedBusiness } from "@/lib/debtors/server";
+import { planActionDenial } from "@/lib/billing/plan-enforcement";
 import { buildEvidencePackManifest, sortEvidenceForPack, validateEvidencePackSelection } from "@/lib/evidence/pack";
 import { generateEvidencePackPdf, type EvidencePackData } from "@/lib/pdf/evidence-pack-generator";
 import type { CaseRow, EvidenceFileRow, EvidenceType, PaymentPlanRow, PaymentRow, ReminderRow } from "@/lib/supabase/types";
@@ -45,6 +46,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq("generation_key", input.data.generationKey)
     .maybeSingle();
   if (existing) return json({ error: "This evidence pack request has already been processed." }, 409);
+
+  const planDenial = await planActionDenial(auth.client, auth.businessId, "export_evidence_pack");
+  if (planDenial) return planDenial;
 
   const evidenceQuery = input.data.evidenceIds.length === 0
     ? Promise.resolve({ data: [] as EvidenceFileRow[], error: null })

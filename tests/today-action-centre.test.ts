@@ -118,7 +118,8 @@ test("desktop, mobile and Action Centre route render the shared operational pane
   }
   assert.match(panel, /allowHistory/);
   assert.match(panel, /Snooze…/);
-  assert.match(panel, /not notification history/i);
+  assert.match(panel, /t\("dashboard\.sorted"\)/);
+  assert.match(read("src/lib/i18n/messages.ts"), /Sorted by how serious each item is, then by due date/);
 });
 
 test("cron projects actions only after domain detection and notification projection", () => {

@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -39,7 +40,7 @@ export function RegionProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/region-settings", { cache: "no-store" });
       const payload = await response.json().catch(() => ({})) as { configuration?: RegionConfigurationDto; error?: string };
-      if (!response.ok || !payload.configuration) throw new Error(payload.error ?? "Unable to load region settings.");
+      if (!response.ok || !payload.configuration) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load region settings."));
       setLoaded(payload.configuration);
       setError(null);
     } catch (caught) {

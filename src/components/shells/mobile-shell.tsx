@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useShellViewport } from "@/hooks/use-shell-viewport";
 import { DemoBanner } from "@/components/beta/demo-banner";
 import { ErrorBoundary } from "@/components/error/error-boundary";
 import { EnvModeBadge } from "@/components/ui/env-mode-badge";
@@ -13,6 +14,8 @@ import { activePrimaryNavigation, navigationItemIsVisible, primaryNavigation } f
 import { NavigationIcon } from "@/components/navigation/navigation-icon";
 import { CollectBossWordmark } from "@/components/brand/wordmark";
 import { WorkspaceAccessNotice } from "./workspace-access-notice";
+import { useT } from "@/contexts/language-context";
+import { navigationGroupLabel, navigationLabel } from "@/lib/i18n/messages";
 
 interface MobileShellProps {
   children: ReactNode;
@@ -22,9 +25,15 @@ interface MobileShellProps {
 
 export function MobileShell({ children, hideHeader }: MobileShellProps) {
   const pathname  = usePathname();
+  const t = useT();
   const { user, permissions, workspace, accessError }  = useAuth();
+  const viewport = useShellViewport();
   const activeItem = activePrimaryNavigation(pathname);
   const visibleItems = primaryNavigation.filter((item) => navigationItemIsVisible(item, permissions));
+
+  // The page also renders DashboardShell; only the visible shell mounts the page.
+  if (viewport === "desktop") return null;
+  const active = viewport === "mobile";
 
   // User initials for avatar
   const initials = user?.name
@@ -54,7 +63,7 @@ export function MobileShell({ children, hideHeader }: MobileShellProps) {
 
             <div className="flex items-center gap-2">
               {/* Notification bell */}
-              <NotificationBell mobile />
+              {active && <NotificationBell mobile />}
 
               {/* User avatar → More page */}
               <Link href="/more" aria-label="Open More and Settings" className="flex size-11 items-center justify-center">
@@ -73,7 +82,7 @@ export function MobileShell({ children, hideHeader }: MobileShellProps) {
       {/* Scrollable content */}
       <main id="mobile-main-content" tabIndex={-1} className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
         <ErrorBoundary context="MobileShell">
-          {accessError ? <WorkspaceAccessNotice /> : children}
+          {active && (accessError ? <WorkspaceAccessNotice /> : children)}
         </ErrorBoundary>
       </main>
 
@@ -86,7 +95,7 @@ export function MobileShell({ children, hideHeader }: MobileShellProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                aria-label={item.label}
+                aria-label={navigationLabel(t, item)}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "min-w-0 flex-1 flex flex-col items-center justify-center gap-1 px-0.5 py-2 text-[11px] font-medium text-center leading-tight transition-colors",
@@ -100,7 +109,7 @@ export function MobileShell({ children, hideHeader }: MobileShellProps) {
                     isActive ? "text-[var(--cb-action-primary)]" : "text-[var(--cb-text-secondary)]"
                   )}
                 />
-                <span className="w-full">{item.label}</span>
+                <span className="w-full">{navigationLabel(t, item)}</span>
               </Link>
             );
           })}

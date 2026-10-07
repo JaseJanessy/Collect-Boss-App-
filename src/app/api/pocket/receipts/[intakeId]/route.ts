@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authorizePocketCapability, requirePocketBillingAccess } from "@/lib/billing/pocket-entitlements";
 import { correlationId, requestDigest } from "@/lib/document-intake/validation";
+import { kickDocumentQueues } from "@/lib/document-intake/queue-kick";
 import { loadPocketReceiptWorkspace } from "@/lib/pocket/receipts-server";
 
 export const dynamic = "force-dynamic";
@@ -54,5 +55,6 @@ export async function POST(request: NextRequest, context: Context) {
       code: quota ? "LIMIT_REACHED" : rate ? "EXTRACTION_RATE_LIMITED" : "PROCESSING_FAILED",
     }, { status: quota || rate ? 429 : 503, headers });
   }
+  kickDocumentQueues();
   return NextResponse.json({ extraction: data, idempotentReplay: false }, { status: 202, headers });
 }

@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useCallback, useEffect, useState } from "react";
 import type {
@@ -22,7 +23,7 @@ export function useDisputes(caseId: string, enabled = true) {
     setLoading(true);
     const response = await fetch(`/api/cases/${caseId}/disputes`, { cache: "no-store" });
     const payload = await response.json() as DisputeData & { error?: string };
-    if (!response.ok) throw new Error(payload.error ?? "Unable to load disputes.");
+    if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load disputes."));
     setData(payload); setError(null); setLoading(false);
   }, [caseId, enabled]);
   useEffect(() => {
@@ -31,7 +32,7 @@ export function useDisputes(caseId: string, enabled = true) {
     fetch(`/api/cases/${caseId}/disputes`, { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json() as DisputeData & { error?: string };
-        if (!response.ok) throw new Error(payload.error ?? "Unable to load disputes.");
+        if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load disputes."));
         return payload;
       })
       .then((payload) => { if (active) { setData(payload); setError(null); } })

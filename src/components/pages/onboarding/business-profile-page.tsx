@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { CustomerImportPanel } from "@/components/operations/customer-import-panel";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import { AuthShell } from "@/components/pages/auth/auth-shell";
 import { setMockBusinessComplete } from "@/lib/auth/mock-session";
@@ -29,6 +30,7 @@ import {
 } from "lucide-react";
 import { PLANS } from "@/lib/billing/plans";
 import type { PlanSlug } from "@/lib/billing/types";
+import { useT } from "@/contexts/language-context";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -145,7 +147,10 @@ function BusinessProfileForm({
   selectedPlan?: PlanSlug;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const totalSteps = initialProfile ? 2 : 3;
+  const t = useT();
+  const [importedRows, setImportedRows] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState("");
 
@@ -196,6 +201,18 @@ function BusinessProfileForm({
     setStep(2);
   }
 
+  // Paid plans continue to checkout; first-time free setups can import customers.
+  function finishSetup() {
+    if (selectedPlan && selectedPlan !== "free") {
+      router.push(`/billing?plan=${selectedPlan}`);
+    } else if (!initialProfile) {
+      setLoading(false);
+      setStep(3);
+    } else {
+      router.push("/");
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -206,7 +223,7 @@ function BusinessProfileForm({
       setMockBusinessComplete();
       await new Promise((r) => setTimeout(r, 600)); // simulate save
       track("business_profile_created", { payment_lock_mode: form.paymentLockMode });
-      router.push(selectedPlan && selectedPlan !== "free" ? `/billing?plan=${selectedPlan}` : "/");
+      finishSetup();
       return;
     }
 
@@ -228,7 +245,7 @@ function BusinessProfileForm({
     }
 
     track("business_profile_created", { payment_lock_mode: form.paymentLockMode });
-    router.push(selectedPlan && selectedPlan !== "free" ? `/billing?plan=${selectedPlan}` : "/");
+    finishSetup();
   }
 
   return (
@@ -240,7 +257,7 @@ function BusinessProfileForm({
       )}
       {/* Progress indicator */}
       <div className="flex items-center gap-3 mb-6">
-        {[1, 2].map((s) => (
+        {Array.from({ length: totalSteps }, (_, index) => index + 1).map((s) => (
           <div key={s} className="flex items-center gap-2 flex-1">
             <div
               className={cn(
@@ -254,7 +271,7 @@ function BusinessProfileForm({
             >
               {s < step ? <CheckCircle2 className="w-4 h-4" /> : s}
             </div>
-            {s < 2 && (
+            {s < totalSteps && (
               <div
                 className={cn(
                   "flex-1 h-0.5 transition-colors",
@@ -265,11 +282,29 @@ function BusinessProfileForm({
           </div>
         ))}
         <span className="text-xs text-gray-400 ml-1 shrink-0">
-          Step {step} of 2
+          Step {step} of {totalSteps}
         </span>
       </div>
 
-      {step === 1 ? (
+      {step === 3 ? (
+        <div className="flex flex-col gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-[#0D1B3D]">{t("onboarding.importTitle")}</h1>
+            <p className="mt-1 text-sm leading-relaxed text-gray-500">
+              {t("onboarding.importBody")}
+            </p>
+          </div>
+          <CustomerImportPanel onImported={setImportedRows} />
+          {importedRows !== null && (
+            <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+              {importedRows} {importedRows === 1 ? "customer is" : "customers are"} ready in your workspace.
+            </p>
+          )}
+          <PrimaryButton type="button" size="lg" onClick={() => router.push(importedRows ? "/cases" : "/")}>
+            {importedRows ? t("onboarding.viewCustomers") : t("onboarding.skip")}
+          </PrimaryButton>
+        </div>
+      ) : step === 1 ? (
         <>
           <div className="mb-5">
             <h1 className="text-2xl font-black text-[#0D1B3D]">
@@ -312,6 +347,8 @@ function BusinessProfileForm({
                     <button
                       key={option.value}
                       type="button"
+                      aria-label={`${option.label}: ${option.detail}`}
+                      aria-pressed={form.accountType === option.value}
                       onClick={() => update("accountType", option.value)}
                       className={cn(
                         "flex items-start gap-3 rounded-xl border-2 p-3 text-left transition-colors",
@@ -435,6 +472,7 @@ function BusinessProfileForm({
                     <button
                       key={lang}
                       type="button"
+                      aria-pressed={form.language === lang}
                       onClick={() => update("language", lang)}
                       className={cn(
                         "flex items-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-semibold transition-all",

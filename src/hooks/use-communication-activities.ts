@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useCallback, useEffect, useState } from "react";
 import type {
@@ -52,7 +53,7 @@ export function useCommunicationActivities(caseId: string, enabled = true) {
         cache: "no-store",
       });
       const payload = await response.json() as CommunicationActivityData & { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Unable to load communication activity.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load communication activity."));
       setData(payload);
       setError(null);
     } catch (requestError) {
@@ -68,7 +69,7 @@ export function useCommunicationActivities(caseId: string, enabled = true) {
     fetch(`/api/cases/${encodeURIComponent(caseId)}/communications`, { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json() as CommunicationActivityData & { error?: string };
-        if (!response.ok) throw new Error(payload.error ?? "Unable to load communication activity.");
+        if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load communication activity."));
         return payload;
       })
       .then((payload) => {

@@ -104,6 +104,7 @@ export interface EntitlementRow {
   case_limit:              number;   // -1 = unlimited
   evidence_pack_limit:     number;   // -1 = unlimited
   team_member_limit:       number;
+  extra_seats?:            number;   // paid add-on seats included in team_member_limit
   payment_lock_enabled:    boolean;
   formal_demand_enabled:   boolean;
   lawyer_referral_enabled: boolean;

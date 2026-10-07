@@ -15,7 +15,7 @@ export const PLANS: Record<PlanSlug, PlanRow> = {
     slug:                    "free",
     monthly_price_rm:        0,
     stripe_price_id:         null,
-    case_limit:              3,
+    case_limit:              10,
     evidence_pack_limit:     1,
     team_member_limit:       1,
     payment_lock_enabled:    false,
@@ -95,7 +95,8 @@ export function planFeatureLabels(plan: PlanRow): string[] {
   return [
     limit(plan.case_limit, "active case", "active cases"),
     limit(plan.evidence_pack_limit, "evidence pack export", "evidence pack exports"),
-    limit(plan.team_member_limit, "team member", "team members"),
+    limit(plan.team_member_limit, "team member", "team members")
+      + (plan.monthly_price_rm > 0 && plan.team_member_limit !== -1 ? " (+RM10/month per extra user)" : ""),
     plan.payment_lock_enabled ? "Payment Lock and proof review" : "Core payment tracking",
     plan.formal_demand_enabled ? "Formal payment reminder drafts" : "Reminder generator",
     plan.reports_enabled ? "Operational reports" : "Core case summaries",
@@ -127,7 +128,7 @@ export const FREE_ENTITLEMENT_MOCK = {
   id:                      "ent-mock-free",
   business_id:             "mock-business-id",
   plan_slug:               "free" as PlanSlug,
-  case_limit:              3,
+  case_limit:              10,
   evidence_pack_limit:     1,
   team_member_limit:       1,
   payment_lock_enabled:    false,

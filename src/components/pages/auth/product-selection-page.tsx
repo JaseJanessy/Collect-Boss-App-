@@ -7,6 +7,7 @@ import { Building2, Check, Loader2, Phone, Smartphone, User } from "lucide-react
 
 import { AuthCard, AuthError, AuthField, AuthShell } from "./auth-shell";
 import { PrimaryButton } from "@/components/ui/primary-button";
+import { ProductQuiz } from "@/components/onboarding/product-quiz";
 import { getBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   MAIN_COLLECTBOSS_RULES,
@@ -141,6 +142,8 @@ export function ProductSelectionPage({ selectedPlan, preferredProduct }: { selec
       <AuthCard>
         <form onSubmit={submit} className="flex flex-col gap-5">
           {error && <AuthError message={error} />}
+
+          <ProductQuiz onChoose={selectProduct} chooseLabel="Choose this product" />
 
           <fieldset className="flex flex-col gap-2">
             <legend className="text-sm font-bold text-gray-700">Product</legend>

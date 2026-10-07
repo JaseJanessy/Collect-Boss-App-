@@ -3,6 +3,7 @@ import { findDuplicateDebtors, getAuthenticatedBusiness } from "@/lib/debtors/se
 import { caseStatusSchema, createCaseSchema } from "@/lib/validations/case";
 import { minorToDecimalString, parseCurrencyToMinor } from "@/lib/financial/money";
 import { normalizeLegacyCaseRow } from "@/lib/receivables/legacy-normalization";
+import { planActionDenial } from "@/lib/billing/plan-enforcement";
 import type { CaseRow, DebtorRow } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
@@ -106,6 +107,9 @@ export async function POST(request: NextRequest) {
   try { principalAmount = minorToDecimalString(parseCurrencyToMinor(input.amount_owed, input.currency), input.currency); } catch {
     return NextResponse.json({ error: "Enter a valid case amount." }, { status: 400 });
   }
+
+  const planDenial = await planActionDenial(auth.client, auth.businessId, "create_case");
+  if (planDenial) return planDenial;
 
   let debtor: DebtorRow | null = null;
   let createdDebtorId: string | null = null;

@@ -18,6 +18,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { DataTable, DataTableContainer } from "@/components/ui/data-table";
 import { Alert } from "@/components/ui/feedback";
 import { Tabs } from "@/components/ui/tabs";
+import { useT } from "@/contexts/language-context";
 
 const filters = [
   { label: "All",           value: "all",             emoji: "" },
@@ -32,6 +33,7 @@ interface CasesPageProps {
 
 export function CasesPage({ dashboard }: CasesPageProps) {
   const { configuration } = useRegion();
+  const t = useT();
   const [search, setSearch]             = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [operationalFilters, setOperationalFilters] = useState<OperationalCaseFilters>(emptyOperationalFilters);
@@ -72,8 +74,8 @@ export function CasesPage({ dashboard }: CasesPageProps) {
       <div className="cb-analytics-light flex flex-col gap-5 text-slate-900">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Cases</h1>
-            <p className="text-sm text-gray-500 mt-0.5">See which customers need follow-up.</p>
+            <h1 className="text-xl font-bold text-gray-900">{t("cases.title")}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{t("cases.subtitle")}</p>
           </div>
           <Link href="/add" className={buttonVariants()}>
             <Plus className="w-4 h-4" />
@@ -201,9 +203,9 @@ export function CasesPage({ dashboard }: CasesPageProps) {
   return (
     <div className="cb-light-surface flex flex-col pb-6">
       <div className="bg-white border-b border-gray-100 px-4 py-4">
-        <h1 className="text-lg font-bold text-[#0D1B3D]">Cases</h1>
+        <h1 className="text-lg font-bold text-[#0D1B3D]">{t("cases.title")}</h1>
         <p className="text-xs text-gray-400 mt-0.5">
-          See which customers need follow-up.
+          {t("cases.subtitle")}
         </p>
 
         <div className="relative mt-3">

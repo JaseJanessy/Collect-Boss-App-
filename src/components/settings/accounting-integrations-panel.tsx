@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, Eye, Link2, RefreshCw, Unplug } from "lucide-react";
@@ -7,6 +8,7 @@ import type { AccountingProvider, PublicAccountingConnection } from "@/lib/accou
 import { useRegion } from "@/contexts/region-context";
 import { formatDateTime } from "@/lib/international/formatting";
 import type { RegionSettings } from "@/lib/international/types";
+import { ApiKeyConnectForm } from "@/components/settings/api-key-connect-form";
 
 interface SyncRun {
   id: string;
@@ -31,6 +33,8 @@ interface IntegrationResponse {
 const PROVIDERS: Array<{ id: AccountingProvider; name: string; description: string }> = [
   { id: "xero", name: "Xero", description: "Contacts, sales invoices, payments and allocated credit notes." },
   { id: "quickbooks", name: "QuickBooks Online", description: "Customers, invoices, payments and credit memos." },
+  { id: "bukku", name: "Bukku", description: "Customers and sales invoices with live balances." },
+  { id: "autocount", name: "AutoCount Cloud Accounting", description: "Debtors and invoices with outstanding amounts." },
 ];
 
 function dateLabel(value: string | null, settings: RegionSettings) {
@@ -49,7 +53,7 @@ export function AccountingIntegrationsPanel() {
   const load = useCallback(async () => {
     const response = await fetch("/api/integrations/accounting", { cache: "no-store" });
     const payload = await response.json().catch(() => null) as (IntegrationResponse & { error?: string }) | null;
-    if (!response.ok || !payload) throw new Error(payload?.error ?? "Unable to load accounting integrations.");
+    if (!response.ok || !payload) throw new Error(friendlyErrorMessage(payload?.error ?? "Unable to load accounting integrations."));
     setData(payload);
   }, []);
 
@@ -76,7 +80,7 @@ export function AccountingIntegrationsPanel() {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }),
       });
       const payload = await response.json().catch(() => null) as { error?: string; counts?: Record<string, number> } | null;
-      if (!response.ok) throw new Error(payload?.error ?? "Accounting sync failed.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload?.error ?? "Accounting sync failed."));
       const total = Object.values(payload?.counts ?? {}).reduce((sum, count) => sum + count, 0);
       setMessage({
         tone: "success",
@@ -98,7 +102,7 @@ export function AccountingIntegrationsPanel() {
         method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ connectionId: connection.id }),
       });
       const payload = await response.json().catch(() => null) as { error?: string; warning?: string | null } | null;
-      if (!response.ok) throw new Error(payload?.error ?? "Unable to disconnect the provider.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload?.error ?? "Unable to disconnect the provider."));
       setMessage({ tone: payload?.warning ? "error" : "success", text: payload?.warning ?? "Integration disconnected. Imported history was preserved." });
       await load();
     } catch (error) {
@@ -115,7 +119,7 @@ export function AccountingIntegrationsPanel() {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }),
       });
       const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
-      if (!response.ok) throw new Error(payload?.error?.message ?? "Integration replay could not be queued.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload?.error?.message ?? "Integration replay could not be queued."));
       setMessage({ tone: "success", text: "The idempotent operation was queued for replay." });
       await load();
     } catch (error) {
@@ -199,6 +203,8 @@ export function AccountingIntegrationsPanel() {
                       </button>
                     </div>
                   </div>
+                ) : provider.id === "bukku" || provider.id === "autocount" ? (
+                  <ApiKeyConnectForm provider={provider.id} name={provider.name} onConnected={() => { void load(); setMessage({ tone: "success", text: `${provider.name} connected. Preview the first import before syncing.` }); }} />
                 ) : (
                   <a href={`/api/integrations/accounting/${provider.id}/connect`} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0D1B3D] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#162956]">
                     <Link2 className="h-4 w-4" /> Connect {provider.name}
@@ -208,8 +214,16 @@ export function AccountingIntegrationsPanel() {
             );
           })}
         </div>
+        <div className="mt-4 rounded-2xl border border-dashed border-gray-200 p-4">
+          <p className="text-sm font-black text-gray-900">SQL Account and other software</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-gray-500">Download CSV files and bring them in with your software&apos;s Import from Excel/Text. In SQL Account, import customers first, then invoices. The Customer Code links them.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a href="/api/integrations/accounting/export?dataset=customers" className="rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-gray-700">Download customers (CSV)</a>
+            <a href="/api/integrations/accounting/export?dataset=invoices" className="rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-gray-700">Download invoices (CSV)</a>
+          </div>
+        </div>
         <p className="mt-3 text-[10px] leading-relaxed text-gray-400">
-          Disconnecting removes local OAuth credentials but never deletes imported customers, invoices, payments, credit links, cases or recovery history.
+          Disconnecting removes the stored sign-in or API key but never deletes imported customers, invoices, payments, credit links, cases or recovery history.
         </p>
       </SectionCard>
     </div>

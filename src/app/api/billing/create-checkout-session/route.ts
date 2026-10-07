@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAppUrl } from "@/lib/app-url";
 import { requireTenantPermission } from "@/lib/auth/tenant-access";
 import { getStripeServer, getPriceId, isCheckoutSlug, isStripeConfigured } from "@/lib/stripe/server";
+import { EXTRA_SEAT_MAX, extraSeatPriceId } from "@/lib/billing/catalog-server";
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
@@ -49,10 +50,18 @@ export async function POST(request: NextRequest) {
     return err("Invalid JSON body", 400);
   }
 
-  const { plan_slug } =
+  const { plan_slug, extra_seats } =
     body && typeof body === "object" && "plan_slug" in body
-      ? (body as { plan_slug: string })
-      : { plan_slug: "" };
+      ? (body as { plan_slug: string; extra_seats?: unknown })
+      : { plan_slug: "", extra_seats: undefined };
+  const extraSeats = extra_seats === undefined ? 0 : Number(extra_seats);
+  if (!Number.isInteger(extraSeats) || extraSeats < 0 || extraSeats > EXTRA_SEAT_MAX) {
+    return err(`Extra team members must be a whole number from 0 to ${EXTRA_SEAT_MAX}.`, 400);
+  }
+  const seatPriceId = extraSeatPriceId();
+  if (extraSeats > 0 && !seatPriceId) {
+    return err("Extra team members are not available yet. Choose a larger plan instead.", 503);
+  }
 
   if (!plan_slug || !isCheckoutSlug(plan_slug)) {
     return err(
@@ -116,7 +125,10 @@ export async function POST(request: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode:                  "subscription",
       customer:              customerId,
-      line_items:            [{ price: priceId, quantity: 1 }],
+      line_items:            [
+        { price: priceId, quantity: 1 },
+        ...(extraSeats > 0 && seatPriceId ? [{ price: seatPriceId, quantity: extraSeats }] : []),
+      ],
       success_url:           successUrl,
       cancel_url:            cancelUrl,
       allow_promotion_codes: true,
@@ -132,7 +144,7 @@ export async function POST(request: NextRequest) {
           plan_slug,
         },
       },
-    }, { idempotencyKey: `checkout:${businessId}:${plan_slug}:${requestKey}` });
+    }, { idempotencyKey: `checkout:${businessId}:${plan_slug}:${extraSeats}:${requestKey}` });
 
     if (!session.url) {
       return err("Stripe did not return a checkout URL", 500);

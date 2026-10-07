@@ -167,7 +167,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       reminderType: parsed.data.messageType as ReminderType,
       caseData: found.caseData,
       account: (account as ReceivingAccountRow | null) ?? null,
-      businessName: (business as { business_name?: string; legal_name?: string | null } | null)?.legal_name || (business as { business_name?: string } | null)?.business_name || "our company",
+      businessName: (business as { business_name?: string; legal_name?: string | null } | null)?.legal_name || (business as { business_name?: string } | null)?.business_name || "Accounts Team",
       collectableMinor,
       disputedPortion: disputedMinor > 0,
     });

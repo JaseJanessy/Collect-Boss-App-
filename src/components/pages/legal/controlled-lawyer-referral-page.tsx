@@ -1,8 +1,11 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ChevronLeft, FileText, Send } from "lucide-react";
+import { AlertCircle, Briefcase, ChevronLeft, FileText, Send } from "lucide-react";
+import { LockedFeature } from "@/components/billing/locked-feature";
+import { useEntitlements } from "@/hooks/use-entitlements";
 import { LoadingSpinner, InlineSpinner } from "@/components/ui/loading-spinner";
 import { PrimaryButton } from "@/components/ui/primary-button";
 import { SectionCard } from "@/components/ui/section-card";
@@ -22,6 +25,7 @@ export function ControlledLawyerReferralPage({ caseId }: { caseId: string }) {
   const { files, loading: evidenceLoading } = useEvidence(caseId);
   const { docs, loading: documentsLoading } = useLegalDocuments(caseId);
   const { referrals, loading: referralsLoading, refresh } = useLawyerReferrals(caseId);
+  const { entitlement, loading: entitlementLoading } = useEntitlements();
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>([]);
   const [selectedDemandId, setSelectedDemandId] = useState<string | null>(null);
   const [contactMethod, setContactMethod] = useState<ContactMethod>("email");
@@ -37,7 +41,7 @@ export function ControlledLawyerReferralPage({ caseId }: { caseId: string }) {
   const activeReferral = referrals.find((referral) => ACTIVE_REFERRAL_STATUSES.has(referral.referral_status)) ?? created;
   const isEligible = Boolean(caseData && isReferralEligible({ archivedAt: caseData.archived_at, status: caseData.status, balance: caseData.balance }));
 
-  if (caseLoading || evidenceLoading || documentsLoading || referralsLoading) return <LoadingSpinner />;
+  if (caseLoading || evidenceLoading || documentsLoading || referralsLoading || entitlementLoading) return <LoadingSpinner />;
   if (!caseData) return <main className="px-4 py-16 text-center text-sm text-gray-600">Case not found.</main>;
 
   async function submit() {
@@ -49,7 +53,7 @@ export function ControlledLawyerReferralPage({ caseId }: { caseId: string }) {
         body: JSON.stringify({ consentAccepted: true, consentVersion: CONSENT_VERSION, preferredContactMethod: contactMethod, selectedEvidenceIds, selectedFormalDemandId: selectedDemandId, notes, idempotencyKey: crypto.randomUUID() }),
       });
       const payload = await response.json().catch(() => ({})) as { referral?: LawyerReferralRow; error?: string };
-      if (!response.ok || !payload.referral) throw new Error(payload.error ?? "Unable to prepare the professional handoff.");
+      if (!response.ok || !payload.referral) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to prepare the professional handoff."));
       setCreated({ ...payload.referral, events: [], documentRequests: [] }); refresh();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to prepare the professional handoff."); }
     finally { setSubmitting(false); }
@@ -62,7 +66,7 @@ export function ControlledLawyerReferralPage({ caseId }: { caseId: string }) {
     try {
       const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/lawyer-referrals`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "withdraw", reason }) });
       const payload = await response.json().catch(() => ({})) as { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Unable to withdraw the request.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to withdraw the request."));
       setCreated(null); refresh();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to withdraw the request."); }
     finally { setSubmitting(false); }
@@ -77,7 +81,7 @@ export function ControlledLawyerReferralPage({ caseId }: { caseId: string }) {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ evidenceIds, responseNote }),
       });
       const payload = await response.json().catch(() => ({})) as { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Unable to provide the selected documents.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to provide the selected documents."));
       setResponseNote(""); refresh();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to provide the selected documents."); }
     finally { setSubmitting(false); }
@@ -107,6 +111,16 @@ export function ControlledLawyerReferralPage({ caseId }: { caseId: string }) {
     </SectionCard>)}
     <HandoffTimeline referral={activeReferral} />
     {error && <ErrorNotice error={error} />}
+  </main>;
+
+  // An existing handoff stays visible above (e.g. after a downgrade); only new requests need the plan.
+  if (!entitlement?.lawyer_referral_enabled) return <main className="flex flex-col gap-5 px-4 pb-8 pt-5"><Header caseId={caseId} />
+    <LockedFeature
+      feature="Request Legal Review"
+      description="Prepare a consent-backed factual package for review by an external legal professional."
+      availableFrom="boss"
+      icon={<Briefcase className="w-5 h-5" />}
+    />
   </main>;
 
   return <main className="flex flex-col gap-5 px-4 pb-8 pt-5"><Header caseId={caseId} />

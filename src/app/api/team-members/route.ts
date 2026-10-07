@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { appendSensitiveAudit, requireTenantPermission } from "@/lib/auth/tenant-access";
+import { PLANS } from "@/lib/billing/plans";
+import { canAddTeamMember, loadTeamSeatUsage, teamSeatLimitMessage } from "@/lib/billing/team-seats";
+import type { PlanSlug } from "@/lib/billing/types";
 
 export const dynamic = "force-dynamic";
 const inviteSchema = z.object({
@@ -23,6 +26,15 @@ export async function POST(request: NextRequest) {
   const parsed = inviteSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Enter a valid email and assignable role." }, { status: 400 });
   const email = parsed.data.email.trim().toLowerCase();
+  const seats = await loadTeamSeatUsage(access.service, access.businessId);
+  if (!seats) return NextResponse.json({ error: "We couldn't check your team size right now. Please try again." }, { status: 503 });
+  if (!canAddTeamMember(seats)) {
+    const planName = PLANS[seats.planSlug as PlanSlug]?.name ?? "current";
+    return NextResponse.json(
+      { error: teamSeatLimitMessage(seats, planName), code: "TEAM_SEAT_LIMIT_REACHED", used: seats.used, limit: seats.limit },
+      { status: 403 },
+    );
+  }
   const { data, error } = await access.service.from("business_memberships").insert({
     business_id: access.businessId, invited_email: email, role: parsed.data.role,
     status: "invited", invited_by: access.user.id,

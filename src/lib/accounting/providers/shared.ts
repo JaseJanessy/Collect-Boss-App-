@@ -32,6 +32,10 @@ export function minor(value: unknown) {
 export function isoDate(value: unknown) {
   const raw = text(value);
   if (!raw) return null;
+  // A calendar date (optionally with a zone-less time) is already the date;
+  // parsing it as local time would shift it a day in UTC+8.
+  const calendar = raw.match(/^(\d{4}-\d{2}-\d{2})(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?$/);
+  if (calendar) return calendar[1];
   const xero = raw.match(/^\/Date\((\d+)(?:[+-]\d+)?\)\/$/);
   const parsed = new Date(xero ? Number(xero[1]) : raw);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);

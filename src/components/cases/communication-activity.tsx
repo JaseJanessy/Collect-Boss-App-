@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useEffect, useState } from "react";
 import { Mail, MessageCircle, Phone } from "lucide-react";
@@ -280,7 +281,7 @@ function EmailComposer({
         const payload = await response.json() as {
           sender_ready?: boolean; templates?: ComposerTemplate[]; attachments?: ComposerAttachment[]; error?: string;
         };
-        if (!response.ok) throw new Error(payload.error ?? "Unable to load email composer.");
+        if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load email composer."));
         return payload;
       })
       .then((payload) => {

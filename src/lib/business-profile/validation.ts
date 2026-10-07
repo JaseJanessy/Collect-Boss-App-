@@ -3,7 +3,7 @@ import { z } from "zod";
 /** Shared validation for the owner-safe profile API and its client form. */
 export const businessProfileSchema = z
   .object({
-    accountType: z.enum(["individual", "business"]),
+    accountType: z.enum(["individual", "business"], { error: "Choose Individual or Business." }),
     displayName: z.string().trim().min(1, "Enter a display name.").max(160),
     legalName: z.string().trim().min(1, "Enter a legal name.").max(160),
     contactName: z.string().trim().min(1, "Enter a contact name.").max(160),
@@ -11,7 +11,7 @@ export const businessProfileSchema = z
     industry: z.enum([
       "general", "professional_services", "retail", "construction", "property",
       "education", "healthcare", "financial_services", "financing_money_lending", "other",
-    ]),
+    ], { error: "Choose an industry." }),
     phone: z.string().trim().min(1, "Enter a phone number.").max(50),
     email: z.string().trim().email("Enter a valid email address.").max(254),
     address: z.string().trim().max(500).nullable(),

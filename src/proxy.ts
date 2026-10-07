@@ -8,6 +8,7 @@ import {
   isMockDataEnabled,
 } from "@/lib/supabase/client";
 import { clientAddress, isRateLimited, requestHasAllowedOrigin } from "@/lib/api/request-guard";
+import { isMarketingSiteOrigin, PUBLIC_CONTACT_PATH } from "@/lib/api/marketing-origins";
 import { requiredPermissionForPath } from "@collectboss/navigation";
 import { productHomePath, productOwnsProtectedPath } from "@collectboss/workspace-contracts";
 
@@ -32,6 +33,11 @@ const PUBLIC_PAGE_PREFIXES = [
   "/_next",
   "/favicon",
   "/manifest",
+  "/manifest.webmanifest",        // browsers fetch manifests without credentials
+  "/pocket/manifest.webmanifest",
+  "/favicon.svg",
+  "/robots.txt",
+  "/sitemap.xml",
   "/icons",
   "/brand",             // public wordmarks, icons, and install assets
 ];
@@ -42,8 +48,11 @@ const PUBLIC_PAGE_PREFIXES = [
 const PUBLIC_API_PREFIXES = [
   "/api/public/pay",
   "/api/public/acknowledge",
+  PUBLIC_CONTACT_PATH,   // marketing-site enquiries; origin allowlist + shared rate limit
   "/api/stripe/webhook", // Stripe authenticates this route with its webhook signature
+  "/api/stripe/connect-webhook", // Stripe Connect events, same signature scheme
   "/api/webhooks/resend", // Resend authenticates with the raw-body Svix signature
+  "/api/webhooks/whatsapp", // Meta authenticates with the X-Hub-Signature-256 HMAC
   "/api/cron",           // Scheduled routes authenticate with CRON_SECRET
 ];
 
@@ -99,6 +108,14 @@ function productTypeFromWorkspaceContext(value: unknown): "main" | "pocket" | nu
   return productType === "main" || productType === "pocket" ? productType : null;
 }
 
+const BEARER_VERIFIED_API_PATHS = ["/api/workspace/context", "/api/workspace/provision", "/api/pocket/entitlements"];
+const BEARER_VERIFIED_API_PREFIXES = ["/api/document-intakes", "/api/mobile", "/api/payment-matching/transactions"];
+
+function bearerVerifiedApiPath(pathname: string): boolean {
+  return BEARER_VERIFIED_API_PATHS.includes(pathname)
+    || BEARER_VERIFIED_API_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
 function isUploadPath(pathname: string): boolean {
   return pathname.endsWith("/proof") || pathname.endsWith("/evidence") || pathname.endsWith("/qr")
     || pathname.endsWith("/replace") || pathname === "/api/operations/import";
@@ -107,10 +124,10 @@ function isUploadPath(pathname: string): boolean {
 function guardApiRequest(request: NextRequest): NextResponse | null {
   const { pathname } = request.nextUrl;
   if (!pathname.startsWith(API_PREFIX)) return null;
-  const isStripeWebhook = pathname === "/api/stripe/webhook";
-  const isEmailWebhook = pathname === "/api/webhooks/resend";
+  const isStripeWebhook = pathname === "/api/stripe/webhook" || pathname === "/api/stripe/connect-webhook";
+  const isSignedWebhook = pathname === "/api/webhooks/resend" || pathname === "/api/webhooks/whatsapp";
   const isScheduledJob = pathname.startsWith("/api/cron/");
-  const hasServerAuthentication = isStripeWebhook || isEmailWebhook || isScheduledJob;
+  const hasServerAuthentication = isStripeWebhook || isSignedWebhook || isScheduledJob;
 
   const contentLength = Number(request.headers.get("content-length") ?? "0");
   const maximumBodyBytes = isUploadPath(pathname) ? MAX_UPLOAD_BODY_BYTES : MAX_API_BODY_BYTES;
@@ -120,7 +137,9 @@ function guardApiRequest(request: NextRequest): NextResponse | null {
 
   if (UNSAFE_METHODS.has(request.method) && !hasServerAuthentication) {
     const expectedOrigin = APP_URL && isAppUrlConfigured ? new URL(APP_URL).origin : request.nextUrl.origin;
-    if (!requestHasAllowedOrigin(request.headers.get("origin"), expectedOrigin)) {
+    const origin = request.headers.get("origin");
+    const marketingContact = pathname === PUBLIC_CONTACT_PATH && isMarketingSiteOrigin(origin);
+    if (!marketingContact && !requestHasAllowedOrigin(origin, expectedOrigin)) {
       return apiError("Request origin is not allowed.", 403);
     }
 
@@ -133,7 +152,7 @@ function guardApiRequest(request: NextRequest): NextResponse | null {
   }
 
   // Stripe authenticates with its signature header rather than browser origin.
-  if (isStripeWebhook || isEmailWebhook) return null;
+  if (isStripeWebhook || isSignedWebhook) return null;
 
   const address = clientAddress(request.headers);
   const documentLimit = documentIntakeRateLimit(pathname, request.method);
@@ -172,9 +191,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url), 308);
   }
 
-  // This endpoint performs its own bearer-token verification and permission
+  // These endpoints perform their own bearer-token verification and permission
   // check in the route handler. Cookie-only Proxy auth would reject Expo.
-  if (["/api/workspace/context", "/api/workspace/provision", "/api/pocket/entitlements"].includes(pathname)
+  if (bearerVerifiedApiPath(pathname)
     && (request.headers.get("authorization") ?? "").startsWith("Bearer ")) {
     return NextResponse.next();
   }
@@ -272,7 +291,7 @@ export async function proxy(request: NextRequest) {
     // session from calling a Main-only API directly.
     // Missing schema is an availability failure, never permission to bypass
     // the product boundary.
-    if (!pathname.startsWith("/onboarding/")) {
+    if (!pathname.startsWith("/onboarding/") && pathname !== "/" && pathname !== "/choose-product") {
       const { data: workspaceContext, error: workspaceError } = await supabase.rpc("my_workspace_context");
       if (workspaceError) {
         if (pathname.startsWith(API_PREFIX)) return apiError("Workspace access is temporarily unavailable.", 503, "WORKSPACE_CONTEXT_UNAVAILABLE");

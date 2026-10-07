@@ -20,6 +20,14 @@
     {
       "path": "/api/cron/document-scans",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/payment-plans",
+      "schedule": "15 1 * * *"
+    },
+    {
+      "path": "/api/cron/pocket-billing-lifecycle",
+      "schedule": "45 1 * * *"
     }
   ]
 }

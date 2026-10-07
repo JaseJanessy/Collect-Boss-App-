@@ -3089,7 +3089,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.accounting_connections (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete restrict,
-  provider text not null check (provider in ('xero','quickbooks')),
+  provider text not null check (provider in ('xero','quickbooks','bukku','autocount')),
   status text not null default 'pending' check (status in ('pending','connected','error','disconnected','revoked')),
   external_tenant_id text,
   organization_name text,
@@ -3121,7 +3121,7 @@ create unique index if not exists accounting_connections_external_tenant_idx
 create table if not exists public.accounting_oauth_states (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
-  provider text not null check (provider in ('xero','quickbooks')),
+  provider text not null check (provider in ('xero','quickbooks','bukku','autocount')),
   state_hash text not null unique check (state_hash ~ '^[0-9a-f]{64}$'),
   created_by uuid not null references auth.users(id) on delete cascade,
   expires_at timestamptz not null,
@@ -3136,7 +3136,7 @@ create table if not exists public.accounting_external_mappings (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null,
   connection_id uuid not null,
-  provider text not null check (provider in ('xero','quickbooks')),
+  provider text not null check (provider in ('xero','quickbooks','bukku','autocount')),
   entity_type text not null check (entity_type in ('contact','account','invoice','payment','credit_note')),
   external_entity_id text not null,
   external_parent_id text,
@@ -3165,7 +3165,7 @@ create table if not exists public.accounting_sync_runs (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null,
   connection_id uuid not null,
-  provider text not null check (provider in ('xero','quickbooks')),
+  provider text not null check (provider in ('xero','quickbooks','bukku','autocount')),
   mode text not null check (mode in ('full','incremental','preview')),
   status text not null check (status in ('running','preview_ready','succeeded','failed')),
   counts jsonb not null default '{}'::jsonb check (jsonb_typeof(counts)='object'),
@@ -3182,7 +3182,7 @@ create index if not exists accounting_sync_runs_tenant_idx
 
 create table if not exists public.accounting_webhook_events (
   id uuid primary key default gen_random_uuid(),
-  provider text not null check (provider in ('xero','quickbooks')),
+  provider text not null check (provider in ('xero','quickbooks','bukku','autocount')),
   external_tenant_id text not null,
   event_key text not null,
   payload jsonb not null check (jsonb_typeof(payload)='object'),
@@ -6642,7 +6642,7 @@ create table if not exists public.accounting_payment_operation_outbox (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete restrict,
   connection_id uuid not null,
-  provider text not null check (provider in ('xero','quickbooks')),
+  provider text not null check (provider in ('xero','quickbooks','bukku','autocount')),
   operation_type text not null check (operation_type in ('allocation','allocation_reversal','refund','receipt_reversal')),
   source_table text not null,
   source_id uuid not null,
@@ -7322,7 +7322,7 @@ drop policy if exists "payment_proofs_owner_read" on storage.objects;
 -- and rollback details are in 20260911_production_integrations_failure_recovery.sql.
 create table if not exists public.integration_jobs(
   id uuid primary key default gen_random_uuid(),business_id uuid references public.businesses(id) on delete cascade,
-  provider text not null check(provider in('stripe','resend','xero','quickbooks')),
+  provider text not null check(provider in('stripe','resend','xero','quickbooks','bukku','autocount')),
   job_type text not null check(job_type in('stripe_event_replay','email_delivery','accounting_sync','accounting_webhook')),
   resource_id text not null,deduplication_key char(64) not null unique check(deduplication_key~'^[0-9a-f]{64}$'),
   payload jsonb not null default '{}'::jsonb check(jsonb_typeof(payload)='object'),
@@ -7338,7 +7338,7 @@ create index if not exists integration_jobs_ready_idx on public.integration_jobs
 create index if not exists integration_jobs_tenant_idx on public.integration_jobs(business_id,status,created_at desc) where business_id is not null;
 create table if not exists public.integration_health(
   id uuid primary key default gen_random_uuid(),business_id uuid not null references public.businesses(id) on delete cascade,
-  provider text not null check(provider in('stripe','resend','xero','quickbooks')),
+  provider text not null check(provider in('stripe','resend','xero','quickbooks','bukku','autocount')),
   status text not null default 'unknown' check(status in('unknown','healthy','degraded','action_required','outage','disconnected')),
   last_checked_at timestamptz,last_success_at timestamptz,last_failure_at timestamptz,consecutive_failures integer not null default 0 check(consecutive_failures>=0),
   error_code text,actionable_message text,metadata jsonb not null default '{}'::jsonb check(jsonb_typeof(metadata)='object'),updated_at timestamptz not null default now(),
@@ -7428,23 +7428,26 @@ declare v_inserted integer;v_processed boolean;v_status text;v_attempts integer;
 end $$;
 create or replace function public.billing_apply_subscription_state(
   p_business_id uuid,p_customer_id text,p_subscription_id text,p_price_id text,p_plan_slug text,p_status text,
-  p_period_start timestamptz,p_period_end timestamptz,p_cancel_at_period_end boolean) returns void
+  p_period_start timestamptz,p_period_end timestamptz,p_cancel_at_period_end boolean,p_extra_seats integer default 0) returns void
 language plpgsql security definer set search_path=public,pg_temp as $$
-declare v_effective_slug text;v_plan record;begin
+declare v_effective_slug text;v_plan record;v_seats integer;v_team_limit integer;begin
   if coalesce(auth.role(),'')<>'service_role' then raise exception 'service role required';end if;
   if not exists(select 1 from public.businesses where id=p_business_id) then raise exception 'billing business not found';end if;
   if p_status not in('active','trialing','past_due','canceled','incomplete','incomplete_expired','unpaid','paused') then raise exception 'invalid subscription status';end if;
+  if coalesce(p_extra_seats,0) not between 0 and 100 then raise exception 'invalid extra seat quantity';end if;
   v_effective_slug:=case when p_status in('active','trialing') then p_plan_slug else 'free' end;
   select * into v_plan from public.plans where slug=v_effective_slug;if not found then raise exception 'billing plan not found';end if;
-  insert into public.subscriptions(business_id,stripe_customer_id,stripe_subscription_id,stripe_price_id,plan_slug,status,current_period_start,current_period_end,cancel_at_period_end)
-  values(p_business_id,p_customer_id,p_subscription_id,p_price_id,p_plan_slug,p_status,p_period_start,p_period_end,p_cancel_at_period_end)
+  v_seats:=case when v_effective_slug<>'free' then coalesce(p_extra_seats,0) else 0 end;
+  v_team_limit:=case when v_plan.team_member_limit=-1 then -1 else v_plan.team_member_limit+v_seats end;
+  insert into public.subscriptions(business_id,stripe_customer_id,stripe_subscription_id,stripe_price_id,plan_slug,status,current_period_start,current_period_end,cancel_at_period_end,extra_seats)
+  values(p_business_id,p_customer_id,p_subscription_id,p_price_id,p_plan_slug,p_status,p_period_start,p_period_end,p_cancel_at_period_end,coalesce(p_extra_seats,0))
   on conflict(business_id) do update set stripe_customer_id=excluded.stripe_customer_id,stripe_subscription_id=excluded.stripe_subscription_id,stripe_price_id=excluded.stripe_price_id,
     plan_slug=excluded.plan_slug,status=excluded.status,current_period_start=excluded.current_period_start,current_period_end=excluded.current_period_end,
-    cancel_at_period_end=excluded.cancel_at_period_end,updated_at=now();
-  insert into public.entitlements(business_id,plan_slug,case_limit,evidence_pack_limit,team_member_limit,payment_lock_enabled,formal_demand_enabled,lawyer_referral_enabled,reports_enabled)
-  values(p_business_id,v_effective_slug,v_plan.case_limit,v_plan.evidence_pack_limit,v_plan.team_member_limit,v_plan.payment_lock_enabled,v_plan.formal_demand_enabled,v_plan.lawyer_referral_enabled,v_plan.reports_enabled)
+    cancel_at_period_end=excluded.cancel_at_period_end,extra_seats=excluded.extra_seats,updated_at=now();
+  insert into public.entitlements(business_id,plan_slug,case_limit,evidence_pack_limit,team_member_limit,extra_seats,payment_lock_enabled,formal_demand_enabled,lawyer_referral_enabled,reports_enabled)
+  values(p_business_id,v_effective_slug,v_plan.case_limit,v_plan.evidence_pack_limit,v_team_limit,v_seats,v_plan.payment_lock_enabled,v_plan.formal_demand_enabled,v_plan.lawyer_referral_enabled,v_plan.reports_enabled)
   on conflict(business_id) do update set plan_slug=excluded.plan_slug,case_limit=excluded.case_limit,evidence_pack_limit=excluded.evidence_pack_limit,
-    team_member_limit=excluded.team_member_limit,payment_lock_enabled=excluded.payment_lock_enabled,formal_demand_enabled=excluded.formal_demand_enabled,
+    team_member_limit=excluded.team_member_limit,extra_seats=excluded.extra_seats,payment_lock_enabled=excluded.payment_lock_enabled,formal_demand_enabled=excluded.formal_demand_enabled,
     lawyer_referral_enabled=excluded.lawyer_referral_enabled,reports_enabled=excluded.reports_enabled,updated_at=now();
 end $$;
 revoke all on public.integration_jobs,public.integration_health,public.email_suppressions from anon;
@@ -7459,8 +7462,8 @@ grant execute on function public.integration_claim_jobs(integer) to service_role
 grant execute on function public.integration_finish_job(uuid,boolean,text,text) to service_role;
 grant execute on function public.integration_replay_job(uuid,uuid,uuid) to service_role;
 grant execute on function public.billing_claim_event(text,text,timestamptz) to service_role;
-revoke all on function public.billing_apply_subscription_state(uuid,text,text,text,text,text,timestamptz,timestamptz,boolean) from public,anon,authenticated;
-grant execute on function public.billing_apply_subscription_state(uuid,text,text,text,text,text,timestamptz,timestamptz,boolean) to service_role;
+revoke all on function public.billing_apply_subscription_state(uuid,text,text,text,text,text,timestamptz,timestamptz,boolean,integer) from public,anon,authenticated;
+grant execute on function public.billing_apply_subscription_state(uuid,text,text,text,text,text,timestamptz,timestamptz,boolean,integer) to service_role;
 
 -- Pocket workspace product ownership. Existing businesses without a row are Main.
 create table if not exists public.workspace_product_states(
@@ -9292,3 +9295,411 @@ commit;
 revoke all on function public.pocket_reminder_validate_scope() from public,anon,authenticated;
 revoke all on function public.pocket_cancel_stale_reminder_schedules() from public,anon,authenticated;
 revoke all on function public.pocket_cancel_reminders_on_contact_change() from public,anon,authenticated;
+
+-- Recurring charges (migration 20260920_recurring_charges.sql)
+create table if not exists public.recurring_charges (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  customer_id uuid not null references public.debtors(id) on delete restrict,
+  account_id uuid not null,
+  label text not null,
+  reference_prefix text not null,
+  obligation_type text not null default 'invoice'
+    check (obligation_type in ('invoice','general_obligation','rent','vehicle','property','project','supplier','catering_event','other')),
+  amount_minor bigint not null check (amount_minor > 0),
+  currency char(3) not null check (currency ~ '^[A-Z]{3}$'),
+  day_of_month smallint not null check (day_of_month between 1 and 28),
+  due_days smallint not null default 0 check (due_days between 0 and 60),
+  start_date date not null,
+  end_date date,
+  next_run_date date not null,
+  last_generated_period text,
+  status text not null default 'active' check (status in ('active','paused','ended')),
+  last_error text,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint recurring_charges_label_check check (nullif(btrim(label), '') is not null),
+  constraint recurring_charges_prefix_check check (reference_prefix ~ '^[A-Z0-9][A-Z0-9-]{0,23}$'),
+  constraint recurring_charges_dates_check check (end_date is null or end_date >= start_date),
+  constraint recurring_charges_account_fk foreign key (account_id, business_id, customer_id)
+    references public.customer_accounts(id, business_id, customer_id) on delete restrict
+);
+
+create index if not exists recurring_charges_due_idx
+  on public.recurring_charges (next_run_date) where status = 'active';
+create index if not exists recurring_charges_account_idx
+  on public.recurring_charges (business_id, account_id);
+
+alter table public.recurring_charges enable row level security;
+drop policy if exists "recurring_charges: tenant read" on public.recurring_charges;
+create policy "recurring_charges: tenant read" on public.recurring_charges
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+-- Writes go through the reviewed API route with the service role.
+revoke insert, update, delete on public.recurring_charges from anon, authenticated;
+grant select on public.recurring_charges to authenticated;
+grant all on public.recurring_charges to service_role;
+
+create or replace function public.recurring_charges_generate(p_today date default null, p_limit integer default 500)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_today date := coalesce(p_today, (now() at time zone 'Asia/Kuala_Lumpur')::date);
+  v_charge public.recurring_charges;
+  v_period date;
+  v_reference text;
+  v_created integer := 0;
+  v_failed integer := 0;
+  v_iterations integer;
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then raise exception 'service role required'; end if;
+  for v_charge in
+    select * from public.recurring_charges
+    where status = 'active' and next_run_date <= v_today
+    order by next_run_date
+    limit greatest(1, least(coalesce(p_limit, 500), 2000))
+    for update skip locked
+  loop
+    begin
+      v_period := v_charge.next_run_date;
+      v_iterations := 0;
+      -- Catch up at most 12 missed periods per run.
+      while v_period <= v_today and v_iterations < 12
+        and (v_charge.end_date is null or v_period <= v_charge.end_date) loop
+        v_reference := v_charge.reference_prefix || '-' || to_char(v_period, 'YYYY-MM');
+        insert into public.obligations(
+          business_id, customer_id, account_id, obligation_type, reference, issue_date, due_date,
+          currency, original_amount_minor, status, metadata)
+        values (
+          v_charge.business_id, v_charge.customer_id, v_charge.account_id, v_charge.obligation_type,
+          v_reference, v_period, v_period + v_charge.due_days, v_charge.currency, v_charge.amount_minor, 'open',
+          jsonb_build_object('recurring_charge_id', v_charge.id, 'period', to_char(v_period, 'YYYY-MM'), 'label', v_charge.label))
+        on conflict (business_id, customer_id, account_id, reference) do nothing;
+        if found then v_created := v_created + 1; end if;
+        v_charge.last_generated_period := to_char(v_period, 'YYYY-MM');
+        v_period := (date_trunc('month', v_period) + interval '1 month')::date + (v_charge.day_of_month - 1);
+        v_iterations := v_iterations + 1;
+      end loop;
+      update public.recurring_charges set
+        next_run_date = v_period,
+        last_generated_period = v_charge.last_generated_period,
+        status = case when end_date is not null and v_period > end_date then 'ended' else status end,
+        last_error = null,
+        updated_at = now()
+      where id = v_charge.id;
+    exception when others then
+      v_failed := v_failed + 1;
+      update public.recurring_charges set last_error = left(sqlerrm, 500), updated_at = now() where id = v_charge.id;
+    end;
+  end loop;
+  return jsonb_build_object('created', v_created, 'failed', v_failed);
+end $$;
+
+revoke all on function public.recurring_charges_generate(date, integer) from public, anon, authenticated;
+grant execute on function public.recurring_charges_generate(date, integer) to service_role;
+
+-- Automatic WhatsApp reminders (migration 20260921_whatsapp_auto_reminders.sql)
+create table if not exists public.whatsapp_reminder_policies (
+  business_id uuid primary key references public.businesses(id) on delete cascade,
+  enabled boolean not null default false,
+  day_offsets integer[] not null default '{-3,0,3,7,14}',
+  language text not null default 'en' check (language in ('en','ms')),
+  consent_attested_at timestamptz,
+  consent_attested_by uuid references auth.users(id) on delete set null,
+  updated_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint whatsapp_policy_offsets_check check (
+    cardinality(day_offsets) between 1 and 8
+    and day_offsets <@ array[-7,-3,-1,0,1,3,7,14,21,30]
+  ),
+  constraint whatsapp_policy_consent_check check (not enabled or consent_attested_at is not null)
+);
+
+create table if not exists public.whatsapp_messages (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  customer_id uuid references public.debtors(id) on delete set null,
+  obligation_id uuid references public.obligations(id) on delete set null,
+  to_phone_e164 text not null check (to_phone_e164 ~ '^\+[1-9][0-9]{7,14}$'),
+  template_kind text not null check (template_kind in ('before_due','due_today','overdue')),
+  language text not null check (language in ('en','ms')),
+  variables jsonb not null default '[]'::jsonb check (jsonb_typeof(variables) = 'array'),
+  day_offset integer not null,
+  local_send_date date not null,
+  status text not null default 'queued'
+    check (status in ('queued','sending','sent','delivered','read','failed','skipped')),
+  skip_reason text,
+  provider_message_id text unique,
+  error_code text,
+  error_message text,
+  attempts integer not null default 0,
+  lease_expires_at timestamptz,
+  sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (business_id, obligation_id, day_offset),
+  unique (business_id, customer_id, local_send_date)
+);
+
+create index if not exists whatsapp_messages_queue_idx
+  on public.whatsapp_messages (status, created_at) where status in ('queued','sending');
+create index if not exists whatsapp_messages_business_idx
+  on public.whatsapp_messages (business_id, created_at desc);
+
+create table if not exists public.whatsapp_opt_outs (
+  phone_e164 text primary key check (phone_e164 ~ '^\+[1-9][0-9]{7,14}$'),
+  source text not null default 'reply' check (source in ('reply','business','support')),
+  created_at timestamptz not null default now()
+);
+
+alter table public.whatsapp_reminder_policies enable row level security;
+alter table public.whatsapp_messages enable row level security;
+alter table public.whatsapp_opt_outs enable row level security;
+
+drop policy if exists "whatsapp_reminder_policies: tenant read" on public.whatsapp_reminder_policies;
+create policy "whatsapp_reminder_policies: tenant read" on public.whatsapp_reminder_policies
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+drop policy if exists "whatsapp_messages: tenant read" on public.whatsapp_messages;
+create policy "whatsapp_messages: tenant read" on public.whatsapp_messages
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+
+-- Writes go through reviewed API routes and the scheduled worker.
+revoke insert, update, delete on public.whatsapp_reminder_policies, public.whatsapp_messages from anon, authenticated;
+revoke all on public.whatsapp_opt_outs from anon, authenticated;
+grant select on public.whatsapp_reminder_policies, public.whatsapp_messages to authenticated;
+grant all on public.whatsapp_reminder_policies, public.whatsapp_messages, public.whatsapp_opt_outs to service_role;
+
+-- Normalise a Malaysian or international phone number to E.164, or null.
+create or replace function public.whatsapp_normalize_phone(p_phone text)
+returns text language sql immutable set search_path = public, pg_temp as $$
+  select case
+    when v is null or v = '' then null
+    when v ~ '^\+[1-9][0-9]{7,14}$' then v
+    when v ~ '^60[1-9][0-9]{7,10}$' then '+' || v
+    when v ~ '^0[1-9][0-9]{7,10}$' then '+60' || substr(v, 2)
+    else null end
+  from (select regexp_replace(coalesce(p_phone, ''), '[^0-9+]', '', 'g') as v) s;
+$$;
+
+create or replace function public.whatsapp_enqueue_due_reminders(p_now timestamptz default null, p_limit integer default 1000)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_today date := (coalesce(p_now, now()) at time zone 'Asia/Kuala_Lumpur')::date;
+  v_inserted integer;
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then raise exception 'service role required'; end if;
+  with candidates as (
+    select
+      o.business_id, o.customer_id, o.id as obligation_id,
+      whatsapp_normalize_phone(d.phone) as phone,
+      p.language, offs.day_offset,
+      case when offs.day_offset < 0 then 'before_due' when offs.day_offset = 0 then 'due_today' else 'overdue' end as template_kind,
+      jsonb_build_array(
+        coalesce(nullif(btrim(d.contact_name), ''), nullif(btrim(d.business_name), ''), nullif(btrim(d.individual_name), ''), 'Customer'),
+        coalesce(nullif(btrim(b.business_name), ''), 'your supplier'),
+        o.currency || ' ' || to_char(o.outstanding_minor / 100.0, 'FM999,999,999,990.00'),
+        to_char(o.due_date, 'DD/MM/YYYY'),
+        o.reference
+      ) as variables
+    from public.whatsapp_reminder_policies p
+    join public.businesses b on b.id = p.business_id
+    join public.entitlements e on e.business_id = p.business_id and e.plan_slug <> 'free'
+    cross join lateral unnest(p.day_offsets) as offs(day_offset)
+    join public.obligations o on o.business_id = p.business_id
+      and o.archived_at is null
+      and o.status in ('open','overdue','partial')
+      and o.outstanding_minor > 0
+      and o.due_date + offs.day_offset = v_today
+    join public.debtors d on d.id = o.customer_id and d.archived_at is null
+    where p.enabled and p.consent_attested_at is not null
+    limit greatest(1, least(coalesce(p_limit, 1000), 5000))
+  ), inserted as (
+    insert into public.whatsapp_messages(business_id, customer_id, obligation_id, to_phone_e164, template_kind, language, variables, day_offset, local_send_date)
+    select business_id, customer_id, obligation_id, phone, template_kind, language, variables, day_offset, v_today
+    from candidates where phone is not null
+    on conflict do nothing
+    returning 1
+  )
+  select count(*) into v_inserted from inserted;
+  return jsonb_build_object('queued', v_inserted, 'date', v_today);
+end $$;
+
+-- Lease queued messages for the sending worker.
+create or replace function public.whatsapp_claim_messages(p_limit integer default 50)
+returns setof public.whatsapp_messages language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then raise exception 'service role required'; end if;
+  return query
+  update public.whatsapp_messages m set status = 'sending', attempts = m.attempts + 1,
+    lease_expires_at = now() + interval '5 minutes', updated_at = now()
+  where m.id in (
+    select id from public.whatsapp_messages
+    where ((status = 'queued' and (lease_expires_at is null or lease_expires_at < now()))
+        or (status = 'sending' and lease_expires_at < now()))
+      and attempts < 3
+    order by created_at
+    limit greatest(1, least(coalesce(p_limit, 50), 200))
+    for update skip locked
+  )
+  returning m.*;
+end $$;
+
+revoke all on function public.whatsapp_normalize_phone(text) from public, anon;
+grant execute on function public.whatsapp_normalize_phone(text) to authenticated, service_role;
+revoke all on function public.whatsapp_enqueue_due_reminders(timestamptz, integer) from public, anon, authenticated;
+grant execute on function public.whatsapp_enqueue_due_reminders(timestamptz, integer) to service_role;
+revoke all on function public.whatsapp_claim_messages(integer) from public, anon, authenticated;
+grant execute on function public.whatsapp_claim_messages(integer) to service_role;
+
+-- Online debtor payments via Stripe Connect (migration 20260922_stripe_connect_online_payments.sql)
+create table if not exists public.business_payment_connections (
+  business_id uuid primary key references public.businesses(id) on delete cascade,
+  provider text not null default 'stripe' check (provider = 'stripe'),
+  stripe_account_id text not null unique check (stripe_account_id ~ '^acct_[A-Za-z0-9]+$'),
+  charges_enabled boolean not null default false,
+  payouts_enabled boolean not null default false,
+  details_submitted boolean not null default false,
+  disconnected_at timestamptz,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.online_payment_sessions (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  case_id text not null references public.cases(id) on delete cascade,
+  stripe_account_id text not null,
+  checkout_session_id text not null unique,
+  payment_intent_id text,
+  amount_minor bigint not null check (amount_minor > 0),
+  currency char(3) not null check (currency ~ '^[A-Z]{3}$'),
+  status text not null default 'open' check (status in ('open','paid','expired','failed')),
+  payment_id uuid unique references public.payments(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists online_payment_sessions_case_idx on public.online_payment_sessions (case_id, created_at desc);
+
+alter table public.business_payment_connections enable row level security;
+alter table public.online_payment_sessions enable row level security;
+drop policy if exists "business_payment_connections: tenant read" on public.business_payment_connections;
+create policy "business_payment_connections: tenant read" on public.business_payment_connections
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+drop policy if exists "online_payment_sessions: tenant read" on public.online_payment_sessions;
+create policy "online_payment_sessions: tenant read" on public.online_payment_sessions
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+revoke insert, update, delete on public.business_payment_connections, public.online_payment_sessions from anon, authenticated;
+grant select on public.business_payment_connections, public.online_payment_sessions to authenticated;
+grant all on public.business_payment_connections, public.online_payment_sessions to service_role;
+
+-- Records a Stripe-confirmed payment exactly once per checkout session.
+create or replace function public.online_payment_record(
+  p_checkout_session_id text, p_stripe_account_id text, p_payment_intent_id text,
+  p_amount_minor bigint, p_currency text, p_payment_method text)
+returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_session public.online_payment_sessions; v_payment_id uuid;
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then raise exception 'service role required'; end if;
+  if p_payment_method not in ('online_fpx','online_card','online_other') then raise exception 'invalid online payment method'; end if;
+  select * into v_session from public.online_payment_sessions where checkout_session_id = p_checkout_session_id for update;
+  if not found then raise exception 'unknown checkout session'; end if;
+  if v_session.stripe_account_id <> p_stripe_account_id then raise exception 'checkout account mismatch'; end if;
+  if v_session.amount_minor <> p_amount_minor or v_session.currency <> upper(p_currency) then raise exception 'checkout amount mismatch'; end if;
+  if v_session.payment_id is not null then return v_session.payment_id; end if;
+
+  insert into public.payments(case_id, amount, amount_minor, currency, payment_method, reference_no, review_status, notes)
+  values (v_session.case_id, v_session.amount_minor / 100.0, v_session.amount_minor, v_session.currency, p_payment_method,
+    p_payment_intent_id, 'pending_review',
+    'Paid online through Stripe and confirmed by Stripe. The money goes to your Stripe account; approve to update the balance.')
+  returning id into v_payment_id;
+
+  update public.online_payment_sessions set status = 'paid', payment_intent_id = p_payment_intent_id,
+    payment_id = v_payment_id, updated_at = now() where id = v_session.id;
+  return v_payment_id;
+end $$;
+
+revoke all on function public.online_payment_record(text, text, text, bigint, text, text) from public, anon, authenticated;
+grant execute on function public.online_payment_record(text, text, text, bigint, text, text) to service_role;
+
+-- LHDN MyInvois e-Invoicing (migration 20260923_myinvois_einvoicing.sql)
+create table if not exists public.einvoice_profiles (
+  business_id uuid primary key references public.businesses(id) on delete cascade,
+  enabled boolean not null default false,
+  supplier_tin text not null default '',
+  supplier_brn text not null default '',
+  supplier_sst text,
+  supplier_ttx text,
+  msic_code text not null default '' check (msic_code = '' or msic_code ~ '^\d{5}$'),
+  activity_description text not null default '',
+  phone text not null default '',
+  email text,
+  address_line text not null default '',
+  city text not null default '',
+  postcode text not null default '' check (postcode = '' or postcode ~ '^\d{5}$'),
+  state_code text not null default '14' check (state_code ~ '^(0[1-9]|1[0-7])$'),
+  tax_type text not null default '06' check (tax_type in ('01','02','06','E')),
+  tax_rate_percent numeric(5,2) not null default 0 check (tax_rate_percent between 0 and 100),
+  intermediary_authorised_at timestamptz,
+  updated_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.customer_tax_details (
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  customer_id uuid not null references public.debtors(id) on delete cascade,
+  tin text,
+  id_scheme text check (id_scheme is null or id_scheme in ('BRN','NRIC','PASSPORT','ARMY')),
+  id_value text,
+  sst_no text,
+  address_line text,
+  city text,
+  postcode text,
+  state_code text check (state_code is null or state_code ~ '^(0[1-9]|1[0-7])$'),
+  country_code text not null default 'MYS' check (country_code ~ '^[A-Z]{3}$'),
+  updated_by uuid references auth.users(id) on delete set null,
+  updated_at timestamptz not null default now(),
+  primary key (business_id, customer_id)
+);
+
+create table if not exists public.einvoice_documents (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  obligation_id uuid references public.obligations(id) on delete set null,
+  customer_id uuid references public.debtors(id) on delete set null,
+  environment text not null check (environment in ('preprod','production')),
+  code_number text not null,
+  document_hash text not null,
+  submission_uid text,
+  uuid text unique,
+  long_id text,
+  status text not null default 'submitted' check (status in ('submitted','valid','invalid','cancelled','rejected')),
+  errors jsonb not null default '[]'::jsonb,
+  submitted_by uuid references auth.users(id) on delete set null,
+  submitted_at timestamptz not null default now(),
+  validated_at timestamptz,
+  cancelled_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+create index if not exists einvoice_documents_obligation_idx on public.einvoice_documents (business_id, obligation_id, submitted_at desc);
+create index if not exists einvoice_documents_pending_idx on public.einvoice_documents (status, submitted_at) where status = 'submitted';
+-- Only one live (submitted or valid) e-Invoice per invoice.
+create unique index if not exists einvoice_documents_live_uidx
+  on public.einvoice_documents (business_id, obligation_id) where status in ('submitted','valid');
+
+alter table public.einvoice_profiles enable row level security;
+alter table public.customer_tax_details enable row level security;
+alter table public.einvoice_documents enable row level security;
+drop policy if exists "einvoice_profiles: tenant read" on public.einvoice_profiles;
+create policy "einvoice_profiles: tenant read" on public.einvoice_profiles
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+drop policy if exists "customer_tax_details: tenant read" on public.customer_tax_details;
+create policy "customer_tax_details: tenant read" on public.customer_tax_details
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+drop policy if exists "einvoice_documents: tenant read" on public.einvoice_documents;
+create policy "einvoice_documents: tenant read" on public.einvoice_documents
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+revoke insert, update, delete on public.einvoice_profiles, public.customer_tax_details, public.einvoice_documents from anon, authenticated;
+grant select on public.einvoice_profiles, public.customer_tax_details, public.einvoice_documents to authenticated;
+grant all on public.einvoice_profiles, public.customer_tax_details, public.einvoice_documents to service_role;

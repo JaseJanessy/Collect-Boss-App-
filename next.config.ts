@@ -17,6 +17,38 @@ if (deploymentEnvironment !== "development") {
   }
 }
 
+// Content-Security-Policy. The browser only talks to this app and Supabase;
+// payments, WhatsApp and accounting providers are reached by navigation or
+// server-side calls, not browser fetches. Scripts still need 'unsafe-inline'
+// for Next.js bootstrap and the theme script in app/layout.tsx; the other
+// directives (framing, plugins, base/form targets, connections) are strict.
+function supabaseOrigins(): string[] {
+  try {
+    const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
+    return [url.origin, `wss://${url.host}`];
+  } catch {
+    return [];
+  }
+}
+
+const isDevelopmentServer = process.env.NODE_ENV !== "production";
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  `script-src 'self' 'unsafe-inline'${isDevelopmentServer ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline'",
+  ["img-src 'self' data: blob:", ...supabaseOrigins().filter((origin) => origin.startsWith("https:"))].join(" "),
+  "font-src 'self' data:",
+  ["connect-src 'self'", ...supabaseOrigins(), ...(isDevelopmentServer ? ["ws:"] : [])].join(" "),
+  "frame-src 'self' blob:",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  ...(deploymentEnvironment === "development" ? [] : ["upgrade-insecure-requests"]),
+].join("; ");
+
 const nextConfig: NextConfig = {
   // Local QA and Playwright use 127.0.0.1 while `next dev` advertises
   // localhost. Allow that development origin so client assets can hydrate.
@@ -37,6 +69,7 @@ const nextConfig: NextConfig = {
           { key: "X-XSS-Protection",           value: "1; mode=block" },
           { key: "Referrer-Policy",            value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy",         value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Content-Security-Policy",    value: contentSecurityPolicy },
         ],
       },
       {

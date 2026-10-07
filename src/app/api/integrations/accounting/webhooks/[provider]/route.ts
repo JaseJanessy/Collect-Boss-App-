@@ -74,6 +74,8 @@ export async function POST(
 ) {
   const rawProvider = (await params).provider;
   if (!accountingProviders.includes(rawProvider as AccountingProvider)) return new NextResponse(null, { status: 404 });
+  // Only OAuth providers push webhooks; API-key providers are synced by polling.
+  if (rawProvider !== "xero" && rawProvider !== "quickbooks") return new NextResponse(null, { status: 404 });
   const provider = rawProvider as AccountingProvider;
   const raw = await request.text();
   const verification = verify(provider, raw, request);

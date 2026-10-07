@@ -4,6 +4,9 @@
  * Server-side entitlement check before performing a protected action.
  * Called by the frontend just before DB writes to catch limit violations
  * that the client-side state might miss (e.g., race conditions, stale cache).
+ * The write endpoints enforce the same rules themselves via
+ * `@/lib/billing/plan-enforcement`; this endpoint only lets the UI explain a
+ * refusal before the user fills in a form.
  *
  * Security:
  *  • Requires authenticated Supabase session
@@ -17,33 +20,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantPermission } from "@/lib/auth/tenant-access";
 import type { TenantPermission } from "@/lib/auth/permissions";
-import type { EntitlementRow } from "@/lib/billing/types";
-import { FREE_ENTITLEMENT_MOCK } from "@/lib/billing/plans";
+import { checkPlanAction, PLAN_ACTIONS, type PlanAction } from "@/lib/billing/plan-enforcement";
 
 export const dynamic = "force-dynamic";
 
-export type ValidateAction =
-  | "create_case"
-  | "export_evidence_pack"
-  | "use_formal_demand"
-  | "use_lawyer_referral"
-  | "use_payment_lock"
-  | "use_reports"
-  | "invite_team_member";
-
-interface ValidateResponse {
-  allowed:   boolean;
-  reason:    string | null;
-  current?:  number;
-  limit?:    number;
-  planSlug?: string;
-}
+export type ValidateAction = PlanAction;
 
 const err = (msg: string, status = 400) =>
   NextResponse.json({ error: msg }, { status });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // ── Auth ──────────────────────────────────────────────────────────────────
   // ── Parse body ────────────────────────────────────────────────────────────
   let body: unknown;
   try { body = await request.json(); } catch { return err("Invalid JSON", 400); }
@@ -52,11 +38,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     ? String((body as { action: unknown }).action)
     : "";
 
-  const validActions: ValidateAction[] = [
-    "create_case", "export_evidence_pack", "use_formal_demand",
-    "use_lawyer_referral", "use_payment_lock", "use_reports", "invite_team_member",
-  ];
-  if (!validActions.includes(action as ValidateAction)) {
+  if (!PLAN_ACTIONS.includes(action as ValidateAction)) {
     return err(`Unknown action: "${action}"`, 400);
   }
 
@@ -72,176 +54,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   };
   const access = await requireTenantPermission(permissionByAction[action as ValidateAction]);
   if ("error" in access) return err(access.error ?? "Action access denied.", access.status ?? 403);
-  const { client: supabase, businessId } = access;
 
-  // ── Get entitlements ──────────────────────────────────────────────────────
-  // RLS: owner can SELECT their own entitlements
-  const { data: entRow } = await supabase
-    .from("entitlements")
-    .select("*")
-    .eq("business_id", businessId)
-    .maybeSingle();
-
-  const ent: EntitlementRow = (entRow as EntitlementRow | null) ?? FREE_ENTITLEMENT_MOCK;
-
-  // ── Evaluate action ───────────────────────────────────────────────────────
-  const result = await evaluateAction(
-    action as ValidateAction,
-    ent,
-    businessId,
-    supabase,
-  );
-
+  const { unavailable, ...result } = await checkPlanAction(access.client, access.businessId, action as ValidateAction);
+  if (unavailable) return err(result.reason ?? "Plan check unavailable.", 503);
   return NextResponse.json(result, { status: 200 });
-}
-
-// ─── Per-action evaluation ────────────────────────────────────────────────────
-
-async function evaluateAction(
-  action:     ValidateAction,
-  ent:        EntitlementRow,
-  businessId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase:   any,
-): Promise<ValidateResponse> {
-  const planSlug = ent.plan_slug;
-
-  switch (action) {
-    // ── create_case ──────────────────────────────────────────────────────────
-    case "create_case": {
-      if (ent.case_limit === -1) {
-        return { allowed: true, reason: null, planSlug };
-      }
-      const { count } = await supabase
-        .from("cases")
-        .select("*", { count: "exact", head: true })
-        .eq("business_id", businessId);
-
-      const current = count ?? 0;
-      const limit   = ent.case_limit;
-
-      if (current >= limit) {
-        return {
-          allowed:  false,
-          reason:   `Your current plan allows ${limit} active case${limit === 1 ? "" : "s"}. You have reached your plan limit.`,
-          current,
-          limit,
-          planSlug,
-        };
-      }
-      return { allowed: true, reason: null, current, limit, planSlug };
-    }
-
-    // ── export_evidence_pack ─────────────────────────────────────────────────
-    case "export_evidence_pack": {
-      if (ent.evidence_pack_limit === -1) {
-        return { allowed: true, reason: null, planSlug };
-      }
-
-      // Count all packs across all cases for this business
-      const { data: caseIds } = await supabase
-        .from("cases")
-        .select("id")
-        .eq("business_id", businessId);
-
-      const ids = ((caseIds ?? []) as { id: string }[]).map((c) => c.id);
-
-      let current = 0;
-      if (ids.length > 0) {
-        const { count } = await supabase
-          .from("legal_documents")
-          .select("*", { count: "exact", head: true })
-          .in("case_id", ids)
-          .eq("document_type", "evidence_pack");
-        current = count ?? 0;
-      }
-
-      const limit = ent.evidence_pack_limit;
-
-      if (current >= limit) {
-        return {
-          allowed:  false,
-          reason:   `Your current plan allows ${limit} evidence pack export${limit === 1 ? "" : "s"}. You have reached your plan limit.`,
-          current,
-          limit,
-          planSlug,
-        };
-      }
-      return { allowed: true, reason: null, current, limit, planSlug };
-    }
-
-    // ── use_formal_demand ─────────────────────────────────────────────────────
-    case "use_formal_demand": {
-      if (!ent.formal_demand_enabled) {
-        return {
-          allowed:  false,
-          reason:   "Formal Payment Notice is not available on your current plan. Upgrade to unlock this feature.",
-          planSlug,
-        };
-      }
-      return { allowed: true, reason: null, planSlug };
-    }
-
-    // ── use_lawyer_referral ───────────────────────────────────────────────────
-    case "use_lawyer_referral": {
-      if (!ent.lawyer_referral_enabled) {
-        return {
-          allowed:  false,
-          reason:   "Request Legal Review is not available on your current plan. Upgrade to unlock this feature.",
-          planSlug,
-        };
-      }
-      return { allowed: true, reason: null, planSlug };
-    }
-
-    // ── use_payment_lock ──────────────────────────────────────────────────────
-    case "use_payment_lock": {
-      if (!ent.payment_lock_enabled) {
-        return {
-          allowed:  false,
-          reason:   "Payment Lock (Require Approval) is not available on your current plan. Upgrade to unlock this feature.",
-          planSlug,
-        };
-      }
-      return { allowed: true, reason: null, planSlug };
-    }
-
-    // ── use_reports ───────────────────────────────────────────────────────────
-    case "use_reports": {
-      if (!ent.reports_enabled) {
-        return {
-          allowed:  false,
-          reason:   "Full Reports & Analytics is not available on your current plan. Upgrade to unlock this feature.",
-          planSlug,
-        };
-      }
-      return { allowed: true, reason: null, planSlug };
-    }
-
-    // ── invite_team_member ────────────────────────────────────────────────────
-    case "invite_team_member": {
-      // Team member invites not built yet — enforce limit for future use
-      const limit = ent.team_member_limit;
-      // For now: current team members = 1 (owner only)
-      const { count } = await supabase
-        .from("business_memberships")
-        .select("*", { count: "exact", head: true })
-        .eq("business_id", businessId)
-        .in("status", ["active", "invited"]);
-      const current = count ?? 1;
-      if (current >= limit) {
-        return {
-          allowed:  false,
-          reason:   `Your current plan allows ${limit} team member${limit === 1 ? "" : "s"}. Upgrade to add more.`,
-          current,
-          limit,
-          planSlug,
-        };
-      }
-      return { allowed: true, reason: null, current, limit, planSlug };
-    }
-
-    default:
-      return { allowed: false, reason: "Unknown action", planSlug };
-  }
 }

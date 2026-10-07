@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from "react";
@@ -17,7 +18,7 @@ export function useFinancialAdjustments(caseId: string, enabled = true) {
       const payload = await response.json() as {
         adjustments?: FinancialAdjustmentRow[]; adjustmentEvents?: FinancialAdjustmentEventRow[]; error?: string;
       };
-      if (!response.ok) throw new Error(payload.error ?? "Unable to load adjustments.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load adjustments."));
       setAdjustments(payload.adjustments ?? []);
       setEvents(payload.adjustmentEvents ?? []);
       setError(null);

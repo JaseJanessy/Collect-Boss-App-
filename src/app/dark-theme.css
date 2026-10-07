@@ -1,0 +1,98 @@
+/*
+ * Dark theme (opt-in from Settings → Appearance).
+ *
+ * Brand variables are set inline on <html>, so dark values need !important.
+ * The rules below remap the colour utilities the app uses most so existing
+ * screens adapt without per-component changes. Charts and brand artwork keep
+ * their own colours.
+ */
+
+html.dark {
+  color-scheme: dark;
+  --cb-background: #0b1220 !important;
+  --cb-surface: #111a2e !important;
+  --cb-surface-raised: #16213a !important;
+  --cb-surface-muted: #1b2742 !important;
+  --cb-surface-inverse: #0a1630 !important;
+  --cb-surface-inverse-raised: #13244a !important;
+  --cb-text-primary: #e6ecf5 !important;
+  --cb-text-secondary: #9aa8bc !important;
+  --cb-text-link: #4ade9b !important;
+  --cb-border: #26344f !important;
+  --cb-divider: #1f2b44 !important;
+  --cb-border-strong: #3a4a68 !important;
+  --cb-action-primary: #0f9e70 !important;
+  --cb-action-primary-hover: #12b37f !important;
+  --cb-action-primary-pressed: #0c8460 !important;
+  --cb-selected-surface: #0e2e25 !important;
+  --cb-selected-text: #6ee7b7 !important;
+  --cb-secondary-hover: #1e2a44 !important;
+  --cb-secondary-pressed: #26344f !important;
+  --cb-success-surface: #0e2e25 !important;
+  --cb-success-border: #1f5a47 !important;
+  --cb-warning-surface: #2e2310 !important;
+  --cb-warning-border: #5c4513 !important;
+  --cb-danger-surface: #331516 !important;
+  --cb-danger-border: #5a2224 !important;
+  --cb-information-surface: #102341 !important;
+  --cb-information-border: #1e3a66 !important;
+  --cb-neutral-surface: #1b2742 !important;
+  --cb-neutral-border: #26344f !important;
+  --cb-high-risk-surface: #321b10 !important;
+  --cb-high-risk-border: #5c3214 !important;
+  --cb-disabled-surface: #1b2742 !important;
+  --cb-disabled-border: #26344f !important;
+  --cb-disabled-text: #6b7a92 !important;
+  --background: var(--cb-background);
+  --foreground: var(--cb-text-primary);
+}
+
+/* Surfaces */
+html.dark :is(.bg-white, .bg-\[\#FFFFFF\], .bg-\[\#fff\]) { background-color: var(--cb-surface); }
+html.dark :is(.bg-gray-50, .bg-slate-50, .bg-\[\#F2F4F7\], .bg-\[\#F6F8FC\], .bg-\[\#F6F8FB\], .bg-\[\#F8FAFC\]) { background-color: var(--cb-background); }
+html.dark :is(.bg-gray-100, .bg-slate-100) { background-color: #1b2742; }
+html.dark :is(.bg-gray-200, .bg-slate-200) { background-color: #26344f; }
+html.dark .bg-\[\#0D1B3D\] { background-color: #24365f; }
+html.dark :is(.hover\:bg-gray-50:hover, .hover\:bg-slate-50:hover, .hover\:bg-gray-100:hover) { background-color: #1e2a44; }
+
+/* Text */
+html.dark :is(.text-gray-900, .text-gray-800, .text-slate-900, .text-slate-800, .text-\[\#0D1B3D\], .text-\[\#092F2A\], .text-\[\#14213D\], .text-black) { color: var(--cb-text-primary); }
+html.dark :is(.text-gray-700, .text-gray-600, .text-slate-700, .text-slate-600) { color: #c3cddb; }
+html.dark :is(.text-gray-500, .text-slate-500) { color: var(--cb-text-secondary); }
+html.dark :is(.text-gray-400, .text-gray-300, .text-slate-400) { color: #7c8aa0; }
+
+/* Borders */
+html.dark :is(.border-gray-50, .border-gray-100, .border-gray-200, .border-gray-300, .border-slate-100, .border-slate-200) { border-color: var(--cb-border); }
+html.dark :is(.divide-gray-100, .divide-gray-200) > :not(:last-child) { border-color: var(--cb-divider); }
+
+/* Status tints */
+html.dark :is(.bg-emerald-50, .bg-emerald-100, .bg-green-50, .bg-\[\#E8F7F2\]) { background-color: #0e2e25; }
+html.dark :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-green-700, .text-\[\#009966\], .text-\[\#087F5B\], .text-\[\#007A52\]) { color: #4ade9b; }
+html.dark :is(.border-emerald-100, .border-emerald-200, .border-emerald-300) { border-color: #1f5a47; }
+html.dark :is(.bg-amber-50, .bg-yellow-50, .bg-orange-50) { background-color: #2e2310; }
+html.dark :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-amber-950, .text-orange-700, .text-orange-800) { color: #fcd34d; }
+html.dark :is(.border-amber-200, .border-orange-200) { border-color: #5c4513; }
+html.dark :is(.bg-red-50) { background-color: #331516; }
+html.dark :is(.text-red-500, .text-red-600, .text-red-700, .text-red-800) { color: #f87171; }
+html.dark :is(.border-red-100, .border-red-200) { border-color: #5a2224; }
+html.dark :is(.bg-blue-50) { background-color: #102341; }
+html.dark :is(.text-blue-700, .text-blue-800) { color: #93c5fd; }
+html.dark :is(.border-blue-100, .border-blue-200) { border-color: #1e3a66; }
+
+/* Form controls */
+html.dark :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+  background-color: var(--cb-surface-raised);
+  border-color: var(--cb-border);
+  color: var(--cb-text-primary);
+}
+html.dark :is(input, textarea)::placeholder { color: #6b7a92; }
+
+/* Skeletons and dividers */
+html.dark .bg-slate-200\/70 { background-color: rgba(38, 52, 79, 0.7); }
+
+/* The approved navy/green wordmark always sits on a light field. */
+html.dark [data-brand-wordmark="collectboss-main"]:not([data-variant="monochrome"]) {
+  background-color: #ffffff;
+  border-radius: 6px;
+}
+html.dark [data-brand-wordmark="collectboss-main"][data-variant="light"] { padding: 4px 8px; }

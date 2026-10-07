@@ -7,6 +7,7 @@ import { PrimaryButton } from "@/components/ui/primary-button";
 import type { PublicPaymentDetails } from "@/lib/public-access/types";
 import { formatCurrencyMinor, getCurrencyMetadata, minorToDecimalString } from "@/lib/financial/money";
 import { CollectBossWordmark } from "@/components/brand/wordmark";
+import { OnlinePaymentOption } from "./online-payment-option";
 
 interface Props {
   token: string;
@@ -133,6 +134,8 @@ export function DebtorPaymentPage({ token, payment }: Props) {
         </div>
 
         {payment.paymentPlanProgress && <PlanProgress progress={payment.paymentPlanProgress} currency={payment.currency} />}
+
+        {payment.onlinePayment?.available && <OnlinePaymentOption token={token} suggestedAmount={suggestedAmount} currency={payment.currency} />}
 
         {payment.receivingAccount ? (
           <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">

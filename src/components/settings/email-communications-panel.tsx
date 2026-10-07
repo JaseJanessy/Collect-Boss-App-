@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useCallback, useEffect, useState } from "react";
 import { Mail, ShieldCheck } from "lucide-react";
@@ -23,7 +24,7 @@ export function EmailCommunicationsPanel() {
   const load = useCallback(async () => {
     const response = await fetch("/api/email/settings", { cache: "no-store" });
     const payload = await response.json() as { identity?: EmailSenderIdentityRow | null; templates?: EmailTemplateRow[]; error?: string; health?: EmailOperations["health"]; suppressions?: EmailOperations["suppressions"]; jobs?: EmailOperations["jobs"] };
-    if (!response.ok) throw new Error(payload.error ?? "Unable to load email settings.");
+    if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load email settings."));
     const current = payload.identity ?? null;
     setIdentity(current);
     setTemplates(payload.templates ?? []);

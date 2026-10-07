@@ -5,6 +5,7 @@ import {
   getBillingBusinessOwner,
   getBusinessIdByCustomer,
   isConfiguredPlanPriceId,
+  isExtraSeatPriceId,
   planSlugFromPriceId,
   applySubscriptionState,
   type SubscriptionUpsertParams,
@@ -13,6 +14,7 @@ import { pocketOfferFromPriceId } from "./pocket-catalog-server";
 import { applyPocketSubscriptionState, recordPocketCyclePack, type PocketSubscriptionItemState } from "./pocket-billing-service";
 import { commitPocketSoloUpgrade, markPocketSoloCleanup } from "@/lib/pocket/upgrade-server";
 import type { SubscriptionStatus } from "./types";
+import { EXTRA_SEAT_MAX } from "./catalog-server";
 
 const SUBSCRIPTION_STATUSES: ReadonlySet<SubscriptionStatus> = new Set([
   "active", "trialing", "past_due", "canceled", "incomplete", "incomplete_expired", "unpaid", "paused",
@@ -86,18 +88,27 @@ async function applySubscription(business: ResolvedBusiness, sub: Stripe.Subscri
     });
     return "pocket" as const;
   }
-  const priceId = sub.items.data[0]?.price?.id ?? null;
+  // A Main subscription holds one plan item and, optionally, one extra-seat
+  // item. Item order is not guaranteed, so classify each item by price.
+  const seatItems = sub.items.data.filter((entry) => isExtraSeatPriceId(entry.price?.id));
+  const planItems = sub.items.data.filter((entry) => !isExtraSeatPriceId(entry.price?.id));
+  if (planItems.length > 1 || seatItems.length > 1) {
+    throw new Error("Subscription contains an unexpected combination of CollectBoss prices");
+  }
+  const item = planItems[0] ?? sub.items.data[0];
+  const priceId = item?.price?.id ?? null;
   const planSlug = planSlugFromPriceId(priceId, metadataValue(sub.metadata, "plan_slug"));
   const status = subscriptionStatus(sub.status);
   if (["active", "trialing"].includes(status) && !isConfiguredPlanPriceId(priceId)) {
     throw new Error("Active subscription has no configured CollectBoss price mapping");
   }
-  const item = sub.items.data[0];
+  const extraSeats = Math.min(Math.max(seatItems[0]?.quantity ?? 0, 0), EXTRA_SEAT_MAX);
   const params: SubscriptionUpsertParams = {
     businessId: business.businessId, stripeCustomerId: business.customerId, stripeSubscriptionId: sub.id,
     stripePriceId: priceId, planSlug, status,
     currentPeriodStart: item?.current_period_start ?? null, currentPeriodEnd: item?.current_period_end ?? null,
     cancelAtPeriodEnd: sub.cancel_at_period_end,
+    extraSeats,
   };
   await applySubscriptionState(params);
   return "main" as const;

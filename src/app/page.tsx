@@ -23,7 +23,9 @@ export default async function HomePage() {
   const workspaceResult = await requireWorkspaceContext();
   if ("error" in workspaceResult) {
     if (workspaceResult.code === "WORKSPACE_ACCESS_DENIED") redirect("/choose-product");
-    redirect("/workspace-unavailable");
+    // Keep the authenticated entry point usable while workspace provisioning
+    // is incomplete. Let the user choose Main or Pocket and continue setup.
+    redirect("/choose-product");
   }
   if (workspaceResult.context.workspace.productType === "pocket") redirect("/pocket");
 

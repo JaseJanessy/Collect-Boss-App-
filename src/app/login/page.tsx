@@ -14,8 +14,6 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   }
   const initialError = error === "auth_callback_failed"
     ? "This sign-in or confirmation link is invalid or expired. Please try again."
-    : error === "workspace_unavailable"
-      ? "Your account was verified, but the workspace service is unavailable. Please try again after the database update is complete."
-      : "";
+    : "";
   return <LoginPage initialError={initialError} />;
 }

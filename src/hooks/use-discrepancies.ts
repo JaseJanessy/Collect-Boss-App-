@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useCallback, useEffect, useState } from "react";
 import type { DiscrepancyResponse, FindingStatus } from "@/lib/discrepancies/api-types";
@@ -22,7 +23,7 @@ export function useDiscrepancies(caseId: string, enabled = true) {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     } : { cache: "no-store" });
     const payload = await response.json() as DiscrepancyResponse & { error?: { message?: string } };
-    if (!response.ok) throw new Error(payload.error?.message ?? "Unable to load discrepancy findings.");
+    if (!response.ok) throw new Error(friendlyErrorMessage(payload.error?.message ?? "Unable to load discrepancy findings."));
     setData(payload); return payload;
   }, [caseId]);
 
@@ -32,7 +33,7 @@ export function useDiscrepancies(caseId: string, enabled = true) {
     fetch(`/api/cases/${encodeURIComponent(caseId)}/discrepancies`, { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json() as DiscrepancyResponse & { error?: { message?: string } };
-        if (!response.ok) throw new Error(payload.error?.message ?? "Unable to load discrepancy findings.");
+        if (!response.ok) throw new Error(friendlyErrorMessage(payload.error?.message ?? "Unable to load discrepancy findings."));
         if (active) setData(payload);
       })
       .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : "Unable to load discrepancy findings."); })

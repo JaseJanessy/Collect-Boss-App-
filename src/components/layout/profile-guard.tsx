@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import { CollectBossWordmark } from "@/components/brand/wordmark";
 
 // Routes that don't need a complete business profile
-const PROFILE_EXEMPT = ["/pocket", "/onboarding", "/login", "/signup", "/choose-product", "/forgot-password", "/reset-password", "/pay", "/acknowledge", "/workspace-unavailable", "/landing", "/dev", "/terms", "/privacy", "/legal-disclaimer", "/pdpa-consent", "/support", "/status", "/glossary"];
+const PROFILE_EXEMPT = ["/", "/pocket", "/onboarding", "/login", "/signup", "/choose-product", "/forgot-password", "/reset-password", "/pay", "/acknowledge", "/workspace-unavailable", "/landing", "/dev", "/terms", "/privacy", "/legal-disclaimer", "/pdpa-consent", "/support", "/status", "/glossary"];
 
 interface Props {
   children: ReactNode;

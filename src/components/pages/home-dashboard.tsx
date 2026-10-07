@@ -10,21 +10,23 @@ import { useReportSummary } from "@/hooks/use-report-summary";
 import { formatCurrencyMinor } from "@/lib/financial/money";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/feedback";
+import { useT } from "@/contexts/language-context";
 
 function money(minor: number, currency: string) {
   return formatCurrencyMinor(minor, currency, { explicitCode: currency !== "MYR" });
 }
 
 export function HomeDashboard() {
+  const t = useT();
   const { metrics, loading, refresh } = useReportSummary();
   if (loading) return <DashboardSkeleton />;
-  if (!metrics) return <div className="cb-analytics-light mx-auto flex max-w-7xl flex-col gap-4 pb-10"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Action dashboard</p><h1 className="mt-1 text-2xl font-black tracking-tight text-[#0D1B3D]">Start with the five items that need attention</h1></div><ActionCentrePanel compact /><Alert tone="error" title="Ledger reporting is unavailable" action={<Button size="sm" variant="outline" onClick={refresh}><RefreshCw />Retry reporting</Button>}><p>Priority work remains available above. No fallback or estimated financial values are shown.</p></Alert></div>;
+  if (!metrics) return <div className="cb-analytics-light mx-auto flex max-w-7xl flex-col gap-4 pb-10"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Action dashboard</p><h1 className="mt-1 text-2xl font-black tracking-tight text-[#0D1B3D]">{t("dashboard.title")}</h1></div><ActionCentrePanel compact /><Alert tone="error" title={t("dashboard.totalsFailedTitle")} action={<Button size="sm" variant="outline" onClick={refresh}><RefreshCw />{t("common.retry")}</Button>}><p>{t("dashboard.totalsFailedBody")}</p></Alert></div>;
   if (metrics.isMultiCurrency) return <MultiCurrencyDashboard metrics={metrics} />;
   const currency = metrics.currencies[0] ?? "MYR";
 
   return <div className="cb-analytics-light mx-auto flex max-w-7xl flex-col gap-5 pb-10 text-slate-900">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Action dashboard</p><h1 className="mt-1 text-2xl font-black tracking-tight text-[#0D1B3D]">Start with the five items that need attention</h1><p className="mt-1 text-sm text-slate-500">Priority work first. Ledger-backed reporting follows below, as at {metrics.asOfDate}.</p></div>
+      <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Action dashboard</p><h1 className="mt-1 text-2xl font-black tracking-tight text-[#0D1B3D]">{t("dashboard.title")}</h1><p className="mt-1 text-sm text-slate-500">Priority work first. Ledger-backed reporting follows below, as at {metrics.asOfDate}.</p></div>
       <Link href="/reports" className="inline-flex items-center gap-2 self-start rounded-xl border border-blue-200 bg-white px-4 py-2 text-xs font-bold text-blue-700 shadow-sm">Open Reports 2.0 <ArrowRight className="h-3.5 w-3.5" /></Link>
     </div>
 
@@ -67,8 +69,9 @@ export function HomeDashboard() {
 }
 
 function MultiCurrencyDashboard({ metrics }: { metrics: NonNullable<ReturnType<typeof useReportSummary>["metrics"]> }) {
+  const t = useT();
   return <div className="cb-analytics-light mx-auto flex max-w-7xl flex-col gap-5 pb-10 text-slate-900">
-    <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Action dashboard</p><h1 className="mt-1 text-2xl font-black tracking-tight text-[#0D1B3D]">Start with the five items that need attention</h1><p className="mt-1 text-sm text-slate-500">Priority work first. Reporting is grouped by currency as at {metrics.asOfDate}; no FX conversion is applied.</p></div>
+    <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Action dashboard</p><h1 className="mt-1 text-2xl font-black tracking-tight text-[#0D1B3D]">{t("dashboard.title")}</h1><p className="mt-1 text-sm text-slate-500">Priority work first. Reporting is grouped by currency as at {metrics.asOfDate}; no FX conversion is applied.</p></div>
     <ActionCentrePanel compact />
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{metrics.totalsByCurrency.map((group) => <section key={group.currency} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-black uppercase tracking-wider text-blue-700">{group.currency}</p><p className="mt-2 text-xs text-slate-500">Outstanding</p><p className="mt-1 text-2xl font-black text-[#0D1B3D]">{formatCurrencyMinor(group.totalOutstandingMinor, group.currency, { explicitCode: true })}</p><div className="mt-4 grid grid-cols-2 gap-2"><Summary label="Recovered" value={formatCurrencyMinor(group.totalCollectedMinor, group.currency, { explicitCode: true })} /><Summary label="Overdue" value={formatCurrencyMinor(group.overdueAmountMinor, group.currency, { explicitCode: true })} /><Summary label="This month" value={formatCurrencyMinor(group.recoveredThisMonthMinor, group.currency, { explicitCode: true })} /><Summary label="Collection rate" value={`${group.collectionRate}%`} /></div></section>)}</div>
     <div className="grid grid-cols-2 gap-3"><Kpi label="Active cases" value={String(metrics.activeCases)} detail="Across all currencies" icon={<CircleDollarSign />} /><Kpi label="Actions today" value={String(metrics.actionsToday)} detail="Currency-neutral workflow count" icon={<CalendarCheck />} tone={metrics.actionsToday ? "attention" : "neutral"} /></div>

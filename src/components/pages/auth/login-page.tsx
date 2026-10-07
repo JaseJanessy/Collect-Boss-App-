@@ -7,9 +7,11 @@ import { PrimaryButton } from "@/components/ui/primary-button";
 import { AuthShell, AuthCard, AuthField, AuthError } from "./auth-shell";
 import { signIn } from "@/lib/auth/session";
 import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { useT } from "@/contexts/language-context";
 
 export function LoginPage({ initialError = "" }: { initialError?: string }) {
   const router = useRouter();
+  const t = useT();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading]   = useState(false);
@@ -72,9 +74,9 @@ export function LoginPage({ initialError = "" }: { initialError?: string }) {
   return (
     <AuthShell>
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-[#0D1B3D]">Welcome Back</h1>
+        <h1 className="text-2xl font-black text-[#0D1B3D]">{t("auth.welcomeBack")}</h1>
         <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-          Sign in to your Main or Pocket workspace.
+          {t("auth.signInHint")}
         </p>
       </div>
 
@@ -83,7 +85,7 @@ export function LoginPage({ initialError = "" }: { initialError?: string }) {
           {error && <AuthError message={error} />}
 
           <AuthField
-            label="Email Address"
+            label={t("auth.email")}
             type="email"
             placeholder="you@company.com.my"
             value={email}
@@ -94,7 +96,7 @@ export function LoginPage({ initialError = "" }: { initialError?: string }) {
           />
 
           <AuthField
-            label="Password"
+            label={t("auth.password")}
             type="password"
             placeholder="Enter your password"
             value={password}
@@ -109,7 +111,7 @@ export function LoginPage({ initialError = "" }: { initialError?: string }) {
               href="/forgot-password"
               className="text-xs text-[#009966] font-semibold hover:underline"
             >
-              Forgot password?
+              {t("auth.forgotPassword")}
             </Link>
           </div>
 
@@ -124,15 +126,15 @@ export function LoginPage({ initialError = "" }: { initialError?: string }) {
                 : <ArrowRight className="w-4 h-4" />
             }
           >
-            {loading ? "Signing in…" : "Sign In"}
+            {loading ? "…" : t("auth.signIn")}
           </PrimaryButton>
         </form>
       </AuthCard>
 
       <p className="text-sm text-center text-gray-500 mt-5">
-        Don&apos;t have an account?{" "}
+        {t("auth.noAccount")}{" "}
         <Link href="/signup" className="text-[#009966] font-bold hover:underline">
-          Register here
+          {t("auth.register")}
         </Link>
       </p>
     </AuthShell>

@@ -16,6 +16,7 @@ import {
 } from "./validation";
 import { createSafeImagePreview } from "./image-processing";
 import { deploymentScannerConfigurationError } from "./scanning/provider";
+import { kickDocumentQueues } from "./queue-kick";
 
 export interface DocumentAccess {
   businessId: string;
@@ -275,5 +276,6 @@ export async function storeOriginalEvidence(input: {
     );
     return { record, idempotent: true };
   }
+  kickDocumentQueues();
   return { record, idempotent: false };
 }

@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
@@ -56,7 +57,7 @@ export function PocketUpgradePanel() {
         body: JSON.stringify({}),
       });
       const body = await response.json().catch(() => null) as { url?: string; error?: string } | null;
-      if (!response.ok || !body?.url) throw new Error(body?.error ?? "Solo checkout is unavailable.");
+      if (!response.ok || !body?.url) throw new Error(friendlyErrorMessage(body?.error ?? "Solo checkout is unavailable."));
       window.location.assign(body.url);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Solo checkout is unavailable.");

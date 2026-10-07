@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useState } from "react";
 import { Database, Download } from "lucide-react";
@@ -22,7 +23,7 @@ export function BusinessDataExportButton() {
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({})) as { error?: string };
-        throw new Error(payload.error ?? "Unable to export business data.");
+        throw new Error(friendlyErrorMessage(payload.error ?? "Unable to export business data."));
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);

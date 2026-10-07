@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
@@ -145,7 +146,7 @@ export function SmallClaimPage({ caseId }: Props) {
     try {
       const response = await fetch(`/api/cases/${encodeURIComponent(caseData.id)}/small-claim-packs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "save" }) });
       const payload = await response.json().catch(() => ({})) as { document?: Parameters<typeof addDoc>[0]; error?: string };
-      if (!response.ok || !payload.document) throw new Error(payload.error ?? "Unable to save the case-record pack.");
+      if (!response.ok || !payload.document) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to save the case-record pack."));
       addDoc(payload.document);
       setSaved(true);
     } catch (error) {
@@ -164,7 +165,7 @@ export function SmallClaimPage({ caseId }: Props) {
       const response = await fetch(`/api/cases/${encodeURIComponent(caseData.id)}/small-claim-packs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "issue" }) });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({})) as { error?: string };
-        throw new Error(payload.error ?? "Unable to issue the case-record pack.");
+        throw new Error(friendlyErrorMessage(payload.error ?? "Unable to issue the case-record pack."));
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);

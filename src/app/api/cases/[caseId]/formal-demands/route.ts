@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedBusiness } from "@/lib/debtors/server";
+import { planActionDenial } from "@/lib/billing/plan-enforcement";
 import { FORMAL_DEMAND_DISCLAIMER, FORMAL_DEMAND_TEMPLATE_VERSION, type FormalDemandSnapshot, type FormalDemandTone, buildFormalDemandText, toDemandPdfData } from "@/lib/formal-demands/template";
 import { generateDemandPdf } from "@/lib/pdf/demand-generator";
 import { getServiceClient } from "@/lib/supabase/service-client";
@@ -94,6 +95,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!input.success) return json({ error: "Invalid formal-demand request." }, 400);
   const auth = await getAuthenticatedBusiness("case.manage");
   if ("error" in auth) return json({ error: auth.error ?? "Formal-demand service is unavailable." }, 401);
+  const planDenial = await planActionDenial(auth.client, auth.businessId, "use_formal_demand");
+  if (planDenial) return planDenial;
   const service = await getServiceClient();
   if (!service) return json({ error: "Formal-demand issuance service is unavailable." }, 503);
   const [{ data: caseData }, { data: business }, { data: userResult }, { data: reminders }, { data: payments }] = await Promise.all([

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ProductQuiz } from "@/components/onboarding/product-quiz";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CollectBossWordmark } from "@/components/brand/wordmark";
@@ -415,6 +417,7 @@ function HowItWorks() {
 // ─── Product fit ──────────────────────────────────────────────────────────────
 
 function ProductFit() {
+  const router = useRouter();
   const products = [
     {
       name: "CollectBoss",
@@ -441,6 +444,14 @@ function ProductFit() {
           <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[#009966]">Choose the right product</p>
           <h2 className="text-3xl font-black text-[#0D1B3D] md:text-4xl">CollectBoss or CollectBoss Pocket?</h2>
           <p className="mx-auto mt-3 max-w-2xl text-base text-gray-500">Both use one secure account. Choose based on how much workflow depth your business needs today.</p>
+        </div>
+        <div className="mx-auto mb-8 flex max-w-2xl justify-center">
+          <div className="w-full text-center [&>section]:text-left">
+            <ProductQuiz
+              chooseLabel="Start with this product"
+              onChoose={(product) => router.push(product === "pocket" ? "/signup?product=pocket" : "/signup?plan=free")}
+            />
+          </div>
         </div>
         <div className="grid gap-5 md:grid-cols-2">
           {products.map(({ name, icon: Icon, bestFor, points, href, cta }) => (

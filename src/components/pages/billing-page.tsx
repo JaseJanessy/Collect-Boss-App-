@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useCustomerPortal } from "@/hooks/use-customer-portal";
+import { ExtraSeatsCard } from "@/components/billing/extra-seats-card";
 import type { SubscriptionStatus } from "@/lib/billing/types";
 import { appEnvironment } from "@/lib/supabase/client";
 
@@ -194,6 +195,9 @@ export function BillingPage({ dashboard, selectedPlan }: BillingPageProps) {
         {/* ── Subscription management (only shown when on a paid plan) ─── */}
         {!subLoading && subscription && subscription.plan_slug !== "free" && (
           <SubscriptionManagementCard subscription={subscription} />
+        )}
+        {!subLoading && !entLoading && entitlement && subscription && subscription.plan_slug !== "free" && (
+          <ExtraSeatsCard entitlement={entitlement} onChanged={refresh} />
         )}
 
         {/* ── Checkout error ───────────────────────────────────────────── */}

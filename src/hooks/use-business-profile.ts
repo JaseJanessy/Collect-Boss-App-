@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useCallback, useEffect, useState } from "react";
 import type { BusinessProfileDto } from "@/lib/business-profile/types";
@@ -10,7 +11,7 @@ async function fetchProfile(): Promise<BusinessProfileDto | null> {
     profile?: BusinessProfileDto | null;
     error?: string;
   };
-  if (!response.ok) throw new Error(payload.error ?? "Unable to load your profile.");
+  if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load your profile."));
   return payload.profile ?? null;
 }
 

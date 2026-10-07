@@ -1,4 +1,6 @@
-export const accountingProviders = ["xero", "quickbooks"] as const;
+export const accountingProviders = ["xero", "quickbooks", "bukku", "autocount"] as const;
+/** Providers the business connects by pasting API keys from its own software (no OAuth). */
+export const apiKeyAccountingProviders = ["bukku", "autocount"] as const satisfies readonly (typeof accountingProviders)[number][];
 export type AccountingProvider = typeof accountingProviders[number];
 
 export const accountingEntityKinds = ["contact", "invoice", "payment", "credit_note"] as const;
@@ -111,6 +113,8 @@ export interface AccountingPage {
 
 export interface AccountingAdapter {
   readonly provider: AccountingProvider;
+  /** "oauth" providers use the authorize/callback flow; "api_key" providers are connected with pasted credentials. */
+  readonly credentialMode?: "oauth" | "api_key";
   readonly capabilities: AccountingCapabilities;
   readonly requiredScopes: readonly string[];
   getAuthorizationUrl(input: { state: string; redirectUri: string }): string;

@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useCallback, useEffect, useState } from "react";
 import type { DebtTruthResponse } from "@/lib/debt-truth/api-types";
@@ -13,7 +14,7 @@ export function useDebtTruth(caseId: string, enabled = true) {
     try {
       const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/debt-truth?history=true`, { cache: "no-store" });
       const body = await response.json() as DebtTruthResponse & { error?: { message?: string } };
-      if (!response.ok) throw new Error(body.error?.message ?? "Unable to load the canonical debt ledger.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(body.error?.message ?? "Unable to load the canonical debt ledger."));
       setData(body);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to load the canonical debt ledger.");
@@ -25,7 +26,7 @@ export function useDebtTruth(caseId: string, enabled = true) {
     fetch(`/api/cases/${encodeURIComponent(caseId)}/debt-truth?history=true`, { cache: "no-store" })
       .then(async (response) => {
         const body = await response.json() as DebtTruthResponse & { error?: { message?: string } };
-        if (!response.ok) throw new Error(body.error?.message ?? "Unable to load the canonical debt ledger.");
+        if (!response.ok) throw new Error(friendlyErrorMessage(body.error?.message ?? "Unable to load the canonical debt ledger."));
         if (active) setData(body);
       })
       .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : "Unable to load the canonical debt ledger."); })

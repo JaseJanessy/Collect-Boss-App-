@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { appendSensitiveAudit, requireTenantPermission } from "@/lib/auth/tenant-access";
+import { PLANS } from "@/lib/billing/plans";
+import { canAddTeamMember, loadTeamSeatUsage, teamSeatLimitMessage } from "@/lib/billing/team-seats";
+import type { PlanSlug } from "@/lib/billing/types";
 
 export const dynamic = "force-dynamic";
 const updateSchema = z.object({
@@ -18,6 +21,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .eq("id", memberId).eq("business_id", access.businessId).maybeSingle();
   if (!before) return NextResponse.json({ error: "Team member not found." }, { status: 404 });
   if (before.role === "owner") return NextResponse.json({ error: "The canonical owner role cannot be changed here." }, { status: 409 });
+  // Restoring a suspended or revoked member takes a seat again.
+  if (parsed.data.status === "active" && !["active", "invited"].includes(before.status)) {
+    const seats = await loadTeamSeatUsage(access.service, access.businessId);
+    if (!seats) return NextResponse.json({ error: "We couldn't check your team size right now. Please try again." }, { status: 503 });
+    if (!canAddTeamMember(seats)) {
+      const planName = PLANS[seats.planSlug as PlanSlug]?.name ?? "current";
+      return NextResponse.json(
+        { error: teamSeatLimitMessage(seats, planName), code: "TEAM_SEAT_LIMIT_REACHED", used: seats.used, limit: seats.limit },
+        { status: 403 },
+      );
+    }
+  }
   const { data, error } = await access.service.from("business_memberships")
     .update({ ...parsed.data, updated_at: new Date().toISOString() })
     .eq("id", memberId).eq("business_id", access.businessId).select("*").single();

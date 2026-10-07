@@ -36,7 +36,7 @@ import { useEntitlements } from "@/hooks/use-entitlements";
 import { useCases } from "@/hooks/use-cases";
 import { UpgradePrompt } from "@/components/billing/upgrade-prompt";
 import { UsageMeter } from "@/components/billing/usage-meter";
-import { formatLimit } from "@/lib/billing/plans";
+import { formatLimit, PLANS } from "@/lib/billing/plans";
 import { useRegion } from "@/contexts/region-context";
 import { formatCurrency } from "@/lib/international/formatting";
 import { getCurrencyMetadata } from "@/lib/financial/money";
@@ -229,7 +229,7 @@ export function AddCasePage() {
 
   // ── Plan limit gate ──────────────────────────────────────────────────────────
   const caseCount = cases.length;
-  const caseLimit = entitlement?.case_limit ?? 3;
+  const caseLimit = entitlement?.case_limit ?? PLANS.free.case_limit;
   const atCaseLimit = !entLoading && !casesLoading && !flags.canCreateCase(caseCount);
 
   if (entitlementError) return <section role="alert" className="cb-surface mx-auto my-6 max-w-xl p-6"><h1 className="cb-page-title">Plan access unavailable</h1><p className="cb-page-description">We could not verify your case allowance. This is not a confirmed plan limit.</p><button onClick={() => window.location.reload()} className="cb-button-secondary mt-5">Try again</button></section>;
@@ -308,6 +308,7 @@ export function AddCasePage() {
             <button
               key={type}
               type="button"
+              aria-pressed={values.debtor_type === type}
               onClick={() => setValues((previous) => ({ ...previous, debtor_type: type }))}
               className={cn(
                 "rounded-xl border-2 px-3 py-2.5 text-sm font-bold transition-colors",
@@ -580,6 +581,7 @@ function StepTwo({
                   key={mode}
                   type="button"
                   disabled={isLocked}
+                  aria-pressed={values.payment_lock_mode === mode && !isLocked}
                   onClick={() => !isLocked && setValue("payment_lock_mode", mode)}
                   className={cn(
                     "flex items-start gap-3 text-left p-3 rounded-xl border-2 transition-all",

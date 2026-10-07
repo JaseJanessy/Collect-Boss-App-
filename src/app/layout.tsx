@@ -1,12 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import "./dark-theme.css";
 import { AuthProvider } from "@/contexts/auth-context";
 import { BetaProvider } from "@/contexts/beta-context";
 import { ProfileGuard } from "@/components/layout/profile-guard";
 import { FeedbackButton } from "@/components/beta/feedback-button";
 import { RegionProvider } from "@/contexts/region-context";
+import { LanguageProvider } from "@/contexts/language-context";
+import { DemoApiProvider } from "@/components/demo/demo-api-provider";
 import { brandCssVariables, brandTokens } from "@/lib/brand/theme";
+import { THEME_INIT_SCRIPT } from "@/lib/ui/theme";
 
 const corporateSans = localFont({
   src: [
@@ -68,19 +72,24 @@ export default function RootLayout({
       lang="en-MY"
       className={`${corporateSans.variable} ${corporateMono.variable} h-full antialiased`}
       style={brandCssVariables}
+      suppressHydrationWarning
     >
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <link rel="apple-touch-icon" href="/brand/icon-192.png" />
       </head>
       <body className="cb-app-theme min-h-full bg-[var(--cb-background)]">
+        <DemoApiProvider />
         <AuthProvider>
           <RegionProvider>
+            <LanguageProvider>
             <BetaProvider>
               <ProfileGuard>
                 {children}
               </ProfileGuard>
               <FeedbackButton />
             </BetaProvider>
+            </LanguageProvider>
           </RegionProvider>
         </AuthProvider>
       </body>

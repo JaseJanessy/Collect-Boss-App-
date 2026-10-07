@@ -10,6 +10,9 @@ import type {
 } from "@/lib/supabase/types";
 import { useRegion } from "@/contexts/region-context";
 import { formatCalendarDate, formatMinorCurrency } from "@/lib/international/formatting";
+import { RecurringChargesPanel } from "@/components/debtors/recurring-charges-panel";
+import { CustomerTaxDetailsPanel } from "@/components/debtors/customer-tax-details-panel";
+import { EinvoiceActions, useEinvoiceStatuses } from "@/components/debtors/einvoice-actions";
 
 interface ReceivablesPayload {
   customer: DebtorRow;
@@ -252,6 +255,7 @@ export function CustomerReceivablesOverview({
         </header>
 
         <div className="space-y-4 px-4 py-4 sm:px-6">
+          <CustomerTaxDetailsPanel debtorId={customer.id} />
           {error && <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{error}</p>}
           {loading ? (
             <p className="rounded-2xl bg-white p-6 text-sm text-gray-500">Loading customer accounts…</p>
@@ -365,6 +369,7 @@ function AccountCard({
 }) {
   const { configuration } = useRegion();
   const formatMinor = (value: number) => formatMinorCurrency(value, configuration.settings, account.currency);
+  const { statuses: einvoices, reload: reloadEinvoices } = useEinvoiceStatuses(invoices.slice(0, 4).map((invoice) => invoice.id));
   const openInvoices = invoices.filter((item) => item.outstanding_minor > 0 && !["paid", "void", "written_off"].includes(item.status));
   const warning = totals?.credit_warning ?? "no_limit";
   const warningStyle = warning === "over_limit" || warning === "limit_reached"
@@ -405,12 +410,17 @@ function AccountCard({
         </button>
       </div>
 
+      {account.account_mode === "ongoing" && (
+        <RecurringChargesPanel accountId={account.id} currency={account.currency} formatMinor={formatMinor} />
+      )}
+
       {invoices.length > 0 && <div className="mt-3 border-t border-gray-100 pt-2">
         {invoices.slice(0, 4).map((invoice) => (
           <div key={invoice.id} className="flex items-center gap-3 py-2">
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-bold text-gray-800">{invoice.reference}</p>
               <p className="text-[10px] text-gray-500">Due {formatCalendarDate(invoice.due_date, configuration.settings)} · {titleCase(invoice.status)}</p>
+              {!["draft", "void"].includes(invoice.status) && <EinvoiceActions obligationId={invoice.id} status={einvoices.get(invoice.id)} onChanged={() => void reloadEinvoices()} />}
             </div>
             <p className="text-xs font-black text-[#0D1B3D]">{formatMinor(invoice.outstanding_minor)}</p>
             <button type="button" disabled={invoice.outstanding_minor === 0 || chasing === invoice.id} onClick={() => chaseInvoice(invoice.id)} className="min-h-9 rounded-lg bg-emerald-50 px-2.5 text-[10px] font-bold text-emerald-700 disabled:opacity-50">

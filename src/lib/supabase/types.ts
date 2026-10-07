@@ -40,7 +40,10 @@ export type PaymentMethod =
   | "bank_transfer"
   | "cash"
   | "cheque"
-  | "tng_ewallet";
+  | "tng_ewallet"
+  | "online_fpx"
+  | "online_card"
+  | "online_other";
 
 export type PaymentReviewStatus = "pending_review" | "approved" | "rejected" | "unmatched" | "reversed";
 export type PaymentProofStatus = "submitted" | "under_review" | "confirmed" | "rejected" | "more_information_required" | "pending_review" | "approved";
@@ -172,7 +175,7 @@ export type DisputeCategory =
 export type DisputeStatus =
   | "submitted" | "under_review" | "information_requested"
   | "partially_accepted" | "accepted" | "rejected" | "resolved" | "withdrawn";
-export type AccountingProvider = "xero" | "quickbooks";
+export type AccountingProvider = "xero" | "quickbooks" | "bukku" | "autocount";
 export type AccountingConnectionStatus = "pending" | "connected" | "error" | "disconnected" | "revoked";
 export type AccountingEntityType = "contact" | "account" | "invoice" | "payment" | "credit_note";
 
@@ -396,6 +399,20 @@ export interface Database {
         Row: ObligationRow;
         Insert: ObligationInsert;
         Update: ObligationUpdate;
+        Relationships: [];
+      };
+      business_payment_connections: { Row: BusinessPaymentConnectionRow; Insert: Partial<BusinessPaymentConnectionRow> & Pick<BusinessPaymentConnectionRow, "business_id" | "stripe_account_id">; Update: Partial<BusinessPaymentConnectionRow>; Relationships: []; };
+      online_payment_sessions: { Row: OnlinePaymentSessionRow; Insert: Partial<OnlinePaymentSessionRow> & Pick<OnlinePaymentSessionRow, "business_id" | "case_id" | "stripe_account_id" | "checkout_session_id" | "amount_minor" | "currency">; Update: Partial<OnlinePaymentSessionRow>; Relationships: []; };
+      einvoice_profiles: { Row: Record<string, unknown> & { business_id: string }; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: []; };
+      customer_tax_details: { Row: Record<string, unknown> & { business_id: string }; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: []; };
+      einvoice_documents: { Row: Record<string, unknown> & { business_id: string }; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: []; };
+      whatsapp_reminder_policies: { Row: WhatsAppReminderPolicyRow; Insert: Partial<WhatsAppReminderPolicyRow> & Pick<WhatsAppReminderPolicyRow, "business_id">; Update: Partial<WhatsAppReminderPolicyRow>; Relationships: []; };
+      whatsapp_messages: { Row: WhatsAppMessageRow; Insert: Partial<WhatsAppMessageRow>; Update: Partial<WhatsAppMessageRow>; Relationships: []; };
+      whatsapp_opt_outs: { Row: { phone_e164: string; source: string; created_at: string }; Insert: { phone_e164: string; source?: string; created_at?: string }; Update: { source?: string }; Relationships: []; };
+      recurring_charges: {
+        Row: RecurringChargeRow;
+        Insert: Partial<RecurringChargeRow> & Pick<RecurringChargeRow, "business_id" | "customer_id" | "account_id" | "label" | "reference_prefix" | "amount_minor" | "currency" | "day_of_month" | "start_date" | "next_run_date">;
+        Update: Partial<RecurringChargeRow>;
         Relationships: [];
       };
       recovery_case_obligations: {
@@ -950,7 +967,7 @@ export interface Database {
       integration_finish_job: { Args: { p_job_id: string; p_succeeded: boolean; p_error_code?: string | null; p_error_message?: string | null }; Returns: IntegrationJobRow };
       integration_replay_job: { Args: { p_job_id: string; p_business_id: string; p_actor_id: string }; Returns: IntegrationJobRow };
       billing_claim_event: { Args: { p_stripe_event_id: string; p_event_type: string; p_event_created_at?: string | null }; Returns: "new" | "retry" | "done" | "busy" };
-      billing_apply_subscription_state: { Args: { p_business_id: string; p_customer_id: string; p_subscription_id: string; p_price_id: string | null; p_plan_slug: string; p_status: string; p_period_start: string | null; p_period_end: string | null; p_cancel_at_period_end: boolean }; Returns: undefined };
+      billing_apply_subscription_state: { Args: { p_business_id: string; p_customer_id: string; p_subscription_id: string; p_price_id: string | null; p_plan_slug: string; p_status: string; p_period_start: string | null; p_period_end: string | null; p_cancel_at_period_end: boolean; p_extra_seats?: number }; Returns: undefined };
       pocket_get_entitlements: { Args: { p_business_id: string }; Returns: Json };
       pocket_authorize_capability: { Args: { p_business_id: string; p_actor_id: string; p_capability_key: string; p_operation_key?: string | null; p_consume?: boolean }; Returns: Json };
       pocket_apply_subscription_state: { Args: { p_business_id: string; p_customer_id: string; p_provider_event_id: string; p_provider_event_created_at: string; p_items: Json }; Returns: undefined };
@@ -1204,6 +1221,10 @@ export interface Database {
         Returns: PaymentPlanRow;
       };
       payment_plan_detect_missed: { Args: { p_as_of_date?: string | null }; Returns: number; };
+      online_payment_record: { Args: { p_checkout_session_id: string; p_stripe_account_id: string; p_payment_intent_id: string; p_amount_minor: number; p_currency: string; p_payment_method: string }; Returns: string; };
+      whatsapp_enqueue_due_reminders: { Args: { p_now?: string | null; p_limit?: number }; Returns: Json; };
+      whatsapp_claim_messages: { Args: { p_limit?: number }; Returns: WhatsAppMessageRow[]; };
+      recurring_charges_generate: { Args: { p_today?: string | null; p_limit?: number }; Returns: Json; };
       payment_plan_run_scheduler: { Args: { p_as_of_date?: string | null; p_due_soon_days?: number }; Returns: Json; };
       payment_negotiation_submit: {
         Args: {
@@ -1775,6 +1796,36 @@ export type CustomerAccountInsert = Omit<
 export type CustomerAccountUpdate = Partial<
   Omit<CustomerAccountRow, "id" | "business_id" | "customer_id" | "created_at" | "updated_at">
 >;
+
+export interface BusinessPaymentConnectionRow {
+  business_id: string; provider: "stripe"; stripe_account_id: string; charges_enabled: boolean; payouts_enabled: boolean;
+  details_submitted: boolean; disconnected_at: string | null; created_by: string | null; created_at: string; updated_at: string;
+}
+
+export interface OnlinePaymentSessionRow {
+  id: string; business_id: string; case_id: string; stripe_account_id: string; checkout_session_id: string; payment_intent_id: string | null;
+  amount_minor: number; currency: string; status: "open" | "paid" | "expired" | "failed"; payment_id: string | null; created_at: string; updated_at: string;
+}
+
+export interface WhatsAppReminderPolicyRow {
+  business_id: string; enabled: boolean; day_offsets: number[]; language: "en" | "ms";
+  consent_attested_at: string | null; consent_attested_by: string | null; updated_by: string | null; created_at: string; updated_at: string;
+}
+
+export interface WhatsAppMessageRow {
+  id: string; business_id: string; customer_id: string | null; obligation_id: string | null; to_phone_e164: string;
+  template_kind: "before_due" | "due_today" | "overdue"; language: "en" | "ms"; variables: Json; day_offset: number; local_send_date: string;
+  status: "queued" | "sending" | "sent" | "delivered" | "read" | "failed" | "skipped"; skip_reason: string | null;
+  provider_message_id: string | null; error_code: string | null; error_message: string | null; attempts: number;
+  lease_expires_at: string | null; sent_at: string | null; created_at: string; updated_at: string;
+}
+
+export interface RecurringChargeRow {
+  id: string; business_id: string; customer_id: string; account_id: string; label: string; reference_prefix: string;
+  obligation_type: string; amount_minor: number; currency: string; day_of_month: number; due_days: number;
+  start_date: string; end_date: string | null; next_run_date: string; last_generated_period: string | null;
+  status: "active" | "paused" | "ended"; last_error: string | null; created_by: string | null; created_at: string; updated_at: string;
+}
 
 export interface ObligationRow {
   id: string;
@@ -3446,7 +3497,7 @@ export interface PaymentLedgerEntryRow { id: string; journal_id: string; busines
 export interface PaymentOperationAllocationRow { id: string; business_id: string; receipt_id: string; event_type: "allocation" | "reversal"; reverses_allocation_id: string | null; case_id: string | null; obligation_id: string | null; receipt_amount_minor: number; receipt_currency: string; target_amount_minor: number; target_currency: string; overpayment_minor: number; exchange_rate_id: string | null; payment_id: string | null; case_financial_event_id: string | null; journal_id: string; reason: string | null; approval_request_id: string | null; idempotency_key: string; created_by: string | null; created_at: string }
 export interface PaymentRefundRow { id: string; business_id: string; receipt_id: string; amount_minor: number; currency: string; reason: string; journal_id: string; external_reference: string | null; idempotency_key: string; created_by: string | null; created_at: string }
 export interface PaymentReceiptReversalRow { id: string; business_id: string; receipt_id: string; reason: string; journal_id: string; idempotency_key: string; created_by: string | null; created_at: string }
-export interface AccountingPaymentOperationOutboxRow { id: string; business_id: string; connection_id: string; provider: "xero" | "quickbooks"; operation_type: string; source_table: string; source_id: string; payload: Json; idempotency_key: string; status: "pending" | "processing" | "synced" | "failed" | "configuration_required" | "dead_letter"; attempts: number; next_attempt_at: string; external_record_id: string | null; last_error_code: string | null; last_error_message: string | null; locked_at: string | null; synced_at: string | null; created_at: string; updated_at: string }
+export interface AccountingPaymentOperationOutboxRow { id: string; business_id: string; connection_id: string; provider: "xero" | "quickbooks" | "bukku" | "autocount"; operation_type: string; source_table: string; source_id: string; payload: Json; idempotency_key: string; status: "pending" | "processing" | "synced" | "failed" | "configuration_required" | "dead_letter"; attempts: number; next_attempt_at: string; external_record_id: string | null; last_error_code: string | null; last_error_message: string | null; locked_at: string | null; synced_at: string | null; created_at: string; updated_at: string }
 export interface PaymentOperationIdempotencyRow { business_id: string; action_scope: string; idempotency_key: string; request_hash: string; response: Json; created_by: string | null; created_at: string }
 export interface PocketDebtAttachmentRow { id: string; business_id: string; debt_id: string; evidence_id: string; created_by: string | null; created_at: string }
 export type PocketDebtAttachmentInsert = Omit<PocketDebtAttachmentRow,"id"|"created_at"> & { id?: string; created_at?: string };

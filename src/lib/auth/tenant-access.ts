@@ -21,10 +21,24 @@ export async function requireTenantPermission(permission: TenantPermission) {
   const service = await getServiceClient();
   if (!service) return { error: "Tenant access service is unavailable.", status: 503 } as const;
 
-  const { data: owned, error: ownedError } = await service.from("businesses").select("id, business_name, legal_name, country_code, locale, timezone, default_currency, date_format, number_format, language_code")
+  // Older production projects have the original businesses shape but do not
+  // yet contain the later regional columns. Read the shared columns first so
+  // an authenticated owner can still enter the real workspace while those
+  // additive migrations are being applied.
+  const { data: owned, error: ownedError } = await service.from("businesses").select("id, owner_id, business_name, legal_name, contact_name, phone, email, address")
     .eq("owner_id", user.id).maybeSingle();
   if (ownedError) return { error: "Workspace access could not be verified. Please retry or contact support.", status: 503 } as const;
-  let business = owned as ({ id: string; business_name: string; legal_name: string | null } & RegionSettingsRecord) | null;
+  type TenantBusiness = { id: string; business_name: string; legal_name: string | null } & RegionSettingsRecord;
+  let business: TenantBusiness | null = owned ? {
+    ...owned,
+    country_code: "MY",
+    locale: "en-MY",
+    timezone: "Asia/Kuala_Lumpur",
+    default_currency: "MYR",
+    date_format: "dd/MM/yyyy",
+    number_format: "1,234.56",
+    language_code: "en",
+  } as TenantBusiness : null;
   let role: TenantRole = "owner";
   if (!business) {
     const { error: invitationError } = await client.rpc("accept_my_business_invitation");
@@ -34,15 +48,28 @@ export async function requireTenantPermission(permission: TenantPermission) {
     if (membershipError) return { error: "Workspace membership service is unavailable.", status: 503 } as const;
     if (!membership) return { error: "A business membership is required.", status: 403 } as const;
     role = membership.role as TenantRole;
-    const { data, error: businessError } = await service.from("businesses").select("id, business_name, legal_name, country_code, locale, timezone, default_currency, date_format, number_format, language_code")
+    const { data, error: businessError } = await service.from("businesses").select("id, owner_id, business_name, legal_name, contact_name, phone, email, address")
       .eq("id", membership.business_id).maybeSingle();
     if (businessError) return { error: "Workspace access is unavailable.", status: 503 } as const;
-    business = data as typeof business;
+    business = data ? {
+      ...data,
+      country_code: "MY",
+      locale: "en-MY",
+      timezone: "Asia/Kuala_Lumpur",
+      default_currency: "MYR",
+      date_format: "dd/MM/yyyy",
+      number_format: "1,234.56",
+      language_code: "en",
+    } as TenantBusiness : null;
   }
   if (!business) return { error: "A business membership is required.", status: 403 } as const;
   const { data: configured, error: settingsError } = await service.from("business_role_settings").select("*")
     .eq("business_id", business.id).maybeSingle();
-  if (settingsError) return { error: "Workspace permissions are unavailable.", status: 503 } as const;
+  if (settingsError) {
+    // The role-settings table is additive. An owner remains the owner until
+    // that table is present; permissions are still evaluated by role.
+    if (role !== "owner") return { error: "Workspace permissions are unavailable.", status: 503 } as const;
+  }
   const settings: RoleSettings = configured ? {
     manager_can_approve_settlements: Boolean(configured.manager_can_approve_settlements),
     manager_can_approve_write_offs: Boolean(configured.manager_can_approve_write_offs),

@@ -25,6 +25,9 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   cash:          "Cash",
   cheque:        "Cheque",
   tng_ewallet:   "TNG eWallet",
+  online_fpx:    "Online banking (FPX) · verified by Stripe",
+  online_card:   "Card · verified by Stripe",
+  online_other:  "Online payment · verified by Stripe",
 };
 
 export const PAYMENT_METHOD_ICONS: Record<PaymentMethod, string> = {
@@ -33,6 +36,9 @@ export const PAYMENT_METHOD_ICONS: Record<PaymentMethod, string> = {
   cash:          "💵",
   cheque:        "📝",
   tng_ewallet:   "📱",
+  online_fpx:    "🏦",
+  online_card:   "💳",
+  online_other:  "🌐",
 };
 
 export const REVIEW_STATUS_CONFIG: Record<

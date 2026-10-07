@@ -192,11 +192,13 @@ export function RecordPaymentPage({ caseId }: Props) {
 
         {/* Method */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-bold text-gray-700">Payment Method</label>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <p id="payment-method-label" className="text-sm font-bold text-gray-700">Payment Method</p>
+          <div role="group" aria-labelledby="payment-method-label" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {METHODS.map((m) => (
               <button
                 key={m}
+                type="button"
+                aria-pressed={method === m}
                 onClick={() => setMethod(m)}
                 className={cn(
                   "flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 text-center text-xs font-semibold transition-all",
@@ -205,7 +207,7 @@ export function RecordPaymentPage({ caseId }: Props) {
                     : "border-gray-100 bg-white text-gray-500 hover:border-gray-200"
                 )}
               >
-                <span className="text-lg">{PAYMENT_METHOD_ICONS[m]}</span>
+                <span className="text-lg" aria-hidden="true">{PAYMENT_METHOD_ICONS[m]}</span>
                 {PAYMENT_METHOD_LABELS[m]}
               </button>
             ))}
@@ -240,6 +242,7 @@ export function RecordPaymentPage({ caseId }: Props) {
           <div className="mt-2">
             <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={handleFileChange} />
             <button
+              type="button"
               onClick={() => fileRef.current?.click()}
               className={cn(
                 "w-full flex flex-col items-center gap-2 py-5 border-2 border-dashed rounded-xl transition-colors",

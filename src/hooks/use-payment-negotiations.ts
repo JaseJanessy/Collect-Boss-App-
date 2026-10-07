@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from "react";
@@ -26,7 +27,7 @@ export function usePaymentNegotiations(caseId: string) {
     try {
       const response = await fetch(`/api/cases/${caseId}/payment-plans`, { cache: "no-store" });
       const payload = await response.json() as PaymentNegotiationData & { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Unable to load payment negotiations.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load payment negotiations."));
       setData({
         negotiations: payload.negotiations ?? [],
         negotiationRevisions: payload.negotiationRevisions ?? [],

@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { SectionCard } from "@/components/ui/section-card";
+import { AppearanceSetting } from "@/components/settings/appearance-setting";
+import { LanguageSetting } from "@/components/settings/language-setting";
+import { WhatsAppRemindersPanel } from "@/components/settings/whatsapp-reminders-panel";
+import { OnlinePaymentsPanel } from "@/components/settings/online-payments-panel";
+import { EinvoiceSettingsPanel } from "@/components/settings/einvoice-settings-panel";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useAuth } from "@/hooks/use-auth";
 import { useBusinessProfile } from "@/hooks/use-business-profile";
@@ -21,6 +26,7 @@ import { CreditPolicyPanel } from "@/components/settings/credit-policy-panel";
 import { EmailCommunicationsPanel } from "@/components/settings/email-communications-panel";
 import { AccountingIntegrationsPanel } from "@/components/settings/accounting-integrations-panel";
 import { RegionSettingsPanel } from "@/components/settings/region-settings-panel";
+import { useT } from "@/contexts/language-context";
 
 // ─── Lock mode labels ─────────────────────────────────────────────────────────
 
@@ -48,6 +54,7 @@ interface Props {
 
 export function BusinessSettingsPage({ dashboard }: Props) {
   const { user, hasPermission } = useAuth();
+  const t = useT();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useBusinessProfile();
   const { accounts, loading: acctLoading } = useReceivingAccounts();
   const { entitlement, loading: entLoading } = useEntitlements();
@@ -67,12 +74,34 @@ export function BusinessSettingsPage({ dashboard }: Props) {
       {/* Desktop header */}
       {dashboard && (
         <div className="mb-5">
-          <h1 className="text-xl font-bold text-gray-900">Settings</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Business, payments and preferences.</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("settings.title")}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t("settings.subtitle")}</p>
         </div>
       )}
 
       <div className={cn("flex flex-col gap-5", !dashboard && "px-4 pt-4")}>
+        <SectionCard title={t("settings.appearance")}>
+          <p className="mb-3 mt-1 text-xs text-gray-500">{t("settings.appearanceHint")}</p>
+          <AppearanceSetting />
+        </SectionCard>
+
+        <SectionCard title="Online payments (FPX & card)">
+          <OnlinePaymentsPanel canManage={hasPermission("receiving_accounts.manage")} />
+        </SectionCard>
+
+        <SectionCard title="e-Invoice (LHDN MyInvois)">
+          <EinvoiceSettingsPanel canManage={hasPermission("settings.sensitive.manage")} />
+        </SectionCard>
+
+        <SectionCard title="Automatic WhatsApp reminders">
+          <WhatsAppRemindersPanel canManage={hasPermission("settings.sensitive.manage")} />
+        </SectionCard>
+
+        <SectionCard title={t("settings.language")}>
+          <p className="mb-3 mt-1 text-xs text-gray-500">{t("settings.languageHint")}</p>
+          <LanguageSetting />
+        </SectionCard>
+
         {hasPermission("settings.sensitive.manage") && <SectionCard title="Business Profile">
           <div className="flex items-center gap-3 mt-2">
             <div className="w-12 h-12 rounded-2xl bg-[#0D1B3D] flex items-center justify-center text-white text-base font-bold shrink-0">

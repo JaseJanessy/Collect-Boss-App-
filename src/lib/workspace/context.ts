@@ -28,11 +28,23 @@ export async function resolveWorkspaceContextForAccess(access: WorkspaceAccess):
   ]);
 
   if (productResult.error || subscriptionResult.error || entitlementResult.error) {
-    return {
-      error: "Workspace context is temporarily unavailable.",
-      code: "WORKSPACE_CONTEXT_UNAVAILABLE",
-      status: 503,
-    };
+    // The first production schema predates product states and billing rows.
+    // The authenticated tenant access check has already established the
+    // owner, so expose that real business as the default Main/free workspace
+    // until the additive migrations are applied.
+    if (productResult.error?.code === "PGRST205" || productResult.error?.code === "42703") {
+      return {
+        context: {
+          workspace: {
+            name: access.business.business_name,
+            productType: "main",
+            lifecycleState: "active",
+          },
+          plan: { slug: "free", subscriptionStatus: null },
+        },
+      };
+    }
+    return { error: "Workspace context is temporarily unavailable.", code: "WORKSPACE_CONTEXT_UNAVAILABLE", status: 503 };
   }
 
   const productType = productResult.data?.product_type === "pocket" ? "pocket" : "main";

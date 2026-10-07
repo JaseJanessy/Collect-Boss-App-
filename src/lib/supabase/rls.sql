@@ -910,8 +910,8 @@ grant execute on function public.integration_claim_jobs(integer) to service_role
 grant execute on function public.integration_finish_job(uuid,boolean,text,text) to service_role;
 grant execute on function public.integration_replay_job(uuid,uuid,uuid) to service_role;
 grant execute on function public.billing_claim_event(text,text,timestamptz) to service_role;
-revoke all on function public.billing_apply_subscription_state(uuid,text,text,text,text,text,timestamptz,timestamptz,boolean) from public,anon,authenticated;
-grant execute on function public.billing_apply_subscription_state(uuid,text,text,text,text,text,timestamptz,timestamptz,boolean) to service_role;
+revoke all on function public.billing_apply_subscription_state(uuid,text,text,text,text,text,timestamptz,timestamptz,boolean,integer) from public,anon,authenticated;
+grant execute on function public.billing_apply_subscription_state(uuid,text,text,text,text,text,timestamptz,timestamptz,boolean,integer) to service_role;
 
 -- Pocket product ownership is tenant-readable and service-mutated only.
 alter table public.workspace_product_states enable row level security;
@@ -1058,3 +1058,41 @@ grant execute on function public.pocket_prepare_solo_upgrade(uuid,uuid,text,text
 grant execute on function public.pocket_attach_solo_upgrade_checkout(uuid,uuid,uuid,text) to service_role;
 grant execute on function public.pocket_commit_solo_upgrade(uuid,uuid,uuid,text) to service_role;
 grant execute on function public.pocket_mark_solo_upgrade_cleanup(uuid,uuid,text,text) to service_role;
+
+-- Recurring charges: members with case.read can view; writes go through the API with the service role.
+alter table recurring_charges enable row level security;
+create policy "recurring_charges: tenant read" on recurring_charges
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+revoke insert, update, delete on recurring_charges from anon, authenticated;
+
+-- Automatic WhatsApp reminders: tenant read only; writes via API routes and the worker.
+alter table whatsapp_reminder_policies enable row level security;
+alter table whatsapp_messages enable row level security;
+alter table whatsapp_opt_outs enable row level security;
+create policy "whatsapp_reminder_policies: tenant read" on whatsapp_reminder_policies
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+create policy "whatsapp_messages: tenant read" on whatsapp_messages
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+revoke insert, update, delete on whatsapp_reminder_policies, whatsapp_messages from anon, authenticated;
+revoke all on whatsapp_opt_outs from anon, authenticated;
+
+-- Stripe Connect online payments: tenant read only; writes via API routes and the Connect webhook.
+alter table business_payment_connections enable row level security;
+alter table online_payment_sessions enable row level security;
+create policy "business_payment_connections: tenant read" on business_payment_connections
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+create policy "online_payment_sessions: tenant read" on online_payment_sessions
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+revoke insert, update, delete on business_payment_connections, online_payment_sessions from anon, authenticated;
+
+-- LHDN MyInvois: tenant read only; writes via API routes and the status worker.
+alter table einvoice_profiles enable row level security;
+alter table customer_tax_details enable row level security;
+alter table einvoice_documents enable row level security;
+create policy "einvoice_profiles: tenant read" on einvoice_profiles
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+create policy "customer_tax_details: tenant read" on customer_tax_details
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+create policy "einvoice_documents: tenant read" on einvoice_documents
+  for select to authenticated using (has_business_permission(business_id, 'case.read'));
+revoke insert, update, delete on einvoice_profiles, customer_tax_details, einvoice_documents from anon, authenticated;

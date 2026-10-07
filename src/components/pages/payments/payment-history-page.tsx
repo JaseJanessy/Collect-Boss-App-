@@ -18,6 +18,7 @@ import {
 import { type PaymentRow } from "@/lib/supabase/types";
 import type { PaymentProofDecision, PaymentProofSubmission } from "@/lib/payment-proofs/client";
 import { formatRM } from "@/lib/mock-data";
+import { useT } from "@/contexts/language-context";
 import {
   CreditCard, Clock, CheckCircle2, XCircle,
   Settings, Inbox, ShieldCheck, AlertCircle, AlertTriangle,
@@ -25,6 +26,7 @@ import {
 } from "lucide-react";
 
 export function PaymentHistoryPage() {
+  const t = useT();
   const { payments, loading, error, approve, reject, markUnmatched, refresh } = usePayments();
   const { submissions, loading: proofsLoading, error: proofsError, review: reviewProof } = usePaymentProofs();
   const businessId = useBusinessId();
@@ -83,8 +85,8 @@ export function PaymentHistoryPage() {
       <div className="bg-white border-b border-gray-100 px-4 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-[#0D1B3D]">Payments</h1>
-            <p className="text-xs text-gray-400 mt-0.5">Track all payments and proof reviews.</p>
+            <h1 className="text-lg font-bold text-[#0D1B3D]">{t("payments.title")}</h1>
+            <p className="text-xs text-gray-400 mt-0.5">{t("payments.subtitle")}</p>
           </div>
           <Link href="/payments/account" className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors">
             <Settings className="w-4 h-4 text-gray-500" />

@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
@@ -295,7 +296,7 @@ export function FormalDemandPage({ caseId }: Props) {
         body: JSON.stringify({ mode: "draft", tone, deadlineDays, includePayment, includeEvidenceRef }),
       });
       const payload = await response.json().catch(() => ({})) as { document?: Parameters<typeof addDoc>[0]; error?: string };
-      if (!response.ok || !payload.document) throw new Error(payload.error ?? "Unable to save the payment-notice draft.");
+      if (!response.ok || !payload.document) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to save the payment-notice draft."));
       addDoc(payload.document);
       setSaved(true);
     } catch (error) {
@@ -354,7 +355,7 @@ export function FormalDemandPage({ caseId }: Props) {
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({})) as { error?: string };
-        throw new Error(payload.error ?? "Unable to issue the payment notice.");
+        throw new Error(friendlyErrorMessage(payload.error ?? "Unable to issue the payment notice."));
       }
       const blob = await response.blob();
       const documentId = response.headers.get("X-Formal-Demand-Id");

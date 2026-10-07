@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
@@ -48,7 +49,7 @@ export function TrustSafetyPanel({ profile }: { profile: BusinessProfileDto | nu
     try {
       const response = await fetch("/api/abuse-reports", { cache: "no-store" });
       const payload = await response.json().catch(() => ({})) as { reports?: SafetyReport[]; error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Unable to load safety reports.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load safety reports."));
       setReports(payload.reports ?? []);
       setError(null);
     } catch (error) {
@@ -64,7 +65,7 @@ export function TrustSafetyPanel({ profile }: { profile: BusinessProfileDto | nu
     void fetch("/api/abuse-reports", { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json().catch(() => ({})) as { reports?: SafetyReport[]; error?: string };
-        if (!response.ok) throw new Error(payload.error ?? "Unable to load safety reports.");
+        if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load safety reports."));
         return payload.reports ?? [];
       })
       .then((loadedReports) => {
@@ -97,7 +98,7 @@ export function TrustSafetyPanel({ profile }: { profile: BusinessProfileDto | nu
         }),
       });
       const payload = await response.json().catch(() => ({})) as { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Unable to request verification.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to request verification."));
       window.location.reload();
     } catch (error) {
       setError(error instanceof Error ? error.message : "Unable to request verification.");

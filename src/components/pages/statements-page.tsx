@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, CalendarDays, CheckCircle2, Download, FileText, RefreshCw } from "lucide-react";
@@ -62,7 +63,7 @@ export function StatementsPage() {
       try {
         const response = await fetch(`/api/statements/summary?${query}`, { cache: "no-store" });
         const payload = await response.json() as Statement2Data & { error?: string };
-        if (!response.ok) throw new Error(payload.error ?? "Unable to load the statement preview.");
+        if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load the statement preview."));
         if (!cancelled) setStatement(payload);
       } catch (reason) {
         if (!cancelled) {
@@ -86,7 +87,7 @@ export function StatementsPage() {
       const response = await fetch(`/api/statements/pdf?${query}`, { cache: "no-store" });
       if (!response.ok) {
         const payload = await response.json() as { error?: string };
-        throw new Error(payload.error ?? "Unable to generate the statement.");
+        throw new Error(friendlyErrorMessage(payload.error ?? "Unable to generate the statement."));
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);

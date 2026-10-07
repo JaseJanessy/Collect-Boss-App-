@@ -43,3 +43,16 @@ export function assertCompletePriceConfiguration() {
   const missing = CHECKOUT_PLAN_SLUGS.filter((slug) => !getPriceId(slug));
   if (missing.length) throw new Error(`Stripe prices are missing for: ${missing.join(", ")}.`);
 }
+
+/** RM10 per user per month add-on for paid plans. Optional: seats are hidden until configured. */
+export const EXTRA_SEAT_MAX = 100;
+
+export function extraSeatPriceId(): string | null {
+  const value = process.env.STRIPE_PRICE_EXTRA_SEAT?.trim() ?? "";
+  return value.startsWith("price_") ? value : null;
+}
+
+export function isExtraSeatPriceId(priceId: string | null | undefined): boolean {
+  const configured = extraSeatPriceId();
+  return Boolean(priceId) && configured !== null && priceId === configured;
+}

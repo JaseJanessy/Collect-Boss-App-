@@ -157,7 +157,7 @@ test("action-first layouts remain usable when reporting or reconciliation is una
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "What needs attention" })).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText("Priority work remains available above", { exact: false }).last()).toBeVisible();
+  await expect(page.getByText("Your priority list above still works", { exact: false }).last()).toBeVisible();
 
   await page.goto("/actions");
   await expect(page.getByRole("heading", { name: "What needs attention" })).toBeVisible({ timeout: 60_000 });

@@ -247,6 +247,12 @@ export async function resolvePublicPayment(
       note: revision.note, expiresAt: negotiationRow.expires_at,
     } : null,
   };
+  const { data: onlineConnection, error: onlineError } = await client.from("business_payment_connections")
+    .select("charges_enabled").eq("business_id", context.caseScope.business_id).is("disconnected_at", null).maybeSingle();
+  // Online payment is optional: a lookup failure only hides the button.
+  const onlinePayment = {
+    available: !onlineError && Boolean((onlineConnection as { charges_enabled?: boolean } | null)?.charges_enabled) && collectableMinor >= 200,
+  };
   const lockedDetails = (approvalRequired: boolean): PublicAccessResolution<PublicPaymentDetails> => ({
     state: "valid" as const,
     data: {
@@ -258,6 +264,7 @@ export async function resolvePublicPayment(
       },
       currency: context.caseScope.currency,
       invoiceReference: c.invoice_no,
+      onlinePayment,
       amountDue: minorToMajorNumber(collectableMinor, context.caseScope.currency),
       totalOutstanding: minorToMajorNumber(totalOutstanding, context.caseScope.currency),
       collectableAmount: minorToMajorNumber(collectableMinor, context.caseScope.currency),
@@ -330,6 +337,7 @@ export async function resolvePublicPayment(
     data: {
       currency: context.caseScope.currency,
       invoiceReference: c.invoice_no,
+      onlinePayment,
       amountDue: minorToMajorNumber(collectableMinor, context.caseScope.currency),
       totalOutstanding: minorToMajorNumber(totalOutstanding, context.caseScope.currency),
       collectableAmount: minorToMajorNumber(collectableMinor, context.caseScope.currency),

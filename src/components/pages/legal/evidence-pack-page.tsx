@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -121,7 +122,7 @@ export function EvidencePackPage({ caseId }: Props) {
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({})) as { error?: string };
-        throw new Error(payload.error ?? "Export failed.");
+        throw new Error(friendlyErrorMessage(payload.error ?? "Export failed."));
       }
       const packBlob = await response.blob();
       if (pdfUrl) URL.revokeObjectURL(pdfUrl!);

@@ -5,7 +5,16 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// Vercel Cron invokes GET; POST allows an authenticated manual run with asOfDate.
+export async function GET(request: NextRequest) {
+  return run(request);
+}
+
 export async function POST(request: NextRequest) {
+  return run(request);
+}
+
+async function run(request: NextRequest) {
   const authorization = authorizeCronRequest(request);
   if (authorization === "not_configured") {
     return NextResponse.json({ error: "Payment-plan scheduler is not configured." }, { status: 503 });

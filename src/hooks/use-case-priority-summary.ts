@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useCallback, useEffect, useState } from "react";
 import type { CasePrioritySummary } from "@/lib/cases/priority-summary";
@@ -19,7 +20,7 @@ export function useCasePrioritySummary(caseId: string) {
     try {
       const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}`, { cache: "no-store" });
       const payload = await response.json() as { prioritySummary?: CasePrioritySummary; error?: string };
-      if (!response.ok || !payload.prioritySummary) throw new Error(payload.error ?? "Unable to load the case priority summary.");
+      if (!response.ok || !payload.prioritySummary) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load the case priority summary."));
       setSummary(payload.prioritySummary);
       setError(null);
     } catch (caught) {

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiError, apiJson, authApiError, databaseApiError } from "@/lib/document-intake/api";
 import { requireDocumentPermission, scopedIntake } from "@/lib/document-intake/server";
+import { kickDocumentQueues } from "@/lib/document-intake/queue-kick";
 import { correlationId, readIdempotencyKey, requestDigest } from "@/lib/document-intake/validation";
 
 export const dynamic = "force-dynamic";
@@ -109,5 +110,6 @@ export async function POST(request: NextRequest, context: Context) {
     p_correlation_id: correlationId(request.headers),
   });
   if (error || !data) return databaseApiError(error?.message, "Unable to queue document extraction.");
+  kickDocumentQueues();
   return apiJson({ extraction: safeExtraction(data as Record<string, unknown>), idempotent: true }, 202);
 }

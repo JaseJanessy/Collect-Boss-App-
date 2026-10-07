@@ -12,6 +12,8 @@ import { type ContactGuardEvaluation, type ReceivingAccountRow } from "@/lib/sup
 import { useCase } from "@/hooks/use-case";
 import { useReminders } from "@/hooks/use-reminders";
 import { useCommunicationActivities } from "@/hooks/use-communication-activities";
+import { useBusinessProfile } from "@/hooks/use-business-profile";
+import { useAuth } from "@/hooks/use-auth";
 import { formatRM } from "@/lib/mock-data";
 import { getPrimaryAccountClient } from "@/lib/db/receiving-accounts-client";
 import { confirmReminderSentClient, generateReminderClient, recordReminderHandoffClient } from "@/lib/db/reminders-client";
@@ -72,7 +74,10 @@ export function ReminderGeneratorPage({ caseId }: Props) {
   const [saving,          setSaving]           = useState(false);
   const [saveError,       setSaveError]        = useState<string | null>(null);
   const [savedId,         setSavedId]          = useState<string | null>(null);
-  const [businessName]                     = useState("our company");
+  const { profile, loading: profileLoading } = useBusinessProfile();
+  const { user } = useAuth();
+  // Same precedence as the server-side generator: legal name, then trading name.
+  const businessName = profile?.legalName?.trim() || profile?.displayName?.trim() || user?.name?.trim() || "Accounts Team";
   const generationRequestKey = useRef<string | null>(null);
 
   // Load primary receiving account
@@ -96,7 +101,7 @@ export function ReminderGeneratorPage({ caseId }: Props) {
     setCopied(false);
   }, [caseData, reminderType, account, businessName]);
 
-  if (caseLoading) return <LoadingSpinner />;
+  if (caseLoading || profileLoading) return <LoadingSpinner />;
 
   if (!caseData) {
     return (

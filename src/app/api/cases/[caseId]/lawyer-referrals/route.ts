@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedBusiness } from "@/lib/debtors/server";
+import { planActionDenial } from "@/lib/billing/plan-enforcement";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import type { BusinessRow, CaseRow, EvidenceFileRow, Json, LegalDocumentRow, LawyerReferralEventRow, LawyerReferralRow, LegalHandoffDocumentRequestEvidenceRow, LegalHandoffDocumentRequestRow } from "@/lib/supabase/types";
 import { canWithdrawReferral, isReferralEligible, LAWYER_REFERRAL_CONSENT_VERSION } from "@/lib/lawyer-referrals/controlled-handoff";
@@ -65,6 +66,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!input.success) return json({ error: "Explicit data-sharing confirmation is required." }, 400);
   const auth = await getAuthenticatedBusiness("case.manage");
   if ("error" in auth) return json({ error: auth.error ?? "Referral service is unavailable." }, 401);
+  const planDenial = await planActionDenial(auth.client, auth.businessId, "use_lawyer_referral");
+  if (planDenial) return planDenial;
   const service = await getServiceClient();
   if (!service) return json({ error: "Referral service is unavailable." }, 503);
 

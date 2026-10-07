@@ -18,6 +18,8 @@ export function DebtorsPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Kept apart from `error` so a failed load is never shown as an empty list.
+  const [loadError, setLoadError] = useState("");
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editing, setEditing] = useState<DebtorRow | null>(null);
   const [open, setOpen] = useState(false);
@@ -29,10 +31,10 @@ export function DebtorsPage() {
     setLoading(true);
     try {
       setDebtors(await customerService.list(search));
-      setError("");
+      setLoadError("");
     } catch (cause) {
       setDebtors([]);
-      setError(cause instanceof Error ? cause.message : "Unable to load debtors.");
+      setLoadError(cause instanceof Error ? cause.message : "Unable to load customers.");
     } finally {
       setLoading(false);
     }
@@ -91,7 +93,7 @@ export function DebtorsPage() {
     <div className="relative mb-4"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void load(query); }} placeholder="Search name, business, or registration number" className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" /></div>
     {error && !open && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-      {loading ? <p className="p-6 text-sm text-gray-500">Loading customers…</p> : debtors.length === 0 ? <p className="p-6 text-sm text-gray-500">No active customers found.</p> : debtors.map((debtor) => <div key={debtor.id} className="flex items-center gap-3 border-b border-gray-100 p-4 last:border-0">
+      {loading ? <p className="p-6 text-sm text-gray-500">Loading customers…</p> : loadError ? <div role="alert" className="flex flex-col items-start gap-3 p-6"><p className="text-sm text-red-700">{loadError}</p><button type="button" onClick={() => void load(query)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">Retry</button></div> : debtors.length === 0 ? <p className="p-6 text-sm text-gray-500">No active customers found.</p> : debtors.map((debtor) => <div key={debtor.id} className="flex items-center gap-3 border-b border-gray-100 p-4 last:border-0">
         <div className="rounded-xl bg-emerald-50 p-2 text-[#009966]">{debtor.debtor_type === "business" ? <Building2 className="h-5 w-5" /> : <User className="h-5 w-5" />}</div>
         <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-gray-900">{nameOf(debtor)}</p><p className="truncate text-xs text-gray-500">{debtor.debtor_type === "business" ? debtor.registration_no ?? "Business debtor" : "Individual debtor"}{debtor.contact_name ? " · " + debtor.contact_name : ""}</p></div>
         <button onClick={() => setSelected(debtor)} aria-label={`View accounts for ${nameOf(debtor)}`} className="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-[#007A52] hover:bg-emerald-50"><WalletCards className="h-4 w-4" /><span className="hidden sm:inline">Accounts</span></button>
@@ -102,7 +104,7 @@ export function DebtorsPage() {
     {selected && <CustomerReceivablesOverview customer={selected} onClose={() => setSelected(null)} />}
     {open && <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/30 sm:items-center sm:p-5"><div role="dialog" aria-modal="true" aria-labelledby="debtor-dialog-title" className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-full max-w-xl overflow-y-auto rounded-t-2xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl sm:rounded-2xl">
       <div className="mb-4 flex items-center justify-between"><h2 id="debtor-dialog-title" className="text-lg font-black text-[#0D1B3D]">{editing ? "Edit customer" : "Add customer"}</h2><button onClick={() => setOpen(false)} aria-label="Close customer dialog" className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-500"><X className="h-5 w-5" /></button></div>
-      <div className="grid grid-cols-2 gap-2">{(["individual", "business"] as const).map((type) => <button key={type} type="button" onClick={() => update("debtor_type", type)} className={"rounded-xl border-2 px-3 py-2 text-sm font-bold " + (form.debtor_type === type ? "border-[#009966] bg-emerald-50 text-[#007A52]" : "border-gray-200 text-gray-600")}>{type === "individual" ? "Individual" : "Business"}</button>)}</div>
+      <div className="grid grid-cols-2 gap-2">{(["individual", "business"] as const).map((type) => <button key={type} type="button" aria-pressed={form.debtor_type === type} onClick={() => update("debtor_type", type)} className={"rounded-xl border-2 px-3 py-2 text-sm font-bold " + (form.debtor_type === type ? "border-[#009966] bg-emerald-50 text-[#007A52]" : "border-gray-200 text-gray-600")}>{type === "individual" ? "Individual" : "Business"}</button>)}</div>
       <div className="mt-4 grid gap-3">
         <DebtorInput label={form.debtor_type === "business" ? "Registered business name" : "Full name"} value={form.debtor_type === "business" ? form.business_name : form.individual_name} onChange={(value) => update(form.debtor_type === "business" ? "business_name" : "individual_name", value)} required />
         {form.debtor_type === "business" && <DebtorInput label="Registration number" value={form.registration_no} onChange={(value) => update("registration_no", value)} />}

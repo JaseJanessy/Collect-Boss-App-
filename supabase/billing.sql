@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS plans (
   slug                    text UNIQUE NOT NULL,
   monthly_price_rm        numeric(10, 2) NOT NULL DEFAULT 0,
   stripe_price_id         text,                          -- filled when Stripe is wired
-  case_limit              integer NOT NULL DEFAULT 3,    -- -1 = unlimited
+  case_limit              integer NOT NULL DEFAULT 10,   -- -1 = unlimited
   evidence_pack_limit     integer NOT NULL DEFAULT 1,    -- -1 = unlimited
   team_member_limit       integer NOT NULL DEFAULT 1,
   payment_lock_enabled    boolean NOT NULL DEFAULT false,
@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   current_period_start   timestamptz,
   current_period_end     timestamptz,
   cancel_at_period_end   boolean NOT NULL DEFAULT false,
+  extra_seats            integer NOT NULL DEFAULT 0 CHECK (extra_seats BETWEEN 0 AND 100),
   created_at             timestamptz NOT NULL DEFAULT now(),
   updated_at             timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT subscriptions_business_unique UNIQUE (business_id)
@@ -124,9 +125,10 @@ CREATE TABLE IF NOT EXISTS entitlements (
   id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id             uuid NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
   plan_slug               text NOT NULL DEFAULT 'free',
-  case_limit              integer NOT NULL DEFAULT 3,    -- -1 = unlimited
+  case_limit              integer NOT NULL DEFAULT 10,   -- -1 = unlimited
   evidence_pack_limit     integer NOT NULL DEFAULT 1,    -- -1 = unlimited
   team_member_limit       integer NOT NULL DEFAULT 1,
+  extra_seats             integer NOT NULL DEFAULT 0 CHECK (extra_seats BETWEEN 0 AND 100),
   payment_lock_enabled    boolean NOT NULL DEFAULT false,
   formal_demand_enabled   boolean NOT NULL DEFAULT false,
   lawyer_referral_enabled boolean NOT NULL DEFAULT false,
@@ -152,7 +154,7 @@ CREATE POLICY "entitlements_owner_read"
 
 INSERT INTO plans (name, slug, monthly_price_rm, case_limit, evidence_pack_limit, team_member_limit, payment_lock_enabled, formal_demand_enabled, lawyer_referral_enabled, reports_enabled)
 VALUES
-  ('Free',    'free',    0,   3,  1,  1, false, false, false, false),
+  ('Free',    'free',    0,   10, 1,  1, false, false, false, false),
   ('Starter', 'starter', 19,  20, 5,  1, true,  false, false, false),
   ('Boss',    'boss',    49,  -1, -1, 3, true,  true,  true,  true),
   ('Pro',     'pro',     99,  -1, -1, 10, true,  true,  true,  true)

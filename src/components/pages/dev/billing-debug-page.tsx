@@ -239,7 +239,7 @@ export function BillingDebugPage() {
           ) : (
             <div className="flex flex-col gap-1">
               <FlagRow label="canCreateCase(0)"      value={flags.canCreateCase(0)} />
-              <FlagRow label="canCreateCase(limit)"  value={flags.canCreateCase(entitlement?.case_limit ?? 3)} />
+              <FlagRow label="canCreateCase(limit)"  value={flags.canCreateCase(entitlement?.case_limit ?? PLANS.free.case_limit)} />
               <FlagRow label="canExportEvidencePack(0)" value={flags.canExportEvidencePack(0)} />
               <FlagRow label="canUsePaymentLock"     value={flags.canUsePaymentLock} />
               <FlagRow label="canUseFormalDemand"    value={flags.canUseFormalDemand} />

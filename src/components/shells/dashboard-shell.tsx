@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useShellViewport } from "@/hooks/use-shell-viewport";
 import {
   ChevronRight,
   LogOut,
@@ -19,6 +20,8 @@ import { NavigationIcon } from "@/components/navigation/navigation-icon";
 import { CollectBossWordmark } from "@/components/brand/wordmark";
 import { workspacePlanLabel } from "@/lib/workspace/presentation";
 import { WorkspaceAccessNotice } from "./workspace-access-notice";
+import { useT } from "@/contexts/language-context";
+import { navigationGroupLabel, navigationLabel } from "@/lib/i18n/messages";
 
 interface DashboardShellProps {
   children: ReactNode;
@@ -26,19 +29,25 @@ interface DashboardShellProps {
 
 export function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
+  const t = useT();
   const { user, signOut, permissions, workspace, accessLoading, accessError, isConfigured, signingOut, signOutError } = useAuth();
   const activeItem = activePrimaryNavigation(pathname);
   const visibleItems = primaryNavigation.filter((item) => navigationItemIsVisible(item, permissions));
   const resourceItems = secondaryNavigation.filter((item) => item.group === "Workspace" && navigationItemIsVisible(item, permissions));
   const accountItems = secondaryNavigation.filter((item) => ["settings", "billing", "support"].includes(item.id) && navigationItemIsVisible(item, permissions));
   const secondaryActive = secondaryNavigation.find((item) => !item.href.includes("#") && (pathname === item.href || pathname.startsWith(`${item.href}/`)));
+  const viewport = useShellViewport();
 
   const initials = user?.name
     ? user.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
     : user?.email?.slice(0, 2).toUpperCase() ?? "CB";
 
-  const displayName = user?.name ?? user?.email ?? "Your account";
+  const displayName = user?.name ?? user?.email ?? t("shell.yourAccount");
   const workspaceName = workspace?.workspace.name ?? (isConfigured ? "Your workspace" : "Development preview");
+
+  // The page also renders MobileShell; only the visible shell mounts the page.
+  if (viewport === "mobile") return null;
+  const active = viewport === "desktop";
 
   return (
     <div className="cb-dashboard-shell hidden min-w-0 md:flex h-[100dvh] bg-[var(--cb-surface-inverse)] overflow-hidden">
@@ -76,7 +85,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                title={item.label}
+                title={navigationLabel(t, item)}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "cb-sidebar-link",
@@ -86,7 +95,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 )}
                 >
                   <NavigationIcon name={item.icon} className="w-4 h-4 shrink-0" />
-                <span className="hidden lg:inline">{item.label}</span>
+                <span className="hidden lg:inline">{navigationLabel(t, item)}</span>
                 {isActive && (
                   <ChevronRight className="hidden lg:block w-3.5 h-3.5 ml-auto opacity-60" />
                 )}
@@ -95,14 +104,14 @@ export function DashboardShell({ children }: DashboardShellProps) {
           })}
         </nav>
         {resourceItems.length > 0 && <>
-          <p className="cb-sidebar-label mt-7">Workspace</p>
+          <p className="cb-sidebar-label mt-7">{navigationGroupLabel(t, "Workspace")}</p>
           <nav aria-label="Workspace resources" className="space-y-1">
-            {resourceItems.map((item) => <Link key={item.id} href={item.href} title={item.label} aria-current={secondaryActive?.id === item.id ? "page" : undefined} className={cn("cb-sidebar-link", secondaryActive?.id === item.id ? "cb-sidebar-link-active" : "text-slate-300 hover:bg-white/8 hover:text-white")}><NavigationIcon name={item.icon} className="size-4 shrink-0" /><span className="hidden lg:inline">{item.label}</span></Link>)}
+            {resourceItems.map((item) => <Link key={item.id} href={item.href} title={navigationLabel(t, item)} aria-current={secondaryActive?.id === item.id ? "page" : undefined} className={cn("cb-sidebar-link", secondaryActive?.id === item.id ? "cb-sidebar-link-active" : "text-slate-300 hover:bg-white/8 hover:text-white")}><NavigationIcon name={item.icon} className="size-4 shrink-0" /><span className="hidden lg:inline">{navigationLabel(t, item)}</span></Link>)}
           </nav>
         </>}
         <p className="cb-sidebar-label mt-7">Manage</p>
         <nav aria-label="Account and support" className="space-y-1">
-          {accountItems.map((item) => <Link key={item.id} href={item.href} title={item.label} aria-current={secondaryActive?.id === item.id ? "page" : undefined} className={cn("cb-sidebar-link", secondaryActive?.id === item.id ? "cb-sidebar-link-active" : "text-slate-300 hover:bg-white/8 hover:text-white")}><NavigationIcon name={item.icon} className="size-4 shrink-0" /><span className="hidden lg:inline">{item.label}</span></Link>)}
+          {accountItems.map((item) => <Link key={item.id} href={item.href} title={navigationLabel(t, item)} aria-current={secondaryActive?.id === item.id ? "page" : undefined} className={cn("cb-sidebar-link", secondaryActive?.id === item.id ? "cb-sidebar-link-active" : "text-slate-300 hover:bg-white/8 hover:text-white")}><NavigationIcon name={item.icon} className="size-4 shrink-0" /><span className="hidden lg:inline">{navigationLabel(t, item)}</span></Link>)}
         </nav>
         </div>
 
@@ -124,7 +133,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <p className="text-sm font-semibold text-white truncate">
                 {displayName}
               </p>
-              <p className="text-xs text-slate-300 truncate">Account & preferences</p>
+              <p className="text-xs text-slate-300 truncate">{t("shell.accountPreferences")}</p>
             </div>
           </Link>
 
@@ -136,7 +145,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             className="mt-1 min-h-11 w-full flex items-center justify-center lg:justify-start gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-white/8 hover:text-white transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden lg:inline">{signingOut ? "Signing out…" : "Sign Out"}</span>
+            <span className="hidden lg:inline">{signingOut ? "…" : t("shell.signOut")}</span>
           </button>
           {signOutError && <p role="alert" className="mt-2 px-2 text-xs text-red-200">{signOutError}</p>}
         </div>
@@ -148,10 +157,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
         <header className="cb-workspace-chrome min-h-20 bg-white border-b border-slate-200 px-5 lg:px-8 py-3 flex items-center gap-5 shrink-0">
           <div className="hidden min-w-0 w-48 shrink-0 xl:block">
             <p className="truncate text-xs text-slate-500">CollectBoss Main</p>
-            <p className="mt-0.5 truncate text-sm font-semibold text-slate-900">{secondaryActive?.label ?? activeItem?.label ?? "Workspace"}</p>
+            <p className="mt-0.5 truncate text-sm font-semibold text-slate-900">{secondaryActive ? navigationLabel(t, secondaryActive) : activeItem ? navigationLabel(t, activeItem) : navigationGroupLabel(t, "Workspace")}</p>
           </div>
           <GlobalSearch />
-          <NotificationBell />
+          {active && <NotificationBell />}
           <Link href="/more" aria-label="Open account and preferences" className="size-11 shrink-0 rounded-full border border-[var(--cb-border)] bg-[var(--cb-surface-muted)] flex items-center justify-center text-[var(--cb-text-primary)] text-xs font-semibold">
             {initials}
           </Link>
@@ -163,7 +172,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         {/* Content */}
         <main id="dashboard-main-content" tabIndex={-1} className="cb-workspace-chrome flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain bg-[var(--cb-background)] p-5 lg:p-8">
           <ErrorBoundary context="DashboardShell">
-            {accessError ? <WorkspaceAccessNotice /> : children}
+            {active && (accessError ? <WorkspaceAccessNotice /> : children)}
           </ErrorBoundary>
         </main>
       </div>

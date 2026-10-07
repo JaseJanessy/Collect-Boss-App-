@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Check, ChevronRight, Clock3, Filter, Play, RefreshCw, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 import { loadActionCentre, transitionAction } from "@/lib/action-centre/client";
 import {
   actionQueueLabels,
@@ -22,6 +23,7 @@ import type { ActionCentrePriority } from "@/lib/supabase/types";
 import { useRegion } from "@/contexts/region-context";
 import { formatDateTime, formatMinorCurrency } from "@/lib/international/formatting";
 import type { RegionSettings } from "@/lib/international/types";
+import { useT } from "@/contexts/language-context";
 
 const emptyPayload: ActionCentrePayload = {
   items: [],
@@ -158,6 +160,7 @@ function ActionRow({
 
 export function ActionCentrePanel({ compact = false, allowHistory = false }: { compact?: boolean; allowHistory?: boolean }) {
   const { configuration } = useRegion();
+  const t = useT();
   const [scope, setScope] = useState<ActionCentreScope>("active");
   const [filters, setFilters] = useState<ActionCentreFilters>({});
   const [payload, setPayload] = useState<ActionCentrePayload>(emptyPayload);
@@ -172,7 +175,7 @@ export function ActionCentrePanel({ compact = false, allowHistory = false }: { c
       const result = await loadActionCentre(scope, filters, cursor, compact ? 5 : 25);
       setPayload((current) => append ? { ...result, items: [...current.items, ...result.items] } : result);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to load Action Centre.");
+      setError(friendlyErrorMessage(caught instanceof Error ? caught.message : null, { fallback: "We couldn't load your priority list. Tap Retry." }));
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -192,7 +195,7 @@ export function ActionCentrePanel({ compact = false, allowHistory = false }: { c
       await transitionAction(item.id, action, snoozedUntil);
       await fetchPage();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to update action.");
+      setError(friendlyErrorMessage(caught instanceof Error ? caught.message : null, { fallback: "That change wasn't saved. Please try again." }));
     } finally {
       setBusyId(null);
     }
@@ -206,9 +209,9 @@ export function ActionCentrePanel({ compact = false, allowHistory = false }: { c
     <section className="flex flex-col gap-3" aria-labelledby="action-centre-heading">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Highest priority first</p>
-          <h2 id="action-centre-heading" className={cn("font-black text-[#0D1B3D]", compact ? "text-lg" : "text-2xl")}>What needs attention</h2>
-          <p className="mt-0.5 text-xs text-slate-500">Operational work ordered by severity, due time, then age—not notification history.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">{t("dashboard.mostUrgent")}</p>
+          <h2 id="action-centre-heading" className={cn("font-black text-[#0D1B3D]", compact ? "text-lg" : "text-2xl")}>{compact ? t("dashboard.topPriorities") : t("dashboard.title")}</h2>
+          <p className="mt-0.5 text-xs text-slate-500">{t("dashboard.sorted")}</p>
         </div>
         {allowHistory && (
           <div className="flex rounded-xl border border-slate-200 bg-white p-1" aria-label="Action status view">

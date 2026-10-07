@@ -120,7 +120,12 @@ export async function signIn(
       const needsProduct = await requiresProductSelection(data.session.access_token);
       if (needsProduct) return { success: true, requiresProductSelection: true };
     } catch {
-      return { success: false, error: "Your login was accepted, but workspace access is temporarily unavailable. Please retry or contact support." };
+      // Authentication succeeded but the workspace lookup is unavailable. Do
+      // not send an existing customer to the product chooser during an outage.
+      return {
+        success: false,
+        error: "Your login was accepted, but your workspace could not be opened. Please retry or check System Status.",
+      };
     }
   }
 

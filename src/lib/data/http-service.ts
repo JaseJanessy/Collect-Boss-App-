@@ -5,6 +5,8 @@
  * Keeping fetch/error parsing here prevents every component from inventing a
  * slightly different API contract.
  */
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
+
 export class ServiceRequestError<TBody = unknown> extends Error {
   readonly status: number;
   readonly code?: string;
@@ -40,7 +42,7 @@ export async function requestJson<TResponse>(
 
   if (!response.ok) {
     throw new ServiceRequestError(
-      body.error || fallbackMessage,
+      friendlyErrorMessage(body.error, { status: response.status, fallback: fallbackMessage }),
       response.status,
       body,
       body.code,
@@ -58,7 +60,12 @@ export async function requestBlob(
   const response = await fetch(url, init);
   if (!response.ok) {
     const body = await response.json().catch(() => ({})) as ErrorPayload;
-    throw new ServiceRequestError(body.error || fallbackMessage, response.status, body, body.code);
+    throw new ServiceRequestError(
+      friendlyErrorMessage(body.error, { status: response.status, fallback: fallbackMessage }),
+      response.status,
+      body,
+      body.code,
+    );
   }
   return response.blob();
 }

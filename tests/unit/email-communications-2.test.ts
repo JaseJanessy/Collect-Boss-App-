@@ -79,6 +79,6 @@ describe("Email Communications 2.0", () => {
     expect(readFileSync("src/lib/email/service.ts", "utf8")).toContain('.eq("is_internal", false)');
     const proxy = readFileSync("src/proxy.ts", "utf8");
     expect(proxy).toContain('"/api/webhooks/resend"');
-    expect(proxy).toContain("isEmailWebhook");
+    expect(proxy).toContain("isSignedWebhook");
   });
 });

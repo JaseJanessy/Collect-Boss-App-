@@ -18,7 +18,7 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { PLANS } from "./plans";
 import type { PlanSlug, SubscriptionStatus } from "./types";
-export { isConfiguredPlanPriceId, planSlugFromPriceId } from "./catalog-server";
+export { isConfiguredPlanPriceId, isExtraSeatPriceId, planSlugFromPriceId } from "./catalog-server";
 
 // ─── Status → entitlement decision ───────────────────────────────────────────
 
@@ -179,6 +179,7 @@ export interface SubscriptionUpsertParams {
   currentPeriodStart:    number | null; // Unix timestamp from Stripe
   currentPeriodEnd:      number | null; // Unix timestamp from Stripe
   cancelAtPeriodEnd:     boolean;
+  extraSeats?:           number;
 }
 
 export async function applySubscriptionState(params: SubscriptionUpsertParams): Promise<void> {
@@ -194,6 +195,7 @@ export async function applySubscriptionState(params: SubscriptionUpsertParams): 
     p_period_start: params.currentPeriodStart ? new Date(params.currentPeriodStart * 1000).toISOString() : null,
     p_period_end: params.currentPeriodEnd ? new Date(params.currentPeriodEnd * 1000).toISOString() : null,
     p_cancel_at_period_end: params.cancelAtPeriodEnd,
+    p_extra_seats: params.extraSeats ?? 0,
   });
   if (error) throw new Error("Unable to synchronize subscription and entitlement state atomically");
 }

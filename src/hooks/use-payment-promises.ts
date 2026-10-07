@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 import { useCallback, useEffect, useState } from "react";
 import type {
@@ -29,7 +30,7 @@ export function usePaymentPromises(caseId: string, enabled = true) {
     try {
       const response = await fetch(`/api/cases/${caseId}/promises`, { cache: "no-store" });
       const payload = await response.json() as PaymentPromiseData & { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Unable to load payment promises.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load payment promises."));
       setData(payload);
       setError(null);
     } catch (requestError) {
@@ -45,7 +46,7 @@ export function usePaymentPromises(caseId: string, enabled = true) {
     fetch(`/api/cases/${caseId}/promises`, { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json() as PaymentPromiseData & { error?: string };
-        if (!response.ok) throw new Error(payload.error ?? "Unable to load payment promises.");
+        if (!response.ok) throw new Error(friendlyErrorMessage(payload.error ?? "Unable to load payment promises."));
         return payload;
       })
       .then((payload) => {

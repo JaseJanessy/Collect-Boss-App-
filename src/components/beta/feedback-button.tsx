@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorMessage } from "@/lib/ui/friendly-error";
 
 /**
  * FeedbackButton — floating bottom-right button for feedback and bug reports.
@@ -78,7 +79,7 @@ export function FeedbackButton() {
         }),
       });
       const payload = await response.json().catch(() => null) as { error?: string } | null;
-      if (!response.ok) throw new Error(payload?.error ?? "Feedback could not be delivered.");
+      if (!response.ok) throw new Error(friendlyErrorMessage(payload?.error ?? "Feedback could not be delivered."));
       setDone(true);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Feedback could not be delivered.");
